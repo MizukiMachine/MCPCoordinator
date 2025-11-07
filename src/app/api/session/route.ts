@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { buildOpenAIConfig } from "@/framework/config/openai";
+
+const openAIConfig = buildOpenAIConfig();
 
 export async function GET() {
   try {
@@ -7,11 +10,11 @@ export async function GET() {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${openAIConfig.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2025-06-03",
+          model: openAIConfig.realtimeModel,
         }),
       }
     );

@@ -21,10 +21,20 @@ There are two main patterns demonstrated:
 
 ## Setup
 
-- This is a Next.js typescript app. Install dependencies with `npm i`.
-- Add your `OPENAI_API_KEY` to your env. Either add it to your `.bash_profile` or equivalent, or copy `.env.sample` to `.env` and add it there.
-- Start the server with `npm run dev`
-- Open your browser to [http://localhost:3000](http://localhost:3000). It should default to the `chatSupervisor` Agent Config.
+### TL;DR
+
+1. `make bootstrap` &mdash; installs dependencies and copies `.env.sample` → `.env` if needed.
+2. Update `.env`:
+   - `OPENAI_API_KEY`: required OpenAI key.
+   - `OPENAI_REALTIME_MODEL`: defaults to `gpt-4o-realtime-preview-2025-06-03`.
+   - `OPENAI_RESPONSES_MODEL`: defaults to `gpt-4.1-mini`.
+3. `make dev` and open [http://localhost:3000](http://localhost:3000).
+
+### Details
+
+- This is a Next.js TypeScript app. If you prefer manual steps, run `npm install`.
+- Start the development server with `npm run dev` (or `make dev`).
+- Use `make check` to run lint, tests, and type-checks in one command.
 - You can change examples via the "Scenario" dropdown in the top right.
 
 # Agentic Pattern 1: Chat-Supervisor

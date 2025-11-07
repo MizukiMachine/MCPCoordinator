@@ -1,16 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+import { buildOpenAIConfig } from "@/framework/config/openai";
 
 // Proxy endpoint for the OpenAI Responses API
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  const openaiConfig = buildOpenAIConfig();
+  const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
+  const requestBody = {
+    ...body,
+    model: body.model ?? openaiConfig.responsesModel,
+  };
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  if (body.text?.format?.type === 'json_schema') {
-    return await structuredResponse(openai, body);
+  if (body.text?.format?.type === "json_schema") {
+    return await structuredResponse(openai, requestBody);
   } else {
-    return await textResponse(openai, body);
+    return await textResponse(openai, requestBody);
   }
 }
 
@@ -23,8 +28,8 @@ async function structuredResponse(openai: OpenAI, body: any) {
 
     return NextResponse.json(response);
   } catch (err: any) {
-    console.error('responses proxy error', err);
-    return NextResponse.json({ error: 'failed' }, { status: 500 }); 
+    console.error("responses proxy error", err);
+    return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }
 
@@ -37,8 +42,8 @@ async function textResponse(openai: OpenAI, body: any) {
 
     return NextResponse.json(response);
   } catch (err: any) {
-    console.error('responses proxy error', err);
-    return NextResponse.json({ error: 'failed' }, { status: 500 });
+    console.error("responses proxy error", err);
+    return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }
   
