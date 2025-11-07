@@ -184,14 +184,17 @@ function App() {
     const data = await tokenResponse.json();
     logServerEvent(data, "fetch_session_token_response");
 
-    if (!data.client_secret?.value) {
+    const clientSecret =
+      data?.value ?? data?.client_secret?.value ?? data?.clientSecret;
+
+    if (!clientSecret) {
       logClientEvent(data, "error.no_ephemeral_key");
       console.error("No ephemeral key provided by the server");
       setSessionStatus("DISCONNECTED");
       return null;
     }
 
-    return data.client_secret.value;
+    return clientSecret;
   };
 
   const connectToRealtime = async () => {
@@ -260,10 +263,10 @@ function App() {
     // Reflect Push-to-Talk UI state by (de)activating server VAD on the
     // backend. The Realtime SDK supports live session updates via the
     // `session.update` event.
-    const turnDetection = isPTTActive
+    const serverVadConfig = isPTTActive
       ? null
       : {
-          type: 'server_vad',
+          type: 'server_vad' as const,
           threshold: 0.9,
           prefix_padding_ms: 300,
           silence_duration_ms: 500,
@@ -273,7 +276,11 @@ function App() {
     sendEvent({
       type: 'session.update',
       session: {
-        turn_detection: turnDetection,
+        audio: {
+          input: {
+            turn_detection: serverVadConfig,
+          },
+        },
       },
     });
 
