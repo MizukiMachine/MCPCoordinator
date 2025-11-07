@@ -19,10 +19,17 @@ There are two main patterns demonstrated:
 1. **Chat-Supervisor:** A realtime-based chat agent interacts with the user and handles basic tasks, while a more intelligent, text-based supervisor model (e.g., `gpt-4.1`) is used extensively for tool calls and more complex responses. This approach provides an easy onramp and high-quality answers, with a small increase in latency.
 2. **Sequential Handoff:** Specialized agents (powered by realtime api) transfer the user between them to handle specific user intents. This is great for customer service, where user intents can be handled sequentially by specialist models that excel in a specific domains. This helps avoid the model having all instructions and tools in a single agent, which can degrade performance.
 
+## November 2025 Updates
+
+- The project now targets `@openai/agents@0.3.0` and `openai@6.8.1`, aligning with OpenAI's gpt-realtime rollout that added SIP/PSTN support, remote MCP connectors, and mix-and-match routers inside the Agents SDK.
+- Realtime sessions default to the `gpt-4.1-realtime-preview-2025-10-01` snapshot plus the unified audio config (`outputModalities`, `audio.input.transcription`, `audio.output.voice`) recommended in the latest Realtime API docs, so phone-grade VAD, upgraded speech quality, and SIP handoff workflows behave exactly like the current platform release.
+- MCP tool calls can auto-trigger responses and the session payload now matches the camelCase schema, which keeps the sample ready for hosted MCP servers and the OpenAI Live pipeline updates.
+
 ## Setup
 
 - This is a Next.js typescript app. Install dependencies with `npm i`.
 - Add your `OPENAI_API_KEY` to your env. Either add it to your `.bash_profile` or equivalent, or copy `.env.sample` to `.env` and add it there.
+- Override realtime defaults if needed by setting `OPENAI_REALTIME_MODEL`/`NEXT_PUBLIC_REALTIME_MODEL` (defaults to `gpt-4.1-realtime-preview-2025-10-01`) and the matching transcription variables to keep server and browser in sync.
 - Start the server with `npm run dev`
 - Open your browser to [http://localhost:3000](http://localhost:3000). It should default to the `chatSupervisor` Agent Config.
 - You can change examples via the "Scenario" dropdown in the top right.
@@ -41,7 +48,7 @@ Video walkthrough: [https://x.com/noahmacca/status/1927014156152058075](https://
 ```mermaid
 sequenceDiagram
     participant User
-    participant ChatAgent as Chat Agent<br/>(gpt-4o-realtime-mini)
+    participant ChatAgent as Chat Agent<br/>(gpt-realtime-mini)
     participant Supervisor as Supervisor Agent<br/>(gpt-4.1)
     participant Tool as Tool
 
@@ -65,7 +72,7 @@ sequenceDiagram
 - **Simpler onboarding.** If you already have a performant text-based chat agent, you can give that same prompt and set of tools to the supervisor agent, and make some tweaks to the chat agent prompt, you'll have a natural voice agent that will perform on par with your text agent.
 - **Simple ramp to a full realtime agent**: Rather than switching your whole agent to the realtime api, you can move one task at a time, taking time to validate and build trust for each before deploying to production.
 - **High intelligence**: You benefit from the high intelligence, excellent tool calling and instruction following of models like `gpt-4.1` in your voice agents.
-- **Lower cost**: If your chat agent is only being used for basic tasks, you can use the realtime-mini model, which, even when combined with GPT-4.1, should be cheaper than using the full 4o-realtime model.
+- **Lower cost**: If your chat agent is only being used for basic tasks, you can use the realtime-mini model, which, even when combined with GPT-4.1, should be cheaper than using the full gpt-realtime model.
 - **User experience**: It's a more natural conversational experience than using a stitched model architecture, where response latency is often 1.5s or longer after a user has finished speaking. In this architecture, the model responds to the user right away, even if it has to lean on the supervisor agent.
   - However, more assistant responses will start with "Let me think", rather than responding immediately with the full response.
 
@@ -77,7 +84,7 @@ sequenceDiagram
   - Customize the chatAgent instructions with your own tone, greeting, etc.
   - Add your tool definitions to `chatAgentInstructions`. We recommend a brief yaml description rather than json to ensure the model doesn't get confused and try calling the tool directly.
   - You can modify the decision boundary by adding new items to the `# Allow List of Permitted Actions` section.
-3. To reduce cost, try using `gpt-4o-mini-realtime` for the chatAgent and/or `gpt-4.1-mini` for the supervisor model. To maximize intelligence on particularly difficult or high-stakes tasks, consider trading off latency and adding chain-of-thought to your supervisor prompt, or using an additional reasoning model-based supervisor that uses `o4-mini`.
+3. To reduce cost, try using `gpt-realtime-mini` for the chatAgent and/or `gpt-4.1-mini` for the supervisor model. To maximize intelligence on particularly difficult or high-stakes tasks, consider trading off latency and adding chain-of-thought to your supervisor prompt, or using an additional reasoning model-based supervisor that uses `o4-mini`.
 
 # Agentic Pattern 2: Sequential Handoffs
 

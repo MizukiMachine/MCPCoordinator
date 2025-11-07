@@ -260,20 +260,36 @@ function App() {
     // Reflect Push-to-Talk UI state by (de)activating server VAD on the
     // backend. The Realtime SDK supports live session updates via the
     // `session.update` event.
-    const turnDetection = isPTTActive
+    const serverVadConfig = isPTTActive
       ? null
       : {
-          type: 'server_vad',
+          type: 'server_vad' as const,
           threshold: 0.9,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
-          create_response: true,
+          prefixPaddingMs: 300,
+          silenceDurationMs: 500,
+          createResponse: true,
         };
 
     sendEvent({
       type: 'session.update',
       session: {
-        turn_detection: turnDetection,
+        audio: {
+          input: {
+            turnDetection: (serverVadConfig ?? null) as any,
+          },
+        },
+        // Legacy field retained until the hosted Realtime API exclusively
+        // accepts the camelCase config. This keeps compatibility with
+        // earlier session snapshots while letting us exercise the new schema.
+        turn_detection: serverVadConfig
+          ? {
+              type: serverVadConfig.type,
+              threshold: serverVadConfig.threshold,
+              prefix_padding_ms: serverVadConfig.prefixPaddingMs,
+              silence_duration_ms: serverVadConfig.silenceDurationMs,
+              create_response: serverVadConfig.createResponse,
+            }
+          : null,
       },
     });
 
