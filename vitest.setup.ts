@@ -31,3 +31,10 @@ if (typeof globalThis.MediaStream === 'undefined') {
   // @ts-ignore
   globalThis.MediaStream = FakeMediaStream;
 }
+
+if (typeof globalThis.SharedArrayBuffer === 'undefined') {
+  // jsdom expects SharedArrayBuffer to exist when loading whatwg-url.
+  // Fallback to ArrayBuffer so that webidl-conversions can inspect the prototype safely.
+  // @ts-ignore
+  globalThis.SharedArrayBuffer = ArrayBuffer;
+}
