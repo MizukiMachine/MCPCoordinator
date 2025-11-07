@@ -27,9 +27,10 @@ There are two main patterns demonstrated:
 
 ## Setup
 
-- This is a Next.js typescript app. Install dependencies with `npm i`.
+- Use Node.js **18.18.0 or newer** (Next.js 15.5.x requires it). Installing via `nvm` is recommended so CI/dev stay aligned.
+- Install dependencies with `npm i`.
 - Add your `OPENAI_API_KEY` to your env. Either add it to your `.bash_profile` or equivalent, or copy `.env.sample` to `.env` and add it there.
-- Override realtime defaults if needed by setting `OPENAI_REALTIME_MODEL`/`NEXT_PUBLIC_REALTIME_MODEL` (defaults to `gpt-realtime`) and the matching transcription variables to keep server and browser in sync.
+- Override realtime defaults if needed by setting the `OPENAI_*` and matching `NEXT_PUBLIC_*` variables (model, transcription, and `*_VOICE`) so the server payload and browser SDK stay in sync.
 - Start the server with `npm run dev`
 - Open your browser to [http://localhost:3000](http://localhost:3000). It should default to the `chatSupervisor` Agent Config.
 - You can change examples via the "Scenario" dropdown in the top right.
@@ -77,7 +78,7 @@ sequenceDiagram
   - However, more assistant responses will start with "Let me think", rather than responding immediately with the full response.
 
 ## Modifying for your own agent
-1. Update [supervisorAgent](src/app/agentConfigs/chatSupervisorDemo/supervisorAgent.ts).
+1. Update [supervisorAgent](src/app/agentConfigs/chatSupervisor/supervisorAgent.ts).
   - Add your existing text agent prompt and tools if you already have them. This should contain the "meat" of your voice agent logic and be very specific with what it should/shouldn't do and how exactly it should respond. Add this information below `==== Domain-Specific Agent Instructions ====`.
   - You should likely update this prompt to be more appropriate for voice, for example with instructions to be concise and avoiding long lists of items.
 2. Update [chatAgent](src/app/agentConfigs/chatSupervisor/index.ts).
@@ -171,7 +172,7 @@ sequenceDiagram
     Note over WebClient: User navigates to ?agentConfig=customerServiceRetail
     User->>WebClient: Open Page
     WebClient->>NextAPI: GET /api/session
-    NextAPI->>RealtimeAPI: POST /v1/realtime/sessions
+    NextAPI->>RealtimeAPI: POST /v1/realtime/client_secrets
     RealtimeAPI->>NextAPI: Returns ephemeral session
     NextAPI->>WebClient: Returns ephemeral token (JSON)
 

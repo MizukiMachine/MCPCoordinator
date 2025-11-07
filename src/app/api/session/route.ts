@@ -11,10 +11,17 @@ const REALTIME_TRANSCRIPTION_MODEL =
   process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ??
   "gpt-4o-mini-transcribe";
 
-const REALTIME_VOICE = process.env.OPENAI_REALTIME_VOICE ?? "cedar";
+const REALTIME_VOICE = process.env.OPENAI_REALTIME_VOICE ?? "sage";
 
 const API_KEY_PATTERN = /(sk-(?:live|test|proj)-[A-Za-z0-9]+)/g;
 const DEFAULT_OUTPUT_MODALITIES: Array<"text" | "audio"> = ["audio"];
+const DEFAULT_SERVER_VAD = {
+  type: "server_vad" as const,
+  threshold: 0.9,
+  prefix_padding_ms: 300,
+  silence_duration_ms: 500,
+  create_response: true,
+};
 
 type OpenAIError = {
   error?: {
@@ -61,6 +68,7 @@ export async function GET() {
             transcription: {
               model: REALTIME_TRANSCRIPTION_MODEL,
             },
+            turn_detection: DEFAULT_SERVER_VAD,
           },
           output: {
             voice: REALTIME_VOICE,

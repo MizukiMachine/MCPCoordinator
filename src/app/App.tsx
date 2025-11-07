@@ -76,21 +76,23 @@ function App() {
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
 
-  const sdkAudioElement = React.useMemo(() => {
+  useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const el = document.createElement('audio');
     el.autoplay = true;
     el.style.display = 'none';
     document.body.appendChild(el);
-    return el;
-  }, []);
+    audioElementRef.current = el;
 
-  // Attach SDK audio element once it exists (after first render in browser)
-  useEffect(() => {
-    if (sdkAudioElement && !audioElementRef.current) {
-      audioElementRef.current = sdkAudioElement;
-    }
-  }, [sdkAudioElement]);
+    return () => {
+      if (audioElementRef.current === el) {
+        audioElementRef.current = null;
+      }
+      el.pause();
+      el.srcObject = null;
+      el.remove();
+    };
+  }, []);
 
   const {
     connect,
@@ -267,7 +269,7 @@ function App() {
         await connect({
           getEphemeralKey: async () => EPHEMERAL_KEY,
           initialAgents: reorderedAgents,
-          audioElement: sdkAudioElement,
+          audioElement: audioElementRef.current ?? undefined,
           outputGuardrails: [guardrail],
           extraContext: {
             addTranscriptBreadcrumb,
