@@ -38,6 +38,13 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
+type SessionResponse = {
+  client_secret?: {
+    value?: string;
+  };
+  [key: string]: unknown;
+};
+
 function App() {
   const searchParams = useSearchParams()!;
 
@@ -181,7 +188,28 @@ function App() {
   const fetchEphemeralKey = async (): Promise<string | null> => {
     logClientEvent({ url: "/session" }, "fetch_session_token_request");
     const tokenResponse = await fetch("/api/session");
-    const data = await tokenResponse.json();
+    const responseBody = await tokenResponse.text();
+
+    let data: SessionResponse = {};
+    try {
+      data = responseBody ? JSON.parse(responseBody) : {};
+    } catch {
+      data = { raw: responseBody };
+    }
+
+    if (!tokenResponse.ok) {
+      logClientEvent(
+        { status: tokenResponse.status, body: data },
+        "error.session_token_fetch_failed",
+      );
+      console.error("Failed to fetch realtime session token", {
+        status: tokenResponse.status,
+        body: data,
+      });
+      setSessionStatus("DISCONNECTED");
+      return null;
+    }
+
     logServerEvent(data, "fetch_session_token_response");
 
     if (!data.client_secret?.value) {
