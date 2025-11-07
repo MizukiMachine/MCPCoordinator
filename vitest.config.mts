@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
+if (typeof globalThis.SharedArrayBuffer === 'undefined') {
+  // Vitest loads this config before jsdom, so define a noop polyfill here as well.
+  // @ts-ignore
+  globalThis.SharedArrayBuffer = ArrayBuffer;
+}
+
 export default defineConfig({
   test: {
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
