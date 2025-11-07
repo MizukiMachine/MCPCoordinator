@@ -19,6 +19,8 @@ import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
+import useAudioDownload from "./hooks/useAudioDownload";
+import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -35,14 +37,32 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   chatSupervisor: chatSupervisorScenario,
 };
 
-import useAudioDownload from "./hooks/useAudioDownload";
-import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
-
 type SessionResponse = {
   client_secret?: {
     value?: string;
   };
   [key: string]: unknown;
+};
+
+const SECRET_TOKEN_REGEX = /(sk-[A-Za-z0-9_-]+)/g;
+
+const redactSecretTokens = (value: string): string =>
+  value.replace(SECRET_TOKEN_REGEX, "sk-****");
+
+const sanitizeSecrets = <T,>(value: T): T => {
+  if (typeof value === "string") {
+    return redactSecretTokens(value) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeSecrets(entry)) as T;
+  }
+  if (value && typeof value === "object") {
+    const sanitizedEntries = Object.entries(value as Record<string, unknown>).map(
+      ([key, val]) => [key, sanitizeSecrets(val)]
+    );
+    return Object.fromEntries(sanitizedEntries) as T;
+  }
+  return value;
 };
 
 function App() {
@@ -198,14 +218,15 @@ function App() {
     }
 
     if (!tokenResponse.ok) {
-      logClientEvent(
-        { status: tokenResponse.status, body: data },
-        "error.session_token_fetch_failed",
-      );
-      console.error("Failed to fetch realtime session token", {
+      const errorPayload = sanitizeSecrets({
         status: tokenResponse.status,
         body: data,
       });
+      logClientEvent(
+        errorPayload,
+        "error.session_token_fetch_failed",
+      );
+      console.error("Failed to fetch realtime session token", errorPayload);
       setSessionStatus("DISCONNECTED");
       return null;
     }
@@ -213,7 +234,8 @@ function App() {
     logServerEvent(data, "fetch_session_token_response");
 
     if (!data.client_secret?.value) {
-      logClientEvent(data, "error.no_ephemeral_key");
+      const payload = sanitizeSecrets(data);
+      logClientEvent(payload, "error.no_ephemeral_key");
       console.error("No ephemeral key provided by the server");
       setSessionStatus("DISCONNECTED");
       return null;

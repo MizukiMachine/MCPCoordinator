@@ -12,6 +12,7 @@ describe("buildOpenAIConfig", () => {
       OPENAI_API_KEY: "sk-test",
       OPENAI_REALTIME_MODEL: "gpt-4o-realtime-preview-2025-06-03",
       OPENAI_RESPONSES_MODEL: "gpt-4o-mini",
+      OPENAI_PROJECT_ID: "proj_test",
     });
 
     const config = buildOpenAIConfig(provider);
@@ -20,6 +21,7 @@ describe("buildOpenAIConfig", () => {
       apiKey: "sk-test",
       realtimeModel: "gpt-4o-realtime-preview-2025-06-03",
       responsesModel: "gpt-4o-mini",
+      projectId: "proj_test",
     });
   });
 
@@ -34,6 +36,7 @@ describe("buildOpenAIConfig", () => {
       apiKey: "sk-test",
       realtimeModel: "gpt-4o-realtime-preview-2025-06-03",
       responsesModel: "gpt-4o-mini",
+      projectId: undefined,
     });
   });
 

@@ -35,6 +35,7 @@ There are two main patterns demonstrated:
 - This is a Next.js TypeScript app. If you prefer manual steps, run `npm install`.
 - Start the development server with `npm run dev` (or `make dev`).
 - Use `make check` to run lint, tests, and type-checks in one command.
+- If you are using a Project-scoped API key (`sk-proj-...`), set `OPENAI_PROJECT_ID` to the corresponding Project ID so the backend can attach the required `OpenAI-Project` header.
 - You can change examples via the "Scenario" dropdown in the top right.
 
 # Agentic Pattern 1: Chat-Supervisor

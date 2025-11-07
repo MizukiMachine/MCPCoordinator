@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as ResponsesRequestBody;
     const openaiConfig = buildOpenAIConfig();
-    const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
+    const openai = new OpenAI({
+      apiKey: openaiConfig.apiKey,
+      project: openaiConfig.projectId,
+    });
     const requestBody = withModel(body, openaiConfig.responsesModel);
 
     if (isJsonSchemaFormat(body)) {

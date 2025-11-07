@@ -6,6 +6,7 @@ export interface OpenAIConfig {
   apiKey: string;
   realtimeModel: string;
   responsesModel: string;
+  projectId?: string;
 }
 
 export const processEnvProvider: EnvProvider = {
@@ -36,4 +37,5 @@ export const buildOpenAIConfig = (
   realtimeModel: provider.get("OPENAI_REALTIME_MODEL") ?? DEFAULT_REALTIME_MODEL,
   responsesModel:
     provider.get("OPENAI_RESPONSES_MODEL") ?? DEFAULT_RESPONSES_MODEL,
+  projectId: provider.get("OPENAI_PROJECT_ID"),
 });
