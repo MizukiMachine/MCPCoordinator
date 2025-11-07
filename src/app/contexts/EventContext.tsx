@@ -4,6 +4,32 @@ import React, { createContext, useContext, useState, FC, PropsWithChildren } fro
 import { v4 as uuidv4 } from "uuid";
 import { LoggedEvent } from "@/app/types";
 
+const CLIENT_LOG_ENDPOINT = process.env.NEXT_PUBLIC_CLIENT_LOG_ENDPOINT ?? "/api/client-logs";
+const MIRROR_LOGS_TO_SERVER =
+  (process.env.NEXT_PUBLIC_CLIENT_LOG_MIRROR ?? "true").toLowerCase() !== "false";
+
+function mirrorLogToServer(payload: LoggedEvent) {
+  if (!MIRROR_LOGS_TO_SERVER) return;
+  const body = JSON.stringify(payload);
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      const success = navigator.sendBeacon(CLIENT_LOG_ENDPOINT, blob);
+      if (success) return;
+    }
+    fetch(CLIENT_LOG_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch((err) => {
+      console.warn("Failed to mirror client log via fetch", err);
+    });
+  } catch (error) {
+    console.warn("Failed to mirror client log", error);
+  }
+}
+
 type EventContextValue = {
   loggedEvents: LoggedEvent[];
   logClientEvent: (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
@@ -19,17 +45,18 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
 
   function addLoggedEvent(direction: "client" | "server", eventName: string, eventData: Record<string, any>) {
     const id = eventData.event_id || uuidv4();
-    setLoggedEvents((prev) => [
-      ...prev,
-      {
+    setLoggedEvents((prev) => {
+      const nextEvent: LoggedEvent = {
         id,
         direction,
         eventName,
         eventData,
         timestamp: new Date().toLocaleTimeString(),
         expanded: false,
-      },
-    ]);
+      };
+      mirrorLogToServer(nextEvent);
+      return [...prev, nextEvent];
+    });
   }
 
   const logClientEvent: EventContextValue["logClientEvent"] = (eventObj, eventNameSuffix = "") => {

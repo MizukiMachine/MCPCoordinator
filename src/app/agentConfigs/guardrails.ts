@@ -1,4 +1,5 @@
 import { zodTextFormat } from 'openai/helpers/zod';
+import type { RealtimeOutputGuardrail } from '@openai/agents/realtime';
 import { GuardrailOutputZod, GuardrailOutput } from '@/app/types';
 
 // Validator that calls the /api/responses endpoint to
@@ -77,7 +78,7 @@ export interface RealtimeOutputGuardrailArgs {
 }
 
 // Creates a guardrail bound to a specific company name for output moderation purposes. 
-export function createModerationGuardrail(companyName: string) {
+export function createModerationGuardrail(companyName: string): RealtimeOutputGuardrail {
   return {
     name: 'moderation_guardrail',
 
@@ -96,5 +97,5 @@ export function createModerationGuardrail(companyName: string) {
         };
       }
     },
-  } as const;
+  };
 }

@@ -3,12 +3,21 @@ import {
   RealtimeSession,
   RealtimeAgent,
   OpenAIRealtimeWebRTC,
+  RealtimeOutputGuardrail,
 } from '@openai/agents/realtime';
 
 import { applyCodecPreferences } from '../lib/codecUtils';
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
+
+const DEFAULT_REALTIME_MODEL =
+  process.env.NEXT_PUBLIC_REALTIME_MODEL ?? 'gpt-realtime';
+
+const DEFAULT_TRANSCRIPTION_MODEL =
+  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
+
+const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
@@ -20,7 +29,7 @@ export interface ConnectOptions {
   initialAgents: RealtimeAgent[];
   audioElement?: HTMLAudioElement;
   extraContext?: Record<string, any>;
-  outputGuardrails?: any[];
+  outputGuardrails?: RealtimeOutputGuardrail[];
 }
 
 export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
@@ -43,25 +52,52 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   const historyHandlers = useHandleSessionHistory().current;
 
+  const normalizeTranscriptEvent = (event: any) => {
+    if (!event || typeof event !== 'object') return event;
+    const fallbackId =
+      event.item_id ??
+      event.itemId ??
+      event.item?.id ??
+      event.response_id ??
+      event.responseId ??
+      event.id ??
+      null;
+
+    return {
+      ...event,
+      item_id: fallbackId,
+    };
+  };
+
   function handleTransportEvent(event: any) {
     // Handle additional server events that aren't managed by the session
-    switch (event.type) {
-      case "conversation.item.input_audio_transcription.completed": {
-        historyHandlers.handleTranscriptionCompleted(event);
+    const eventType = event?.type;
+    switch (eventType) {
+      case 'conversation.item.input_audio_transcription.completed':
+      case 'input_audio_transcription.completed':
+      case 'response.audio_transcript.done':
+      case 'audio_transcript.done': {
+        const normalized = normalizeTranscriptEvent({
+          ...event,
+          transcript: event?.transcript ?? event?.text ?? event?.delta ?? '',
+        });
+        historyHandlers.handleTranscriptionCompleted(normalized);
         break;
       }
-      case "response.audio_transcript.done": {
-        historyHandlers.handleTranscriptionCompleted(event);
-        break;
-      }
-      case "response.audio_transcript.delta": {
-        historyHandlers.handleTranscriptionDelta(event);
+      case 'response.audio_transcript.delta':
+      case 'transcript_delta':
+      case 'audio_transcript_delta': {
+        const normalized = normalizeTranscriptEvent({
+          ...event,
+          delta: event?.delta ?? event?.text ?? event?.transcript ?? '',
+        });
+        historyHandlers.handleTranscriptionDelta(normalized);
         break;
       }
       default: {
         logServerEvent(event);
         break;
-      } 
+      }
     }
   }
 
@@ -134,13 +170,22 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
             return pc;
           },
         }),
-        model: 'gpt-4o-realtime-preview-2025-06-03',
+        model: DEFAULT_REALTIME_MODEL,
         config: {
-          inputAudioTranscription: {
-            model: 'gpt-4o-mini-transcribe',
+          outputModalities: OUTPUT_MODALITIES,
+          audio: {
+            input: {
+              transcription: {
+                model: DEFAULT_TRANSCRIPTION_MODEL,
+              },
+            },
+            ...(rootAgent.voice
+              ? { output: { voice: rootAgent.voice } }
+              : {}),
           },
         },
         outputGuardrails: outputGuardrails ?? [],
+        automaticallyTriggerResponseForMcpToolCalls: true,
         context: extraContext ?? {},
       });
 

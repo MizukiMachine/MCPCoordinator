@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
@@ -40,6 +40,9 @@ import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
 function App() {
   const searchParams = useSearchParams()!;
+  const router = useRouter();
+  const pathname = usePathname();
+  const shouldAutoConnect = searchParams.get("autoConnect") === "true";
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -62,10 +65,12 @@ function App() {
   } = useTranscript();
   const { logClientEvent, logServerEvent } = useEvent();
 
+  const [agentSetKey, setAgentSetKey] = useState<string>(defaultAgentSetKey);
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
     RealtimeAgent[] | null
   >(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
@@ -134,27 +139,45 @@ function App() {
   useHandleSessionHistory();
 
   useEffect(() => {
-    let finalAgentConfig = searchParams.get("agentConfig");
-    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-      finalAgentConfig = defaultAgentSetKey;
-      const url = new URL(window.location.toString());
-      url.searchParams.set("agentConfig", finalAgentConfig);
-      window.location.replace(url.toString());
-      return;
+    const requested = searchParams.get("agentConfig");
+    const resolved =
+      requested && allAgentSets[requested] ? requested : defaultAgentSetKey;
+
+    setAgentSetKey((prev) => (prev === resolved ? prev : resolved));
+
+    const shouldUpdateUrl = requested !== resolved;
+    if (shouldUpdateUrl) {
+      const next = new URLSearchParams(searchParams.toString());
+      if (resolved === defaultAgentSetKey) {
+        next.delete("agentConfig");
+      } else {
+        next.set("agentConfig", resolved);
+      }
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     }
-
-    const agents = allAgentSets[finalAgentConfig];
-    const agentKeyToUse = agents[0]?.name || "";
-
-    setSelectedAgentName(agentKeyToUse);
-    setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
-      connectToRealtime();
+    const agents = allAgentSets[agentSetKey] ?? [];
+    setSelectedAgentConfigSet(agents);
+    setSelectedAgentName((prev) => {
+      if (prev && agents.some((agent) => agent.name === prev)) {
+        return prev;
+      }
+      return agents[0]?.name ?? "";
+    });
+  }, [agentSetKey]);
+
+  useEffect(() => {
+    if (
+      shouldAutoConnect &&
+      selectedAgentName &&
+      sessionStatus === "DISCONNECTED"
+    ) {
+      connectToRealtime("auto");
     }
-  }, [selectedAgentName]);
+  }, [shouldAutoConnect, selectedAgentName, sessionStatus]);
 
   useEffect(() => {
     if (
@@ -184,21 +207,45 @@ function App() {
     const data = await tokenResponse.json();
     logServerEvent(data, "fetch_session_token_response");
 
-    if (!data.client_secret?.value) {
+    if (!tokenResponse.ok) {
+      const baseMessage =
+        typeof data?.error === "string"
+          ? data.error
+          : "Failed to fetch realtime client secret.";
+      const codeSuffix =
+        typeof data?.code === "string" ? ` (${data.code})` : "";
+      const descriptiveMessage = `${baseMessage}${codeSuffix}`;
+      setSessionError(descriptiveMessage);
+      logClientEvent(data, "error.fetch_session_token_failed");
+      console.error("Realtime session bootstrap failed:", descriptiveMessage);
+      setSessionStatus("DISCONNECTED");
+      return null;
+    }
+
+    const clientSecret =
+      data?.value ?? data?.client_secret?.value ?? data?.clientSecret;
+
+    if (!clientSecret) {
       logClientEvent(data, "error.no_ephemeral_key");
       console.error("No ephemeral key provided by the server");
       setSessionStatus("DISCONNECTED");
       return null;
     }
+    setSessionError(null);
 
-    return data.client_secret.value;
+    return clientSecret;
   };
 
-  const connectToRealtime = async () => {
-    const agentSetKey = searchParams.get("agentConfig") || "default";
+  const connectToRealtime = async (source: "auto" | "manual" = "manual") => {
     if (sdkScenarioMap[agentSetKey]) {
-      if (sessionStatus !== "DISCONNECTED") return;
-      setSessionStatus("CONNECTING");
+      if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
+        console.info(
+          "[connectToRealtime] ignored because status=%s (source=%s)",
+          sessionStatus,
+          source,
+        );
+        return;
+      }
 
       try {
         const EPHEMERAL_KEY = await fetchEphemeralKey();
@@ -228,7 +275,7 @@ function App() {
         });
       } catch (err) {
         console.error("Error connecting via SDK:", err);
-        setSessionStatus("DISCONNECTED");
+          setSessionStatus("DISCONNECTED");
       }
       return;
     }
@@ -236,7 +283,6 @@ function App() {
 
   const disconnectFromRealtime = () => {
     disconnect();
-    setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
   };
 
@@ -260,10 +306,10 @@ function App() {
     // Reflect Push-to-Talk UI state by (de)activating server VAD on the
     // backend. The Realtime SDK supports live session updates via the
     // `session.update` event.
-    const turnDetection = isPTTActive
+    const serverVadConfig = isPTTActive
       ? null
       : {
-          type: 'server_vad',
+          type: 'server_vad' as const,
           threshold: 0.9,
           prefix_padding_ms: 300,
           silence_duration_ms: 500,
@@ -273,7 +319,11 @@ function App() {
     sendEvent({
       type: 'session.update',
       session: {
-        turn_detection: turnDetection,
+        audio: {
+          input: {
+            turn_detection: serverVadConfig,
+          },
+        },
       },
     });
 
@@ -317,19 +367,34 @@ function App() {
   };
 
   const onToggleConnection = () => {
-    if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
+    if (sessionStatus === "CONNECTED") {
       disconnectFromRealtime();
-      setSessionStatus("DISCONNECTED");
-    } else {
-      connectToRealtime();
+      return;
     }
+
+    if (sessionStatus === "CONNECTING") {
+      console.info("[App] Cancelling in-flight connection attempt");
+      disconnectFromRealtime();
+      return;
+    }
+
+    connectToRealtime();
   };
 
   const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newAgentConfig = e.target.value;
-    const url = new URL(window.location.toString());
-    url.searchParams.set("agentConfig", newAgentConfig);
-    window.location.replace(url.toString());
+    if (!allAgentSets[newAgentConfig]) return;
+
+    disconnectFromRealtime();
+
+    const next = new URLSearchParams(searchParams.toString());
+    if (newAgentConfig === defaultAgentSetKey) {
+      next.delete("agentConfig");
+    } else {
+      next.set("agentConfig", newAgentConfig);
+    }
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
   const handleSelectedAgentChange = (
@@ -430,8 +495,6 @@ function App() {
     };
   }, [sessionStatus]);
 
-  const agentSetKey = searchParams.get("agentConfig") || "default";
-
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
       <div className="p-5 text-lg font-semibold flex justify-between items-center">
@@ -514,6 +577,12 @@ function App() {
           )}
         </div>
       </div>
+      {sessionError && (
+        <div className="mx-5 -mt-3 mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Realtimeセッションの初期化に失敗しました: {sessionError}. OPENAI_API_KEY と
+          モデル設定を再確認してから再試行してください。
+        </div>
+      )}
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
         <Transcript
