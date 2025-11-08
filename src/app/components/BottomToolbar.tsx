@@ -48,7 +48,7 @@ function BottomToolbar({
 
   function getConnectionButtonClasses() {
     const baseClasses = "text-white text-base p-2 w-36 rounded-md h-full";
-    const cursorClass = isConnecting ? "cursor-not-allowed" : "cursor-pointer";
+    const cursorClass = isConnecting ? "cursor-progress" : "cursor-pointer";
 
     if (isConnected) {
       // Connected -> label "Disconnect" -> red
@@ -63,7 +63,6 @@ function BottomToolbar({
       <button
         onClick={onToggleConnection}
         className={getConnectionButtonClasses()}
-        disabled={isConnecting}
       >
         {getConnectionButtonLabel()}
       </button>
