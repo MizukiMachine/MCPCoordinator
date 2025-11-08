@@ -1,14 +1,23 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   RealtimeSession,
   RealtimeAgent,
   OpenAIRealtimeWebRTC,
+  RealtimeOutputGuardrail,
 } from '@openai/agents/realtime';
 
 import { applyCodecPreferences } from '../lib/codecUtils';
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
+
+const DEFAULT_REALTIME_MODEL =
+  process.env.NEXT_PUBLIC_REALTIME_MODEL ?? 'gpt-realtime';
+
+const DEFAULT_TRANSCRIPTION_MODEL =
+  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
+
+const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
@@ -20,15 +29,14 @@ export interface ConnectOptions {
   initialAgents: RealtimeAgent[];
   audioElement?: HTMLAudioElement;
   extraContext?: Record<string, any>;
-  outputGuardrails?: any[];
+  outputGuardrails?: RealtimeOutputGuardrail[];
 }
 
 export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   const sessionRef = useRef<RealtimeSession | null>(null);
-  const [status, setStatus] = useState<
-    SessionStatus
-  >('DISCONNECTED');
+  const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
   const { logClientEvent } = useEvent();
+  const listenerCleanupRef = useRef<(() => void) | null>(null);
 
   const updateStatus = useCallback(
     (s: SessionStatus) => {
@@ -36,34 +44,64 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       callbacks.onConnectionChange?.(s);
       logClientEvent({}, s);
     },
-    [callbacks],
+    [callbacks, logClientEvent],
   );
 
   const { logServerEvent } = useEvent();
 
   const historyHandlers = useHandleSessionHistory().current;
 
-  function handleTransportEvent(event: any) {
-    // Handle additional server events that aren't managed by the session
-    switch (event.type) {
-      case "conversation.item.input_audio_transcription.completed": {
-        historyHandlers.handleTranscriptionCompleted(event);
-        break;
+  const normalizeTranscriptEvent = (event: any) => {
+    if (!event || typeof event !== 'object') return event;
+    const fallbackId =
+      event.item_id ??
+      event.itemId ??
+      event.item?.id ??
+      event.response_id ??
+      event.responseId ??
+      event.id ??
+      null;
+
+    return {
+      ...event,
+      item_id: fallbackId,
+    };
+  };
+
+  const handleTransportEvent = useCallback(
+    (event: any) => {
+      // Handle additional server events that aren't managed by the session
+      const eventType = event?.type;
+      switch (eventType) {
+        case 'conversation.item.input_audio_transcription.completed':
+        case 'input_audio_transcription.completed':
+        case 'response.audio_transcript.done':
+        case 'audio_transcript.done': {
+          const normalized = normalizeTranscriptEvent({
+            ...event,
+            transcript: event?.transcript ?? event?.text ?? event?.delta ?? '',
+          });
+          historyHandlers.handleTranscriptionCompleted(normalized);
+          break;
+        }
+        case 'response.audio_transcript.delta':
+        case 'transcript_delta':
+        case 'audio_transcript_delta': {
+          const normalized = normalizeTranscriptEvent({
+            ...event,
+            delta: event?.delta ?? event?.text ?? event?.transcript ?? '',
+          });
+          historyHandlers.handleTranscriptionDelta(normalized);
+          break;
+        }
+        default: {
+          logServerEvent(event);
+          break;
+        }
       }
-      case "response.audio_transcript.done": {
-        historyHandlers.handleTranscriptionCompleted(event);
-        break;
-      }
-      case "response.audio_transcript.delta": {
-        historyHandlers.handleTranscriptionDelta(event);
-        break;
-      }
-      default: {
-        logServerEvent(event);
-        break;
-      } 
-    }
-  }
+    },
+    [historyHandlers, logServerEvent],
+  );
 
   const codecParamRef = useRef<string>(
     (typeof window !== 'undefined'
@@ -80,35 +118,71 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
     [],
   );
 
-  const handleAgentHandoff = (item: any) => {
-    const history = item.context.history;
-    const lastMessage = history[history.length - 1];
-    const agentName = lastMessage.name.split("transfer_to_")[1];
-    callbacks.onAgentHandoff?.(agentName);
-  };
+  const handleAgentHandoff = useCallback(
+    (item: any) => {
+      const history = Array.isArray(item?.context?.history)
+        ? item.context.history
+        : [];
+      const lastMessage = history[history.length - 1];
+      const handoffName =
+        typeof lastMessage?.name === 'string'
+          ? lastMessage.name.split('transfer_to_')[1] ?? lastMessage.name
+          : null;
 
-  useEffect(() => {
-    if (sessionRef.current) {
-      // Log server errors
-      sessionRef.current.on("error", (...args: any[]) => {
+      if (handoffName) {
+        callbacks.onAgentHandoff?.(handoffName);
+      } else {
         logServerEvent({
-          type: "error",
-          message: args[0],
+          type: 'agent_handoff_warning',
+          message: 'Received agent_handoff event without a parsable target',
+          payload: item,
+        });
+      }
+    },
+    [callbacks, logServerEvent],
+  );
+
+  const detachSessionListeners = useCallback(() => {
+    listenerCleanupRef.current?.();
+    listenerCleanupRef.current = null;
+  }, []);
+
+  const registerSessionListeners = useCallback(
+    (session: RealtimeSession) => {
+      detachSessionListeners();
+      const disposers: Array<() => void> = [];
+
+      const addListener = (event: string, handler: (...args: any[]) => void) => {
+        (session as any).on(event, handler);
+        disposers.push(() => {
+          if (typeof (session as any).off === 'function') {
+            (session as any).off(event, handler);
+          } else if (typeof (session as any).removeListener === 'function') {
+            (session as any).removeListener(event, handler);
+          }
+        });
+      };
+
+      addListener('error', (message: unknown) => {
+        logServerEvent({
+          type: 'error',
+          message,
         });
       });
+      addListener('agent_handoff', handleAgentHandoff);
+      addListener('agent_tool_start', historyHandlers.handleAgentToolStart);
+      addListener('agent_tool_end', historyHandlers.handleAgentToolEnd);
+      addListener('history_updated', historyHandlers.handleHistoryUpdated);
+      addListener('history_added', historyHandlers.handleHistoryAdded);
+      addListener('guardrail_tripped', historyHandlers.handleGuardrailTripped);
+      addListener('transport_event', handleTransportEvent);
 
-      // history events
-      sessionRef.current.on("agent_handoff", handleAgentHandoff);
-      sessionRef.current.on("agent_tool_start", historyHandlers.handleAgentToolStart);
-      sessionRef.current.on("agent_tool_end", historyHandlers.handleAgentToolEnd);
-      sessionRef.current.on("history_updated", historyHandlers.handleHistoryUpdated);
-      sessionRef.current.on("history_added", historyHandlers.handleHistoryAdded);
-      sessionRef.current.on("guardrail_tripped", historyHandlers.handleGuardrailTripped);
-
-      // additional transport events
-      sessionRef.current.on("transport_event", handleTransportEvent);
-    }
-  }, [sessionRef.current]);
+      listenerCleanupRef.current = () => {
+        disposers.forEach((dispose) => dispose());
+      };
+    },
+    [detachSessionListeners, handleAgentHandoff, handleTransportEvent, historyHandlers, logServerEvent],
+  );
 
   const connect = useCallback(
     async ({
@@ -122,39 +196,61 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
       updateStatus('CONNECTING');
 
-      const ek = await getEphemeralKey();
-      const rootAgent = initialAgents[0];
+      try {
+        const ek = await getEphemeralKey();
+        const rootAgent = initialAgents[0];
 
-      sessionRef.current = new RealtimeSession(rootAgent, {
-        transport: new OpenAIRealtimeWebRTC({
-          audioElement,
-          // Set preferred codec before offer creation
-          changePeerConnection: async (pc: RTCPeerConnection) => {
-            applyCodec(pc);
-            return pc;
+        const session = new RealtimeSession(rootAgent, {
+          transport: new OpenAIRealtimeWebRTC({
+            audioElement,
+            // Set preferred codec before offer creation
+            changePeerConnection: async (pc: RTCPeerConnection) => {
+              applyCodec(pc);
+              return pc;
+            },
+          }),
+          model: DEFAULT_REALTIME_MODEL,
+          config: {
+            outputModalities: OUTPUT_MODALITIES,
+            audio: {
+              input: {
+                transcription: {
+                  model: DEFAULT_TRANSCRIPTION_MODEL,
+                },
+              },
+              ...(rootAgent.voice
+                ? { output: { voice: rootAgent.voice } }
+                : {}),
+            },
           },
-        }),
-        model: 'gpt-4o-realtime-preview-2025-06-03',
-        config: {
-          inputAudioTranscription: {
-            model: 'gpt-4o-mini-transcribe',
-          },
-        },
-        outputGuardrails: outputGuardrails ?? [],
-        context: extraContext ?? {},
-      });
+          outputGuardrails: outputGuardrails ?? [],
+          automaticallyTriggerResponseForMcpToolCalls: true,
+          context: extraContext ?? {},
+        });
 
-      await sessionRef.current.connect({ apiKey: ek });
-      updateStatus('CONNECTED');
+        sessionRef.current = session;
+        registerSessionListeners(session);
+        await session.connect({ apiKey: ek });
+        updateStatus('CONNECTED');
+      } catch (error) {
+        detachSessionListeners();
+        sessionRef.current?.close();
+        sessionRef.current = null;
+        updateStatus('DISCONNECTED');
+        throw error;
+      }
     },
-    [callbacks, updateStatus],
+    [detachSessionListeners, registerSessionListeners, updateStatus],
   );
 
   const disconnect = useCallback(() => {
-    sessionRef.current?.close();
-    sessionRef.current = null;
+    if (sessionRef.current) {
+      detachSessionListeners();
+      sessionRef.current.close();
+      sessionRef.current = null;
+    }
     updateStatus('DISCONNECTED');
-  }, [updateStatus]);
+  }, [detachSessionListeners, updateStatus]);
 
   const assertconnected = () => {
     if (!sessionRef.current) throw new Error('RealtimeSession not connected');
