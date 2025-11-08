@@ -212,6 +212,25 @@ sequenceDiagram
 
 </details>
 
+# Agentic Pattern 3: JGrants Subsidy Concierge
+
+Japan's Digital Agency now publishes an official MCP server for補助金/Jグランツ検索 that follows the Model Context Protocol so agents can query eligibility data directly from the source.
+This repository ships an optional realtime scenario named `jgrantsSubsidy` that exercises that connector end-to-end (voice input → hosted MCP tool → streamed spoken response), allowing you to validate subsidy lookups without leaving the OpenAI Agents SDK.
+
+## Prerequisites
+
+1. Follow the [Digital Agency runbook](https://digital-gov.note.jp/n/n09dfb9fa4e8e) to deploy or access their MCP server (the reference implementation listens on `http://localhost:8000/mcp` when started via FastMCP).
+2. Copy the new variables from [.env.sample](.env.sample) into your local `.env` (at minimum `NEXT_PUBLIC_JGRANTS_MCP_SERVER_URL` and `NEXT_PUBLIC_JGRANTS_MCP_SERVER_LABEL`; optionally constrain `NEXT_PUBLIC_JGRANTS_MCP_ALLOWED_TOOLS` or set `NEXT_PUBLIC_JGRANTS_MCP_REQUIRE_APPROVAL=always` for manual approvals).
+3. Restart `npm run dev` so the hosted MCP configuration is embedded into the realtime payload, then refresh your browser tab.
+
+## Using the scenario
+
+- Open the scenario dropdown in the top-right corner of the UI and select `jgrantsSubsidy`. The option only appears when all required env vars are populated so misconfigurations are surfaced immediately.
+- Connect your realtime session and speak in Japanese or English; the concierge agent will always call the hosted `hosted_mcp` tool for factual answers, and you'll see the remote tool invocations under the **Events → Tool Calls** pane.
+- The agent summarises the MCP payload into ≤3 sentences, echoes any restrictions (対象業種・地域・公募期間など), and reminds the user to confirm details on the official Jグランツ portal before submitting.
+
+Because the hosted MCP tool executes directly within the model invocation (no local HTTP proxy), the latency remains close to the baseline realtime call while still sourcing the freshest subsidy metadata maintained by the Digital Agency.
+
 # Other Info
 ## Next Steps
 - You can copy these templates to make your own multi-agent voice app! Once you make a new agent set config, add it to `src/app/agentConfigs/index.ts` and you should be able to select it in the UI in the "Scenario" dropdown menu.
