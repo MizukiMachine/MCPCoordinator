@@ -35,6 +35,8 @@ function BottomToolbar({
 }: BottomToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
+  const showPushToTalkControls = false;
+  const showCodecSelector = false;
 
   const handleCodecChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCodec = e.target.value;
@@ -68,36 +70,38 @@ function BottomToolbar({
         {getConnectionButtonLabel()}
       </button>
 
-      <div className="flex flex-row items-center gap-2">
-        <input
-          id="push-to-talk"
-          type="checkbox"
-          checked={isPTTActive}
-          onChange={(e) => setIsPTTActive(e.target.checked)}
-          disabled={!isConnected}
-          className="w-4 h-4"
-        />
-        <label
-          htmlFor="push-to-talk"
-          className="flex items-center cursor-pointer"
-        >
-          {uiText.toolbar.pushToTalkLabel}
-        </label>
-        <button
-          onMouseDown={handleTalkButtonDown}
-          onMouseUp={handleTalkButtonUp}
-          onTouchStart={handleTalkButtonDown}
-          onTouchEnd={handleTalkButtonUp}
-          disabled={!isPTTActive}
-          className={
-            (isPTTUserSpeaking ? "bg-gray-300" : "bg-gray-200") +
-            " py-1 px-4 cursor-pointer rounded-md" +
-            (!isPTTActive ? " bg-gray-100 text-gray-400" : "")
-          }
-        >
-          {uiText.toolbar.talkButtonLabel}
-        </button>
-      </div>
+      {showPushToTalkControls && (
+        <div className="flex flex-row items-center gap-2">
+          <input
+            id="push-to-talk"
+            type="checkbox"
+            checked={isPTTActive}
+            onChange={(e) => setIsPTTActive(e.target.checked)}
+            disabled={!isConnected}
+            className="w-4 h-4"
+          />
+          <label
+            htmlFor="push-to-talk"
+            className="flex items-center cursor-pointer"
+          >
+            {uiText.toolbar.pushToTalkLabel}
+          </label>
+          <button
+            onMouseDown={handleTalkButtonDown}
+            onMouseUp={handleTalkButtonUp}
+            onTouchStart={handleTalkButtonDown}
+            onTouchEnd={handleTalkButtonUp}
+            disabled={!isPTTActive}
+            className={
+              (isPTTUserSpeaking ? "bg-gray-300" : "bg-gray-200") +
+              " py-1 px-4 cursor-pointer rounded-md" +
+              (!isPTTActive ? " bg-gray-100 text-gray-400" : "")
+            }
+          >
+            {uiText.toolbar.talkButtonLabel}
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-row items-center gap-1">
         <input
@@ -129,27 +133,29 @@ function BottomToolbar({
         </label>
       </div>
 
-      <div className="flex flex-row items-center gap-2">
-        <div>{uiText.toolbar.codecLabel}:</div>
-        {/*
-          Codec selector – Lets you force the WebRTC track to use 8 kHz 
-          PCMU/PCMA so you can preview how the agent will sound 
-          (and how ASR/VAD will perform) when accessed via a 
-          phone network.  Selecting a codec reloads the page with ?codec=...
-          which our App-level logic picks up and applies via a WebRTC monkey
-          patch (see codecPatch.ts).
-        */}
-        <select
-          id="codec-select"
-          value={codec}
-          onChange={handleCodecChange}
-          className="border border-gray-300 rounded-md px-2 py-1 focus:outline-none cursor-pointer"
-        >
-          <option value="opus">{uiText.toolbar.codecOptions.opus}</option>
-          <option value="pcmu">{uiText.toolbar.codecOptions.pcmu}</option>
-          <option value="pcma">{uiText.toolbar.codecOptions.pcma}</option>
-        </select>
-      </div>
+      {showCodecSelector && (
+        <div className="flex flex-row items-center gap-2">
+          <div>{uiText.toolbar.codecLabel}:</div>
+          {/*
+            Codec selector – Lets you force the WebRTC track to use 8 kHz 
+            PCMU/PCMA so you can preview how the agent will sound 
+            (and how ASR/VAD will perform) when accessed via a 
+            phone network.  Selecting a codec reloads the page with ?codec=...
+            which our App-level logic picks up and applies via a WebRTC monkey
+            patch (see codecPatch.ts).
+          */}
+          <select
+            id="codec-select"
+            value={codec}
+            onChange={handleCodecChange}
+            className="border border-gray-300 rounded-md px-2 py-1 focus:outline-none cursor-pointer"
+          >
+            <option value="opus">{uiText.toolbar.codecOptions.opus}</option>
+            <option value="pcmu">{uiText.toolbar.codecOptions.pcmu}</option>
+            <option value="pcma">{uiText.toolbar.codecOptions.pcma}</option>
+          </select>
+        </div>
+      )}
     </div>
   );
 }
