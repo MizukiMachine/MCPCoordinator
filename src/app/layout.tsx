@@ -3,10 +3,11 @@ import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./lib/envSetup";
+import { uiText } from "./i18n";
 
 export const metadata: Metadata = {
-  title: "Realtime API Agents",
-  description: "A demo app from OpenAI.",
+  title: uiText.metadata.title,
+  description: uiText.metadata.description,
 };
 
 export default async function RootLayout({
@@ -28,7 +29,11 @@ export default async function RootLayout({
       : undefined;
 
   return (
-    <html lang="en" suppressHydrationWarning style={htmlStyle}>
+    <html
+      lang={uiText.metadata.lang}
+      suppressHydrationWarning
+      style={htmlStyle}
+    >
       <body className={`antialiased`}>{children}</body>
     </html>
   );

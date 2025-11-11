@@ -37,6 +37,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
+import { formatUiText, uiText } from "./i18n";
 
 function App() {
   const searchParams = useSearchParams()!;
@@ -190,7 +191,10 @@ function App() {
       const currentAgent = selectedAgentConfigSet.find(
         (a) => a.name === selectedAgentName
       );
-      addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
+      addTranscriptBreadcrumb(
+        `${uiText.session.agentBreadcrumbLabel}${selectedAgentName}`,
+        currentAgent,
+      );
       updateSession(!handoffTriggeredRef.current);
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
@@ -507,19 +511,20 @@ function App() {
           <div>
             <Image
               src="/openai-logomark.svg"
-              alt="OpenAI Logo"
+              alt={uiText.header.logoAlt}
               width={20}
               height={20}
               className="mr-2"
             />
           </div>
           <div>
-            Realtime API <span className="text-gray-500">Agents</span>
+            {uiText.header.titleMain}{" "}
+            <span className="text-gray-500">{uiText.header.titleAccent}</span>
           </div>
         </div>
         <div className="flex items-center">
           <label className="flex items-center text-base gap-1 mr-2 font-medium">
-            Scenario
+            {uiText.header.scenarioLabel}
           </label>
           <div className="relative inline-block">
             <select
@@ -547,7 +552,7 @@ function App() {
           {agentSetKey && (
             <div className="flex items-center ml-6">
               <label className="flex items-center text-base gap-1 mr-2 font-medium">
-                Agent
+                {uiText.header.agentLabel}
               </label>
               <div className="relative inline-block">
                 <select
@@ -581,8 +586,9 @@ function App() {
       </div>
       {sessionError && (
         <div className="mx-5 -mt-3 mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Realtimeセッションの初期化に失敗しました: {sessionError}. OPENAI_API_KEY と
-          モデル設定を再確認してから再試行してください。
+          {formatUiText(uiText.session.errorMessageTemplate, {
+            error: sessionError,
+          })}
         </div>
       )}
 
