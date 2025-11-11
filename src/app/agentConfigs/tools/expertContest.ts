@@ -33,6 +33,26 @@ interface ExpertContestToolError {
 type ExpertContestToolResult = ExpertContestToolSuccess | ExpertContestToolError;
 
 type BreadcrumbFn = (title: string, data?: any) => void;
+type LogFn = (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
+
+interface ScoreSnapshot {
+  expertId: string;
+  totalScore?: number;
+  confidence?: number;
+  latencyMs?: number;
+}
+
+interface ContestSummary {
+  type: 'expertContestResult';
+  contestId: string;
+  scenario: string;
+  totalLatencyMs: number;
+  tieBreaker?: string;
+  judgeSummary: string;
+  winner?: ScoreSnapshot;
+  runnerUp?: ScoreSnapshot;
+  topScores: ScoreSnapshot[];
+}
 
 const ensureContestId = (contestId?: string) => {
   if (contestId && contestId.trim().length > 0) {
@@ -58,19 +78,73 @@ const findSubmissionText = (
 ): string | undefined =>
   contest.submissions.find((submission) => submission.expertId === expertId)?.outputText;
 
-const recordBreadcrumbs = (
+const buildScoreSnapshot = (
   contest: ExpertContestResponse,
+  expertId: string | undefined,
+  latencyMap: Map<string, number>,
+): ScoreSnapshot | undefined => {
+  if (!expertId) return undefined;
+  const score = contest.scores.find((s) => s.expertId === expertId);
+  if (!score) return undefined;
+  return {
+    expertId,
+    totalScore: score.totalScore,
+    confidence: score.confidence,
+    latencyMs: latencyMap.get(expertId),
+  };
+};
+
+const buildContestSummary = (contest: ExpertContestResponse): ContestSummary => {
+  const latencyMap = new Map<string, number>();
+  contest.submissions.forEach((submission) => {
+    latencyMap.set(submission.expertId, submission.latencyMs);
+  });
+
+  const sortedScores = [...contest.scores].sort((a, b) => {
+    if (b.totalScore !== a.totalScore) {
+      return b.totalScore - a.totalScore;
+    }
+    return b.confidence - a.confidence;
+  });
+
+  return {
+    type: 'expertContestResult',
+    contestId: contest.contestId,
+    scenario: contest.scenario,
+    totalLatencyMs: contest.totalLatencyMs,
+    tieBreaker: contest.metadata?.tieBreaker,
+    judgeSummary: contest.judgeSummary,
+    winner: buildScoreSnapshot(contest, contest.winnerId, latencyMap),
+    runnerUp: buildScoreSnapshot(contest, contest.runnerUpId, latencyMap),
+    topScores: sortedScores.map((score) => ({
+      expertId: score.expertId,
+      totalScore: score.totalScore,
+      confidence: score.confidence,
+      latencyMs: latencyMap.get(score.expertId),
+    })),
+  };
+};
+
+const recordBreadcrumbs = (
+  summary: ContestSummary,
   addBreadcrumb?: BreadcrumbFn,
 ) => {
   if (!addBreadcrumb) return;
-  addBreadcrumb('[expertContest] 勝者選定', {
-    contestId: contest.contestId,
-    scenario: contest.scenario,
-    winnerId: contest.winnerId,
-    runnerUpId: contest.runnerUpId,
-    totalLatencyMs: contest.totalLatencyMs,
-    tieBreaker: contest.metadata?.tieBreaker,
-  });
+  addBreadcrumb('[expertContest] 勝者選定', summary);
+};
+
+const logContestEvent = (
+  summary: ContestSummary,
+  logClientEvent?: LogFn,
+) => {
+  if (!logClientEvent) return;
+  logClientEvent(
+    {
+      type: 'expert.contest.result',
+      ...summary,
+    },
+    'expertContest',
+  );
 };
 
 async function callExpertContestApi(
@@ -186,10 +260,15 @@ export const runExpertContestTool = tool({
     const addBreadcrumb = (details?.context as any)?.addTranscriptBreadcrumb as
       | BreadcrumbFn
       | undefined;
+    const logClientEvent = (details?.context as any)?.logClientEvent as
+      | LogFn
+      | undefined;
 
     try {
       const contest = await callExpertContestApi(body);
-      recordBreadcrumbs(contest, addBreadcrumb);
+      const summary = buildContestSummary(contest);
+      recordBreadcrumbs(summary, addBreadcrumb);
+      logContestEvent(summary, logClientEvent);
       return {
         success: true,
         contestId: contest.contestId,
@@ -209,9 +288,20 @@ export const runExpertContestTool = tool({
       console.error('[runExpertContestTool] failed', error);
       if (addBreadcrumb) {
         addBreadcrumb('[expertContest] エラー', {
+          type: 'expertContestError',
           contestId: body.contestId,
           message: error?.message ?? 'unknown_error',
         });
+      }
+      if (logClientEvent) {
+        logClientEvent(
+          {
+            type: 'expert.contest.error',
+            contestId: body.contestId,
+            message: error?.message ?? 'unknown_error',
+          },
+          'expertContest',
+        );
       }
       return {
         success: false,

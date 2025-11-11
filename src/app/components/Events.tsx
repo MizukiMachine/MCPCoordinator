@@ -3,11 +3,16 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useEvent } from "@/app/contexts/EventContext";
 import { LoggedEvent } from "@/app/types";
-import { uiText } from "../i18n";
+import { formatUiText, uiText } from "../i18n";
 
 export interface EventsProps {
   isExpanded: boolean;
 }
+
+const formatScore = (value?: number) =>
+  typeof value === "number" ? value.toFixed(1) : "—";
+const formatLatency = (value?: number) =>
+  typeof value === "number" ? `${value}ms` : "—";
 
 function Events({ isExpanded }: EventsProps) {
   const [prevEventLogs, setPrevEventLogs] = useState<LoggedEvent[]>([]);
@@ -51,6 +56,8 @@ function Events({ isExpanded }: EventsProps) {
               const isError =
                 log.eventName.toLowerCase().includes("error") ||
                 log.eventData?.response?.status_details?.error != null;
+              const contestEvent =
+                log.eventData?.type === "expert.contest.result" ? log.eventData : null;
 
               return (
                 <div
@@ -81,6 +88,19 @@ function Events({ isExpanded }: EventsProps) {
                       {log.timestamp}
                     </div>
                   </div>
+
+                  {contestEvent && (
+                    <div className="ml-6 mt-1 text-xs text-indigo-700">
+                      {formatUiText(uiText.events.expertContestSummary, {
+                        winnerId: contestEvent.winner?.expertId ?? "n/a",
+                        winnerScore: formatScore(contestEvent.winner?.totalScore),
+                        winnerLatency: formatLatency(contestEvent.winner?.latencyMs),
+                        runnerUpId: contestEvent.runnerUp?.expertId ?? "n/a",
+                        runnerUpScore: formatScore(contestEvent.runnerUp?.totalScore),
+                        totalLatencyMs: contestEvent.totalLatencyMs ?? "—",
+                      })}
+                    </div>
+                  )}
 
                   {log.expanded && log.eventData && (
                     <div className="text-gray-800 text-left">
