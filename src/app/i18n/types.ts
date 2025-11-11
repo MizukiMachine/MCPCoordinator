@@ -40,6 +40,7 @@ export interface UiText {
       scoreHeading: string;
       confidenceHeading: string;
       latencyHeading: string;
+      baselineLabel: string;
     };
   };
   toolbar: {

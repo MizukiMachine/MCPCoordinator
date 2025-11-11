@@ -41,6 +41,7 @@ export const jaText: UiText = {
       scoreHeading: "Score",
       confidenceHeading: "Confidence",
       latencyHeading: "Latency",
+      baselineLabel: "単体エージェントの回答",
     },
   },
   toolbar: {
@@ -61,7 +62,7 @@ export const jaText: UiText = {
   events: {
     title: "ログ",
     expertContestSummary:
-      "勝者={{winnerId}} ({{winnerScore}}点/{{winnerLatency}}ms)｜次点={{runnerUpId}} ({{runnerUpScore}}点)｜合計レイテンシー={{totalLatencyMs}}ms",
+      "勝者={{winnerId}} ({{winnerScore}}点/{{winnerLatency}}ms)｜次点={{runnerUpId}} ({{runnerUpScore}}点)｜合計レイテンシー={{totalLatencyMs}}ms｜単体={{baselinePreview}}",
   },
   guardrail: {
     label: "ガードレール",

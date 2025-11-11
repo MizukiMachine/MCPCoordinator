@@ -98,6 +98,12 @@ function Events({ isExpanded }: EventsProps) {
                         runnerUpId: contestEvent.runnerUp?.expertId ?? "n/a",
                         runnerUpScore: formatScore(contestEvent.runnerUp?.totalScore),
                         totalLatencyMs: contestEvent.totalLatencyMs ?? "—",
+                        baselinePreview:
+                          contestEvent.baselineAnswer
+                            ? `${contestEvent.baselineAnswer.slice(0, 30)}${
+                                contestEvent.baselineAnswer.length > 30 ? "…" : ""
+                              }`
+                            : "n/a",
                       })}
                     </div>
                   )}

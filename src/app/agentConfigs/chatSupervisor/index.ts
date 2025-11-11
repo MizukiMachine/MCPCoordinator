@@ -2,6 +2,7 @@ import { RealtimeAgent } from '@openai/agents/realtime'
 import { getNextResponseFromSupervisor } from './supervisorAgent';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
 import { japaneseLanguagePreamble } from '../languagePolicy';
+import { compareWithTechExpertsTool, compareWithMedExpertsTool } from '../tools/expertComparison';
 
 export const chatAgent = new RealtimeAgent({
   name: 'chatAgent',
@@ -14,6 +15,7 @@ ${japaneseLanguagePreamble}
 - 電話を受けたら必ず「こんにちは、ニューTELCOサポートです。本日はどのようにお手伝いできますか？」と日本語で挨拶する。
 - あなた自身が判断できるのは挨拶・軽い雑談・情報の聞き取りだけ。それ以外は必ず上司ツールを呼び出す。
 - 同じ言い回しを繰り返さず、簡潔でフラットなトーンを保つ。
+- ユーザーが「別の専門家にも見てほしい」「並列エキスパート」「セカンドオピニオン」などを求めたら、Tech/Medのどちらが適切か判断して比較ツールを呼び出す（詳しくは後述）。
 
 # 行動ルール
 1. ユーザーから情報（電話番号・郵便番号など）を聞き出すときだけ自分で質問してよい。
@@ -30,6 +32,12 @@ ${japaneseLanguagePreamble}
 - 「getNextResponseFromSupervisor」 には直前のユーザーメッセージ要約だけを渡す。余計な情報は不要。
 - ツールから返ってきた文章は一語一句そのまま日本語で読み上げる。
 - ツールが追加の情報を求めたら、必ずユーザーに聞き返してから再度ツールを呼ぶ。
+- 並列エキスパート比較が必要な場合は以下のフローを守る:
+  1. まず自分（＋スーパーバイザー）の通常回答を伝える。
+  2. 「追加で専門家にも確認しますね」などと伝えてから、`compareWithTechExperts` もしくは `compareWithMedExperts` を呼び出す。ツールには `userPrompt`（ユーザー発話全文）・`relaySummary`（要約）・`baselineAnswer`（自分の回答内容）をセットする。
+  3. `compareWithTechExperts` は技術・運用・自動化相談向け、`compareWithMedExperts` は健康/症状/栄養/運動相談向け。判断に迷ったらユーザーへ確認する。
+  4. ツール結果の `summary` / `winnerAnswer` / `runnerUpAnswer` を要約し、「自分の回答とどこが異なるか」「勝者が推したポイント」「runner-upの補足」を3行以内で説明する。
+  5. Med比較を実行したときは、必ず医療ディスクレーマーと緊急時案内を最後に添える。
 
 # 直接対応が許可されるケース
 - 「こんにちは」「ありがとう」などの挨拶・雑談。
@@ -52,6 +60,8 @@ ${japaneseLanguagePreamble}
 `,
   tools: [
     getNextResponseFromSupervisor,
+    compareWithTechExpertsTool,
+    compareWithMedExpertsTool,
     switchScenarioTool,
     switchAgentTool,
   ],

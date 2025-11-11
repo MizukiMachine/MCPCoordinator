@@ -3,6 +3,17 @@ import type {
   ExpertContestRequest,
   ExpertContestResponse,
 } from '@/app/agentConfigs/types';
+import {
+  callExpertContestApi,
+  buildContestSummary,
+  recordContestBreadcrumb,
+  logContestEvent,
+  type ContestSummary,
+  type BreadcrumbFn,
+  type LogFn,
+  ensureContestId,
+  findSubmissionText,
+} from './expertContestClient';
 
 interface RunExpertContestInput
   extends Omit<ExpertContestRequest, 'contestId'> {
@@ -31,142 +42,6 @@ interface ExpertContestToolError {
 }
 
 type ExpertContestToolResult = ExpertContestToolSuccess | ExpertContestToolError;
-
-type BreadcrumbFn = (title: string, data?: any) => void;
-type LogFn = (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
-
-interface ScoreSnapshot {
-  expertId: string;
-  totalScore?: number;
-  confidence?: number;
-  latencyMs?: number;
-}
-
-interface ContestSummary {
-  type: 'expertContestResult';
-  contestId: string;
-  scenario: string;
-  totalLatencyMs: number;
-  tieBreaker?: string;
-  judgeSummary: string;
-  winner?: ScoreSnapshot;
-  runnerUp?: ScoreSnapshot;
-  topScores: ScoreSnapshot[];
-}
-
-const ensureContestId = (contestId?: string) => {
-  if (contestId && contestId.trim().length > 0) {
-    return contestId.trim();
-  }
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `contest-${Date.now()}`;
-};
-
-const safeJson = async (response: Response) => {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
-
-const findSubmissionText = (
-  contest: ExpertContestResponse,
-  expertId: string,
-): string | undefined =>
-  contest.submissions.find((submission) => submission.expertId === expertId)?.outputText;
-
-const buildScoreSnapshot = (
-  contest: ExpertContestResponse,
-  expertId: string | undefined,
-  latencyMap: Map<string, number>,
-): ScoreSnapshot | undefined => {
-  if (!expertId) return undefined;
-  const score = contest.scores.find((s) => s.expertId === expertId);
-  if (!score) return undefined;
-  return {
-    expertId,
-    totalScore: score.totalScore,
-    confidence: score.confidence,
-    latencyMs: latencyMap.get(expertId),
-  };
-};
-
-const buildContestSummary = (contest: ExpertContestResponse): ContestSummary => {
-  const latencyMap = new Map<string, number>();
-  contest.submissions.forEach((submission) => {
-    latencyMap.set(submission.expertId, submission.latencyMs);
-  });
-
-  const sortedScores = [...contest.scores].sort((a, b) => {
-    if (b.totalScore !== a.totalScore) {
-      return b.totalScore - a.totalScore;
-    }
-    return b.confidence - a.confidence;
-  });
-
-  return {
-    type: 'expertContestResult',
-    contestId: contest.contestId,
-    scenario: contest.scenario,
-    totalLatencyMs: contest.totalLatencyMs,
-    tieBreaker: contest.metadata?.tieBreaker,
-    judgeSummary: contest.judgeSummary,
-    winner: buildScoreSnapshot(contest, contest.winnerId, latencyMap),
-    runnerUp: buildScoreSnapshot(contest, contest.runnerUpId, latencyMap),
-    topScores: sortedScores.map((score) => ({
-      expertId: score.expertId,
-      totalScore: score.totalScore,
-      confidence: score.confidence,
-      latencyMs: latencyMap.get(score.expertId),
-    })),
-  };
-};
-
-const recordBreadcrumbs = (
-  summary: ContestSummary,
-  addBreadcrumb?: BreadcrumbFn,
-) => {
-  if (!addBreadcrumb) return;
-  addBreadcrumb('[expertContest] 勝者選定', summary);
-};
-
-const logContestEvent = (
-  summary: ContestSummary,
-  logClientEvent?: LogFn,
-) => {
-  if (!logClientEvent) return;
-  logClientEvent(
-    {
-      type: 'expert.contest.result',
-      ...summary,
-    },
-    'expertContest',
-  );
-};
-
-async function callExpertContestApi(
-  body: ExpertContestRequest,
-): Promise<ExpertContestResponse> {
-  const response = await fetch('/api/expertContest', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorBody = await safeJson(response);
-    const message =
-      (errorBody as any)?.error ?? `Failed to run expert contest (status ${response.status})`;
-    throw new Error(message);
-  }
-
-  return (await response.json()) as ExpertContestResponse;
-}
 
 export const runExpertContestTool = tool({
   name: 'runExpertContest',
@@ -266,8 +141,9 @@ export const runExpertContestTool = tool({
 
     try {
       const contest = await callExpertContestApi(body);
-      const summary = buildContestSummary(contest);
-      recordBreadcrumbs(summary, addBreadcrumb);
+      const summaryBase = buildContestSummary(contest);
+      const summary: ContestSummary = { ...summaryBase, preset: contest.scenario };
+      recordContestBreadcrumb(summary, addBreadcrumb);
       logContestEvent(summary, logClientEvent);
       return {
         success: true,

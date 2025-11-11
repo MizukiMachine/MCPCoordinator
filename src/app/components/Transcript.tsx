@@ -26,6 +26,8 @@ interface ExpertContestBreadcrumbData {
   winner?: ScoreSnapshot;
   runnerUp?: ScoreSnapshot;
   topScores?: ScoreSnapshot[];
+  baselineAnswer?: string;
+  preset?: string;
 }
 
 const formatScore = (value?: number) =>
@@ -41,7 +43,10 @@ const ExpertContestSummaryCard = ({ data }: { data: ExpertContestBreadcrumbData 
 
   return (
     <div className="mt-2 w-full rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-gray-900">
-      <div className="font-semibold text-indigo-900 mb-2">{contestText.title}</div>
+      <div className="font-semibold text-indigo-900 mb-1">{contestText.title}</div>
+      {data.preset && (
+        <div className="text-xs text-gray-600 mb-1">Preset: {data.preset}</div>
+      )}
       <div className="flex flex-col gap-1 text-xs">
         <div>
           <span className="font-semibold">{contestText.winnerLabel}: </span>
@@ -69,10 +74,16 @@ const ExpertContestSummaryCard = ({ data }: { data: ExpertContestBreadcrumbData 
             <span>{data.tieBreaker}</span>
           </div>
         )}
-        <div>
+        <div className="mt-1">
           <span className="font-semibold">{contestText.judgeSummaryLabel}: </span>
           <span>{data.judgeSummary || "—"}</span>
         </div>
+        {data.baselineAnswer && (
+          <div className="mt-1">
+            <span className="font-semibold">{contestText.baselineLabel}: </span>
+            <span className="whitespace-pre-wrap">{data.baselineAnswer}</span>
+          </div>
+        )}
       </div>
       {topScores.length > 0 && (
         <div className="mt-3">

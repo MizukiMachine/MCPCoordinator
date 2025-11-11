@@ -6,7 +6,7 @@ OpenAI Realtime API + Agents SDK デモです。
 ## TL;DR
 - Realtime API と @openai/agents@0.3.0 を使ったマルチエージェントのPoC実装
 - Next.js 15 + React 19 + TypeScript で構築し、UIは日本語化済み
-- 3つのデモシナリオを試せる
+- 5つのデモシナリオを試せる（Simple / Retail / Chat Supervisor / Tech Parallel / Med Parallel）
 
 ## プロジェクト概要
 - Web クライアントは `src/app` にあり、Transcript／イベントログ／ツールバーを個別コンポーネントとして分離
@@ -101,6 +101,27 @@ sequenceDiagram
     returns->>User: 返品手続きを案内
 ```
 
+### 3. 並列エキスパート (Tech / Med)
+`techParallelContest` と `medParallelContest` は、4名の専門家を同時に実行し、評価AIが勝者を決める「並列コンテスト」型シナリオです。Relayエージェントがユーザー要件を聞き取り、`runExpertContest` ツールを呼び出すと `/api/expertContest` が Responses API を利用して以下を行います。
+
+1. 4名のエキスパート（Tech: ハード&OS / ネット&セキュリティ / ソフト自動化 / ワークフロー、Med: 内科 / 栄養 / 運動療法 / 生活習慣&安全性）を `gpt-5-mini` で並列推論。
+2. ジャッジ用 `gpt-5-mini` がスコア・confidence・rationale を JSON で返却。
+3. `decideExpertContestOutcome`（score→confidence→latency で決定）が勝者と次点を選択。
+4. Transcript とイベントログに勝者情報・総レイテンシー・スコアボードを表示。
+
+Tech Relay は TDD/インフラ要件を sharedContext に含め、Med Relay は triage ツールで緊急度を判定し、ディスクレーマーと緊急連絡先を必ず添えます。UIのシナリオプルダウンからそれぞれ「Tech 並列エキスパート」「Med 並列エキスパート」を選択してください。
+
+### 単体エージェント vs 並列エキスパートの比較方法
+1. シナリオを `chatSupervisor` に設定し、通常通り質問します。
+2. chatSupervisor が自分の回答を返したあとに「エキスパートにも確認して」などと伝えると、内容に応じて `compareWithTechExperts` または `compareWithMedExperts` ツールが呼び出されます。
+3. 同じ `userPrompt` が `/api/expertContest` に送られ、勝者の提案・runner-up・採点表が Transcript / イベントログへカード表示されます。カードには「単体エージェントの回答」も併記されるため、差分を即座に比較できます。
+4. Med 比較を行った場合は自動的にディスクレーマーと救急案内が添付されます。
+
+## 並列エキスパートAPI / ツール
+- `/api/expertContest`: Responses API プロキシ。`ExpertContestRequest` を受け取ると、4エキスパート推論→ジャッジ→勝者判定→`ExpertContestResponse` を返します。latency・tokenUsage・tieBreaker を含むため、UX計測やログ分析が容易です。
+- `runExpertContest` (Realtime ツール): Relay エージェント専用の共通ツール。ユーザーの `userPrompt`、relay要約、評価ルーブリック、sharedContext（Tech/Med固有の bullet を含む）をまとめて `/api/expertContest` に送信し、結果をBreadcrumb＋イベントログへ自動記録します。
+- Transcript の Breadcrumb では勝者/次点のスコアボードやジャッジメモをカード表示、イベントログには要約行が追加されます。
+
 ## 言語・モデルポリシー
 - すべてのエージェントは、日本語で挨拶・案内・フィラーを行うようプロンプトを統一しています。ユーザーが他言語を希望した場合のみ一時的に切り替わります。
 - 背後で使用しているモデルは以下の通りです。
@@ -108,3 +129,10 @@ sequenceDiagram
   - `gpt-4o-transcribe` : 音声入力のリアルタイム文字起こし
   - `gpt-5-mini` : ガードレール／モデレーション
   - `gpt-5` : スーパーバイザーおよび返品可否判定など高リスク判断
+
+## 動作確認メモ
+1. `npm run test` : Vitest（8件）で型定義・ツール・i18nの一貫性を確認。
+2. 手動セッション推奨フロー
+   - Techシナリオ: シナリオを「Tech 並列エキスパート」に切り替え、ハード＆OS/ネット等への相談を行い、Transcriptカードに勝者情報が現れることを確認。
+   - Medシナリオ: 「Med 並列エキスパート」を選択し、症状を伝えて triageメッセージとディスクレーマーが必ず挿入されることを確認。勝者/次点サマリ＋イベントログ行もチェック。
+3. `/api/expertContest` のレスポンスはイベントログで展開し、scores/submissions/tieBreaker を確認可能。
