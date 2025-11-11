@@ -333,9 +333,9 @@ function App() {
       },
     });
 
-    // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi');
+      // Auto-trigger without sending a synthetic user utterance.
+      sendClientEvent({ type: 'response.create' }, 'initial response trigger');
     }
     return;
   }
