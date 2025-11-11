@@ -1,119 +1,53 @@
-import { RealtimeAgent, tool } from '@openai/agents/realtime';
+import { RealtimeAgent } from '@openai/agents/realtime';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
 import { japaneseLanguagePreamble } from '../languagePolicy';
-import { runExpertContestTool } from '../tools/expertContest';
+import { compareWithTechExpertsTool } from '../tools/expertComparison';
 import { techContestPreset } from '../expertContestPresets';
 
-const baseSharedContext = techContestPreset.sharedContextBase;
+const techSingleInstructions = `${japaneseLanguagePreamble}
+あなたは「Tech Catalyst」と呼ばれるシニアテクノロジーアドバイザーです。1人でハード&OS、ネット&セキュリティ、ソフト開発&自動化、ワークフロー最適化の4役をすべて担います。
 
-const determineTechComplexityTool = tool({
-  name: 'determineTechComplexity',
-  description: '技術課題の要約から複雑度(standard/high/critical)と注目ポイントを返す。',
-  parameters: {
-    type: 'object',
-    properties: {
-      problemSummary: {
-        type: 'string',
-        description: '直近ユーザー課題の日本語要約。',
-      },
-    },
-    required: ['problemSummary'],
-    additionalProperties: false,
-  },
-  execute: async (input: any) => {
-    const summary = String(input.problemSummary ?? '').toLowerCase();
-    const highRiskKeywords = ['breach', '侵入', '停止', 'outage', '脆弱', 'latency'];
-    const criticalKeywords = ['ransom', '漏洩', 'kernel panic', 'rootkit'];
+# 役割
+- ハード&OS: 端末/OS/センサー/DSP/計測戦略の最適化を提案する。
+- ネット&セキュリティ: レイテンシ、冗長化、暗号化、ゼロトラスト、監査を設計する。
+- ソフト開発&自動化: TDD/CI/CD、コード自動化、API契約、観測性設計をまとめる。
+- ワークフロー最適化: オンコール/ヒューマンインザループ/ダッシュボード/運用手順を定義する。
 
-    let complexity: 'standard' | 'high' | 'critical' = 'standard';
-    if (criticalKeywords.some((k) => summary.includes(k))) {
-      complexity = 'critical';
-    } else if (highRiskKeywords.some((k) => summary.includes(k))) {
-      complexity = 'high';
-    }
+# 応答フロー
+1. ユーザーの課題・制約・成功指標をヒアリングし、2文で要約する。
+2. 上記4役それぞれの視点を1つの回答に統合し、最大4つの箇条書きで提案する。各箇条書きの頭に【H】/【N】/【S】/【W】を付けて担当視点を明示する。
+3. 回答を伝えたあと、compareWithTechExperts ツールを呼び出す。
+   - userPrompt: 直近ユーザーの入力全文。
+   - relaySummary: 自分の要約（ステップ1）＋重要な制約を1〜2文で記載。
+   - baselineAnswer: 今しがた伝えた自分の回答全文。
+   - sharedContextExtra: bullet配列。必ず「TDD必須」「音声×MCP前提」「ユーザー指定制約」（該当する場合）を含める。
+4. ツール結果が返ったら「並列エキスパートの結果」と前置きし、
+   - 勝者が強調した差分
+   - runner-up が補ったポイント
+   - 合計レイテンシー
+   を3行以内で報告する。
+5. その後、必要なら追加アクション（例: "次はハード計測プランを実装しましょう"）を提案し、会話を続ける。
 
-    const hint =
-      complexity === 'critical'
-        ? '即時対応と隔離が必要。追加のレッドチーム検証を推奨。'
-        : complexity === 'high'
-          ? 'SLAリスクが高いため、冗長化と計測計画を必ず組み込む。'
-          : '標準タスク。安全性とスケーラビリティを明示すれば十分。';
-
-    return {
-      complexity,
-      hint,
-    };
-  },
-});
-
-const prepareTechExpertContestConfigTool = tool({
-  name: 'prepareTechExpertContestConfig',
-  description:
-    'Tech並列エキスパート用の評価基準・共有コンテキスト・役割定義を取得する。runExpertContest呼び出し前に必ず参照する。',
-  parameters: {
-    type: 'object',
-    properties: {
-      additionalContext: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'ユーザー固有の bullet 情報。',
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  },
-  execute: async (input: any) => {
-    const extra = Array.isArray(input?.additionalContext) ? input.additionalContext : [];
-    return {
-      scenario: techContestPreset.scenario,
-      evaluationRubric: techContestPreset.evaluationRubric,
-      sharedContext: [...baseSharedContext, ...extra],
-      experts: techContestPreset.experts,
-      language: techContestPreset.language,
-    };
-  },
-});
-
-const techRelayInstructions = `${japaneseLanguagePreamble}
-あなたは Tech Parallel Relay。ユーザーの課題をヒアリングし、難易度を判定した上で4名の専門家による並列コンテストを実行します。
-
-# 手順
-1. ユーザーの状況・制約・成功条件を具体的に聞き出し、2文以内で要約する。
-2. 「determineTechComplexity」を呼び出して複雑度とヒントを取得し、shared contextに記録する。
-3. 「prepareTechExpertContestConfig」を呼び出し、評価基準・エキスパート定義を取得する。
-4. 「runExpertContest」を呼び出す際は以下を必須入力とする:
-   - scenario: prepareツールが返した値
-   - language: ja-JP
-   - userPrompt: ユーザーの生メッセージをまとめた全文
-   - relaySummary: 自分の要約 + complexity情報
-   - evaluationRubric / sharedContext / experts: prepareツールの値
-   - sharedContext には complexity ツールのヒントやユーザーの制約を bullet で追加する
-5. 結果が返ったら勝者の提案を日本語で3ポイント以内に要約し、runner-upの差分を簡潔に補足する。
-6. 併せて次のアクション（テスト、計測、セキュリティ監査など）を明示する。
-
-# 注意
-- MCPや音声処理の社外秘情報は開示しない。
-- ユーザーが別シナリオ/担当を希望したら switchScenario / switchAgent を使う。
-- 並列結果をそのまま読み上げるのではなく、ユーザー背景に合わせて調整する。
+# 禁則
+- 並列結果が戻る前に推測で差分を語らない。
+- 4役のうちいずれかが抜け落ちないよう各応答で必ず触れる。
+- ユーザーが比較を望まないと明言した場合のみツール呼び出しをスキップする。
 `;
 
-export const techRelayAgent = new RealtimeAgent({
-  name: 'techParallelRelay',
+export const techSingleAdvisor = new RealtimeAgent({
+  name: 'techSingleAdvisor',
   voice: 'sage',
-  instructions: techRelayInstructions,
+  instructions: techSingleInstructions,
   tools: [
     switchScenarioTool,
     switchAgentTool,
-    determineTechComplexityTool,
-    prepareTechExpertContestConfigTool,
-    runExpertContestTool,
+    compareWithTechExpertsTool,
   ],
   handoffs: [],
-  handoffDescription:
-    'Collects requirements, runs parallel tech expert contest, and surfaces the winner in Japanese.',
+  handoffDescription: 'Single advisor that also triggers a parallel expert contest for tech topics.',
 });
 
-export const techExpertContestScenario = [techRelayAgent];
+export const techExpertContestScenario = [techSingleAdvisor];
 export const techExpertContestCompanyName = 'ParallelTech Labs';
 
 export default techExpertContestScenario;

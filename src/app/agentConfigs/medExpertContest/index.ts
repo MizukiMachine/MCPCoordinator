@@ -1,135 +1,49 @@
-import { RealtimeAgent, tool } from '@openai/agents/realtime';
+import { RealtimeAgent } from '@openai/agents/realtime';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
 import { japaneseLanguagePreamble } from '../languagePolicy';
-import { runExpertContestTool } from '../tools/expertContest';
+import { compareWithMedExpertsTool } from '../tools/expertComparison';
 import { medContestPreset, MED_DISCLAIMER, EMERGENCY_PROMPT } from '../expertContestPresets';
 
-const baseSharedContext = medContestPreset.sharedContextBase;
+const medSingleInstructions = `${japaneseLanguagePreamble}
+あなたは「Holistic Med Guide」と呼ばれる一次相談用の医療AIです。内科・栄養・運動療法・生活習慣&安全性の4名の専門家の役割を1人で担い、まず包括的な助言を返したあと、同じ内容を並列エキスパートにも確認します。
 
-const normalizeText = (text: string) =>
-  text
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
+# 役割
+- 【内科】症状経過、基礎疾患、服薬状況を整理し、受診タイミングと鑑別のヒントを伝える。
+- 【栄養】食事制限・アレルギー・水分補給を考慮した提案を行う。
+- 【運動療法】段階的な運動プランと中止基準、体調悪化時のサインを示す。
+- 【生活習慣&安全性】睡眠/ストレス/環境リスク/サポート体制を整え、安全指針を伝える。
 
-const medTriageTool = tool({
-  name: 'triageSeverity',
-  description:
-    'ユーザーの症状概要から緊急度(severe/moderate/mild)と受診推奨メッセージを返す。緊急度がsevereの場合は即座に救急案内を優先する。',
-  parameters: {
-    type: 'object',
-    properties: {
-      symptomSummary: {
-        type: 'string',
-        description: 'ユーザーが述べた症状の日本語要約。',
-      },
-    },
-    required: ['symptomSummary'],
-    additionalProperties: false,
-  },
-  execute: async (input: any) => {
-    const summary = normalizeText(String(input.symptomSummary ?? ''));
-    const severeKeywords = ['胸痛', '吐血', '呼吸困難', '意識障害', '痙攣', 'しびれ', 'numbness', 'stroke', 'syncope'];
-    const moderateKeywords = ['発熱', '倦怠感', '下痢', 'めまい', 'headache', '嘔吐', '倦怠', '動悸'];
+# 応答フロー
+1. 症状、発生時期、既往歴、服薬、生活背景、緊急兆候を確認し、2文で要約する。緊急兆候が強い場合は即座に EMERGENCY_PROMPT を伝える。
+2. 4役それぞれの視点で助言を出す。箇条書き最大4行、各行の先頭に【内科】/【栄養】/【運動】/【生活】を付ける。
+3. 最後に MED_DISCLAIMER と EMERGENCY_PROMPT を必ず読み上げる。
+4. その後、compareWithMedExperts ツールを呼び出す。
+   - userPrompt: 直近のユーザー発話全文。
+   - relaySummary: ステップ1の要約 + 緊急度評価。
+   - baselineAnswer: ステップ2の自分の回答全文（ディスクレーマーを含めてよい）。
+   - sharedContextExtra: bullet配列。「ディスクレーマー必須」と「緊急度=xxx」、さらにユーザー固有情報を含める。
+5. ツール結果が返ったら「並列医療エキスパートの見解」と前置きし、勝者の推奨・runner-up の補足・合計レイテンシーをまとめ、再度 MED_DISCLAIMER と EMERGENCY_PROMPT を添えて伝える。
 
-    let severity: 'severe' | 'moderate' | 'mild' = 'mild';
-    if (severeKeywords.some((kw) => summary.includes(kw))) {
-      severity = 'severe';
-    } else if (moderateKeywords.some((kw) => summary.includes(kw))) {
-      severity = 'moderate';
-    }
-
-    const recommendation =
-      severity === 'severe'
-        ? EMERGENCY_PROMPT
-        : severity === 'moderate'
-          ? 'できるだけ早く医療機関で診察を受け、症状の推移を記録してください。'
-          : '自宅ケアは可能ですが、症状悪化時や不安があれば医療機関に相談してください。';
-
-    const triageBullet = `Triage: ${severity.toUpperCase()} - ${recommendation}`;
-
-    return {
-      severity,
-      recommendation,
-      disclaimer: MED_DISCLAIMER,
-      triageBullet,
-    };
-  },
-});
-
-const prepareMedExpertContestConfigTool = tool({
-  name: 'prepareMedExpertContestConfig',
-  description:
-    'Med並列エキスパートに渡す評価ルーブリック・共有コンテキスト・役割定義を取得する。',
-  parameters: {
-    type: 'object',
-    properties: {
-      patientContext: {
-        type: 'array',
-        items: { type: 'string' },
-        description: '年齢・既往症・生活環境など bullet 情報。',
-      },
-      triageBullet: {
-        type: 'string',
-        description: 'triageSeverity ツールが返却した bullet メモ。',
-      },
-    },
-    required: [],
-    additionalProperties: false,
-  },
-  execute: async (input: any) => {
-    const patientContext = Array.isArray(input?.patientContext) ? input.patientContext : [];
-    const triageBullet = typeof input?.triageBullet === 'string' ? input.triageBullet : null;
-    const shared = [...baseSharedContext, ...patientContext];
-    if (triageBullet) {
-      shared.push(triageBullet);
-    }
-    return {
-      scenario: medContestPreset.scenario,
-      language: medContestPreset.language,
-      evaluationRubric: medContestPreset.evaluationRubric,
-      sharedContext: shared,
-      experts: medContestPreset.experts,
-      disclaimer: MED_DISCLAIMER,
-      emergencyPrompt: EMERGENCY_PROMPT,
-    };
-  },
-});
-
-const medRelayInstructions = `${japaneseLanguagePreamble}
-あなたは Med Parallel Relay。ユーザーの症状や生活背景を丁寧に聞き取り、並列エキスパートの競争結果を要約して伝えます。常に医療ディスクレーマーと緊急案内を含めてください。
-
-# 手順
-1. ユーザーの症状・開始時期・既往歴・服薬状況・生活習慣を確認し、要約を作成。
-2. 「triageSeverity」で緊急度を判定し、severityがsevereなら即座に受診案内を伝えてから続行。
-3. 「prepareMedExpertContestConfig」を呼び出し、評価ルーブリック・専門家定義・共有コンテキストを取得。
-4. 「runExpertContest」を呼び出す際は以下を含める:
-   - scenario / language / evaluationRubric / sharedContext / experts（prepareツールの値）
-   - userPrompt: ユーザー発話全文または詳細要約
-   - relaySummary: 自分の要約 + triage結果 + 推奨事項
-   - sharedContextには症状の経過、生活制約、triageの推奨を bullet で追記
-5. 勝者提案は日本語で3ポイント以内に要約し、runner-upとの差別化も1ポイントで触れる。
-6. 常に最後に MED_DISCLAIMER と EMERGENCY_PROMPT を読み上げる。
-7. ユーザーが別シナリオを希望したら switchScenario / switchAgent を使用。
+# 禁則
+- 医師の診断を装わない。常に受診を推奨する表現を含める。
+- ツール結果を待たずに並列エキスパートの差分を推測しない。
+- ユーザーが比較を希望しないと表明した場合のみツール呼び出しを省略する。
 `;
 
-export const medRelayAgent = new RealtimeAgent({
-  name: 'medParallelRelay',
+export const medSingleAdvisor = new RealtimeAgent({
+  name: 'medSingleAdvisor',
   voice: 'sage',
-  instructions: medRelayInstructions,
+  instructions: medSingleInstructions,
   tools: [
     switchScenarioTool,
     switchAgentTool,
-    medTriageTool,
-    prepareMedExpertContestConfigTool,
-    runExpertContestTool,
+    compareWithMedExpertsTool,
   ],
   handoffs: [],
-  handoffDescription:
-    'Performs medical triage, runs parallel med expert contest, and summarizes with disclaimers.',
+  handoffDescription: 'Single medical advisor that also triggers a parallel med expert contest.',
 });
 
-export const medExpertContestScenario = [medRelayAgent];
+export const medExpertContestScenario = [medSingleAdvisor];
 export const medExpertContestCompanyName = 'ParallelCare Collective';
 
 export default medExpertContestScenario;

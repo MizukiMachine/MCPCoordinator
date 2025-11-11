@@ -101,21 +101,12 @@ sequenceDiagram
     returns->>User: 返品手続きを案内
 ```
 
-### 3. 並列エキスパート (Tech / Med)
-`techParallelContest` と `medParallelContest` は、4名の専門家を同時に実行し、評価AIが勝者を決める「並列コンテスト」型シナリオです。Relayエージェントがユーザー要件を聞き取り、`runExpertContest` ツールを呼び出すと `/api/expertContest` が Responses API を利用して以下を行います。
+### 3. 並列エキスパート比較体験 (Tech / Med)
+`techParallelContest` と `medParallelContest` は、同じ質問に対する「単体GPT-5-mini vs 並列エキスパート」の違いをワンフローで体験できるシナリオです。
 
-1. 4名のエキスパート（Tech: ハード&OS / ネット&セキュリティ / ソフト自動化 / ワークフロー、Med: 内科 / 栄養 / 運動療法 / 生活習慣&安全性）を `gpt-5-mini` で並列推論。
-2. ジャッジ用 `gpt-5-mini` がスコア・confidence・rationale を JSON で返却。
-3. `decideExpertContestOutcome`（score→confidence→latency で決定）が勝者と次点を選択。
-4. Transcript とイベントログに勝者情報・総レイテンシー・スコアボードを表示。
-
-Tech Relay は TDD/インフラ要件を sharedContext に含め、Med Relay は triage ツールで緊急度を判定し、ディスクレーマーと緊急連絡先を必ず添えます。UIのシナリオプルダウンからそれぞれ「Tech 並列エキスパート」「Med 並列エキスパート」を選択してください。
-
-### 単体エージェント vs 並列エキスパートの比較方法
-1. シナリオを `chatSupervisor` に設定し、通常通り質問します。
-2. chatSupervisor が自分の回答を返したあとに「エキスパートにも確認して」などと伝えると、内容に応じて `compareWithTechExperts` または `compareWithMedExperts` ツールが呼び出されます。
-3. 同じ `userPrompt` が `/api/expertContest` に送られ、勝者の提案・runner-up・採点表が Transcript / イベントログへカード表示されます。カードには「単体エージェントの回答」も併記されるため、差分を即座に比較できます。
-4. Med 比較を行った場合は自動的にディスクレーマーと救急案内が添付されます。
+1. **単体フェーズ**: 1人のアドバイザーが4つの専門視点（Tech: 【H】【N】【S】【W】、Med: 【内科】【栄養】【運動】【生活】）をまとめて回答します。Techは TDD/音声×MCP 前提、Medは必ずディスクレーマー＋緊急案内を添えます。
+2. **並列フェーズ**: 直後に同じ `userPrompt` が4名の専門家へ並列投入され、評価AIが勝者とrunner-upを判定。単体アドバイザーが差分と合計レイテンシーを読み上げ、Transcript/イベントログには比較カードが自動で追加されます。
+3. ユーザーはシナリオを「Tech 並列エキスパート」「Med 並列エキスパート」に切り替えるだけで、単体 vs 並列の効き目を聴き比べられます（Chat Supervisor は従来通り新人＋上司のペアのみ）。
 
 ## 並列エキスパートAPI / ツール
 - `/api/expertContest`: Responses API プロキシ。`ExpertContestRequest` を受け取ると、4エキスパート推論→ジャッジ→勝者判定→`ExpertContestResponse` を返します。latency・tokenUsage・tieBreaker を含むため、UX計測やログ分析が容易です。

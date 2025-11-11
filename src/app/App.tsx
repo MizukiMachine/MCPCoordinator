@@ -27,6 +27,8 @@ import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import { techExpertContestScenario } from "@/app/agentConfigs/techExpertContest";
 import { medExpertContestScenario } from "@/app/agentConfigs/medExpertContest";
+import { techContestPreset, medContestPreset, createContestRequestFromPreset } from "@/app/agentConfigs/expertContestPresets";
+import { callExpertContestApi, buildContestSummary, recordContestBreadcrumb, logContestEvent, ensureContestId } from "@/app/agentConfigs/tools/expertContestClient";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
@@ -40,6 +42,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 const companyNameByScenario: Record<string, string> = Object.fromEntries(
   Object.entries(agentSetMetadata).map(([key, meta]) => [key, meta.companyName]),
 );
+const defaultCompanyName = agentSetMetadata[defaultAgentSetKey]?.companyName ?? 'OpenAI Demo';
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
@@ -67,6 +70,7 @@ function App() {
   // via global codecPatch at module load 
 
   const {
+    transcriptItems,
     addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
@@ -82,6 +86,9 @@ function App() {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+  const lastUserMessageRef = useRef<{ itemId: string; text: string } | null>(null);
+  const lastAssistantComparisonRef = useRef<string | null>(null);
+  const comparisonInFlightRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -218,6 +225,18 @@ function App() {
     }
   }, [isPTTActive]);
 
+  useEffect(() => {
+    const latestUser = [...transcriptItems]
+      .filter((item) => item.role === 'user' && item.status === 'DONE')
+      .pop();
+    if (latestUser && latestUser.itemId !== lastUserMessageRef.current?.itemId) {
+      lastUserMessageRef.current = {
+        itemId: latestUser.itemId,
+        text: latestUser.title ?? '',
+      };
+    }
+  }, [transcriptItems]);
+
   const fetchEphemeralKey = async (): Promise<string | null> => {
     logClientEvent({ url: "/session" }, "fetch_session_token_request");
     const tokenResponse = await fetch("/api/session");
@@ -344,7 +363,7 @@ function App() {
           reorderedAgents.unshift(agent);
         }
 
-        const companyName = companyNameByScenario[agentSetKey] ?? chatSupervisorCompanyName;
+        const companyName = companyNameByScenario[agentSetKey] ?? defaultCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
         await connect({
@@ -365,7 +384,7 @@ function App() {
       }
       return;
     }
-  }, [agentSetKey, chatSupervisorCompanyName, connect, createModerationGuardrail, customerServiceRetailCompanyName, fetchEphemeralKey, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+  }, [agentSetKey, connect, createModerationGuardrail, defaultCompanyName, fetchEphemeralKey, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
   useEffect(() => {
     if (
@@ -393,6 +412,50 @@ function App() {
     });
     sendClientEvent({ type: 'response.create' }, '(simulated user text message)');
   };
+
+  const triggerParallelComparison = useCallback(
+    async (scenarioKey: string, userPrompt: string, baselineAnswer: string) => {
+      if (!userPrompt || !baselineAnswer) return;
+      const preset =
+        scenarioKey === 'techParallelContest' ? techContestPreset : medContestPreset;
+      const sharedContextExtra =
+        scenarioKey === 'techParallelContest'
+          ? ['TDD必須', '音声×MCP前提']
+          : ['ディスクレーマー必須', '緊急度=要確認'];
+
+      const contestId = ensureContestId();
+      const body = createContestRequestFromPreset(preset, {
+        contestId,
+        userPrompt,
+        relaySummary: baselineAnswer.slice(0, 600),
+        sharedContextExtra,
+        metadata: {
+          source: 'auto_compare',
+          scenario: scenarioKey,
+        },
+      });
+
+      body.contestId = contestId;
+
+      try {
+        const contest = await callExpertContestApi(body);
+        const summaryBase = buildContestSummary(contest);
+        const summary = {
+          ...summaryBase,
+          preset: scenarioKey,
+          baselineAnswer,
+        };
+        recordContestBreadcrumb(summary, addTranscriptBreadcrumb);
+        logContestEvent(summary, logClientEvent);
+      } catch (error: any) {
+        addTranscriptBreadcrumb('[parallel_compare_error]', {
+          scenarioKey,
+          message: error?.message ?? 'Failed to run expert contest',
+        });
+      }
+    },
+    [addTranscriptBreadcrumb, logClientEvent],
+  );
 
   const updateSession = (shouldTriggerResponse: boolean = false) => {
     // Reflect Push-to-Talk UI state by (de)activating server VAD on the
@@ -506,6 +569,33 @@ function App() {
     url.searchParams.set("codec", newCodec);
     window.location.replace(url.toString());
   };
+
+  useEffect(() => {
+    if (
+      agentSetKey !== 'techParallelContest' &&
+      agentSetKey !== 'medParallelContest'
+    ) {
+      lastAssistantComparisonRef.current = null;
+      return;
+    }
+    const latestAssistant = [...transcriptItems]
+      .filter((item) => item.role === 'assistant' && item.status === 'DONE')
+      .pop();
+    if (!latestAssistant) return;
+    if (lastAssistantComparisonRef.current === latestAssistant.itemId) return;
+    if (!lastUserMessageRef.current?.text) return;
+    const baselineAnswer = latestAssistant.title ?? '';
+    if (!baselineAnswer.trim()) return;
+    if (comparisonInFlightRef.current) return;
+
+    lastAssistantComparisonRef.current = latestAssistant.itemId;
+    comparisonInFlightRef.current = true;
+    triggerParallelComparison(agentSetKey, lastUserMessageRef.current.text, baselineAnswer)
+      .catch(() => {})
+      .finally(() => {
+        comparisonInFlightRef.current = false;
+      });
+  }, [agentSetKey, transcriptItems, triggerParallelComparison]);
 
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
