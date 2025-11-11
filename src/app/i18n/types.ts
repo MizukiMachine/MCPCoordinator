@@ -1,0 +1,59 @@
+export type Locale = "ja";
+
+export interface UiText {
+  metadata: {
+    title: string;
+    description: string;
+    lang: string;
+  };
+  page: {
+    loading: string;
+  };
+  header: {
+    titleMain: string;
+    titleAccent: string;
+    scenarioLabel: string;
+    agentLabel: string;
+    logoAlt: string;
+  };
+  session: {
+    agentBreadcrumbLabel: string;
+    errorMessageTemplate: string;
+  };
+  transcript: {
+    title: string;
+    copyLabel: string;
+    copiedLabel: string;
+    downloadAudioLabel: string;
+    placeholder: string;
+    sendIconAlt: string;
+    unknownItemTypeTemplate: string;
+  };
+  toolbar: {
+    connectLabel: string;
+    disconnectLabel: string;
+    connectingLabel: string;
+    pushToTalkLabel: string;
+    talkButtonLabel: string;
+    audioPlaybackLabel: string;
+    logsLabel: string;
+    codecLabel: string;
+    codecOptions: {
+      opus: string;
+      pcmu: string;
+      pcma: string;
+    };
+  };
+  events: {
+    title: string;
+  };
+  guardrail: {
+    label: string;
+    states: {
+      pending: string;
+      pass: string;
+      fail: string;
+    };
+    categoryLabel: string;
+  };
+}

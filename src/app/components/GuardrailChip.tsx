@@ -5,6 +5,7 @@ import {
   ClockIcon,
 } from "@radix-ui/react-icons";
 import { GuardrailResultType } from "../types";
+import { uiText } from "../i18n";
 
 export interface ModerationChipProps {
   moderationCategory: string;
@@ -40,22 +41,22 @@ export function GuardrailChip({
   switch (state) {
     case "PENDING":
       IconComponent = ClockIcon;
-      label = "Pending";
+      label = uiText.guardrail.states.pending;
       textColorClass = "text-gray-600";
       break;
     case "PASS":
       IconComponent = CheckCircledIcon;
-      label = "Pass";
+      label = uiText.guardrail.states.pass;
       textColorClass = "text-green-600";
       break;
     case "FAIL":
       IconComponent = CrossCircledIcon;
-      label = "Fail";
+      label = uiText.guardrail.states.fail;
       textColorClass = "text-red-500";
       break;
     default:
       IconComponent = ClockIcon;
-      label = "Pending";
+      label = uiText.guardrail.states.pending;
       textColorClass = "text-gray-600";
   }
 
@@ -73,7 +74,7 @@ export function GuardrailChip({
           state !== "PENDING" ? "cursor-pointer" : ""
         }`}
       >
-        Guardrail:
+        {uiText.guardrail.label}:
         <div className={`flex items-center gap-1 ${textColorClass}`}>
           <IconComponent /> {label}
         </div>
@@ -87,7 +88,8 @@ export function GuardrailChip({
         >
           <div className="pt-2 text-xs">
             <strong>
-              Moderation Category: {formatCategory(guardrailResult.category)}
+              {uiText.guardrail.categoryLabel}:{" "}
+              {formatCategory(guardrailResult.category)}
             </strong>
             <div>{guardrailResult.rationale}</div>
             {guardrailResult.testText && (

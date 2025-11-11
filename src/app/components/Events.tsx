@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useEvent } from "@/app/contexts/EventContext";
 import { LoggedEvent } from "@/app/types";
+import { uiText } from "../i18n";
 
 export interface EventsProps {
   isExpanded: boolean;
@@ -42,7 +43,7 @@ function Events({ isExpanded }: EventsProps) {
       {isExpanded && (
         <div>
           <div className="flex items-center justify-between px-6 py-3.5 sticky top-0 z-10 text-base border-b bg-white rounded-t-xl">
-            <span className="font-semibold">Logs</span>
+            <span className="font-semibold">{uiText.events.title}</span>
           </div>
           <div>
             {loggedEvents.map((log, idx) => {
