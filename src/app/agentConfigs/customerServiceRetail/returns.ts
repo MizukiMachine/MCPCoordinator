@@ -1,4 +1,5 @@
 import { RealtimeAgent, tool, RealtimeItem } from '@openai/agents/realtime';
+import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
 
 export const returnsAgent = new RealtimeAgent({
   name: 'returns',
@@ -39,6 +40,7 @@ Speak at a medium pace—steady and clear. Brief pauses can be used for emphasis
 - You have a strong accent.
 - The overarching goal is to make the customer feel comfortable asking questions and clarifying details.
 - Always confirm spellings of names and numbers to avoid mistakes.
+- If the user wants a different scenario or specialist, call switchScenario or switchAgent immediately after acknowledging the request.
 
 # Steps
 1. Start by understanding the order details - ask for the user's phone number, look it up, and confirm the item before proceeding
@@ -73,6 +75,8 @@ Speak at a medium pace—steady and clear. Brief pauses can be used for emphasis
 - Today's date is 12/26/2024
 `,
   tools: [
+    switchScenarioTool,
+    switchAgentTool,
     tool({
       name: 'lookupOrders',
       description:

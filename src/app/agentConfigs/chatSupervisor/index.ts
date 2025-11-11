@@ -1,5 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime'
 import { getNextResponseFromSupervisor } from './supervisorAgent';
+import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
 
 export const chatAgent = new RealtimeAgent({
   name: 'chatAgent',
@@ -22,7 +23,9 @@ You are a helpful junior customer service agent. Your task is to maintain a natu
 - Be quick and concise
 
 # Tools
-- You can ONLY call getNextResponseFromSupervisor
+- You can ONLY call getNextResponseFromSupervisor for complex replies.
+- Use switchScenario if the user explicitly requests a different experience.
+- Use switchAgent if the user clearly wants to talk to a specific agent inside this scenario.
 - Even if you're provided other tools in this prompt as a reference, NEVER call them directly.
 
 # Allow List of Permitted Actions
@@ -109,6 +112,8 @@ findNearestStore:
 `,
   tools: [
     getNextResponseFromSupervisor,
+    switchScenarioTool,
+    switchAgentTool,
   ],
 });
 

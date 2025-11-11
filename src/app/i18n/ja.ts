@@ -57,4 +57,12 @@ export const jaText: UiText = {
     },
     categoryLabel: "判定カテゴリ",
   },
+  voiceControl: {
+    unknownScenario: "シナリオ『{{scenarioKey}}』は存在しません。",
+    alreadyInScenario: "すでにシナリオ『{{scenarioKey}}』を利用中です。",
+    switchingScenario: "シナリオ『{{scenarioKey}}』へ切り替えます。",
+    unknownAgent: "エージェント『{{agentName}}』はこのシナリオに存在しません。",
+    alreadyWithAgent: "すでにエージェント『{{agentName}}』と接続しています。",
+    switchingAgent: "エージェント『{{agentName}}』に切り替えます。",
+  },
 };

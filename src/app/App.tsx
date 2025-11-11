@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
@@ -112,6 +112,7 @@ function App() {
 
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
+  const pendingVoiceReconnectRef = useRef(false);
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);
@@ -125,6 +126,10 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
+
+  const schedulePostToolAction = useCallback((action: () => void) => {
+    setTimeout(action, 0);
+  }, []);
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
@@ -242,7 +247,75 @@ function App() {
     return clientSecret;
   };
 
-  const connectToRealtime = async (source: "auto" | "manual" = "manual") => {
+  const disconnectFromRealtime = () => {
+    disconnect();
+    setIsPTTUserSpeaking(false);
+  };
+
+  const requestScenarioChange = useCallback(async (scenarioKey: string) => {
+    addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
+    if (!allAgentSets[scenarioKey]) {
+      return {
+        success: false,
+        message: formatUiText(uiText.voiceControl.unknownScenario, { scenarioKey }),
+      };
+    }
+    if (scenarioKey === agentSetKey) {
+      return {
+        success: true,
+        message: formatUiText(uiText.voiceControl.alreadyInScenario, { scenarioKey }),
+      };
+    }
+
+    schedulePostToolAction(() => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (scenarioKey === defaultAgentSetKey) {
+        next.delete('agentConfig');
+      } else {
+        next.set('agentConfig', scenarioKey);
+      }
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+
+      setAgentSetKey(scenarioKey);
+      pendingVoiceReconnectRef.current = true;
+      disconnectFromRealtime();
+    });
+
+    return {
+      success: true,
+      message: formatUiText(uiText.voiceControl.switchingScenario, { scenarioKey }),
+    };
+  }, [addTranscriptBreadcrumb, agentSetKey, defaultAgentSetKey, disconnectFromRealtime, pathname, router, schedulePostToolAction, searchParams]);
+
+  const requestAgentChange = useCallback(async (agentName: string) => {
+    addTranscriptBreadcrumb('Voice agent switch request', { agentName });
+    const agents = selectedAgentConfigSet ?? [];
+    if (!agents.some((agent) => agent.name === agentName)) {
+      return {
+        success: false,
+        message: formatUiText(uiText.voiceControl.unknownAgent, { agentName }),
+      };
+    }
+    if (agentName === selectedAgentName) {
+      return {
+        success: true,
+        message: formatUiText(uiText.voiceControl.alreadyWithAgent, { agentName }),
+      };
+    }
+
+    schedulePostToolAction(() => {
+      disconnectFromRealtime();
+      setSelectedAgentName(agentName);
+      pendingVoiceReconnectRef.current = true;
+    });
+    return {
+      success: true,
+      message: formatUiText(uiText.voiceControl.switchingAgent, { agentName }),
+    };
+  }, [addTranscriptBreadcrumb, disconnectFromRealtime, schedulePostToolAction, selectedAgentConfigSet, selectedAgentName]);
+
+  const connectToRealtime = useCallback(async (source: "auto" | "manual" = "manual") => {
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
         console.info(
@@ -277,6 +350,8 @@ function App() {
           outputGuardrails: [guardrail],
           extraContext: {
             addTranscriptBreadcrumb,
+            requestScenarioChange,
+            requestAgentChange,
           },
         });
       } catch (err) {
@@ -285,12 +360,18 @@ function App() {
       }
       return;
     }
-  };
+  }, [agentSetKey, chatSupervisorCompanyName, connect, createModerationGuardrail, customerServiceRetailCompanyName, fetchEphemeralKey, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
-  const disconnectFromRealtime = () => {
-    disconnect();
-    setIsPTTUserSpeaking(false);
-  };
+  useEffect(() => {
+    if (
+      pendingVoiceReconnectRef.current &&
+      selectedAgentName &&
+      sessionStatus === 'DISCONNECTED'
+    ) {
+      pendingVoiceReconnectRef.current = false;
+      connectToRealtime('auto');
+    }
+  }, [connectToRealtime, selectedAgentName, sessionStatus]);
 
   const sendSimulatedUserMessage = (text: string) => {
     const id = uuidv4().slice(0, 32);

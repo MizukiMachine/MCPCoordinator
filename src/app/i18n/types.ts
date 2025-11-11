@@ -56,4 +56,12 @@ export interface UiText {
     };
     categoryLabel: string;
   };
+  voiceControl: {
+    unknownScenario: string;
+    alreadyInScenario: string;
+    switchingScenario: string;
+    unknownAgent: string;
+    alreadyWithAgent: string;
+    switchingAgent: string;
+  };
 }

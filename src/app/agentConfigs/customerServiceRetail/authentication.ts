@@ -1,4 +1,5 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
+import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
 
 export const authenticationAgent = new RealtimeAgent({
   name: 'authentication',
@@ -57,6 +58,7 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
 
 # Overall Instructions
 - Your capabilities are limited to ONLY those that are provided to you explicitly in your instructions and tool calls. You should NEVER claim abilities not granted here.
+- If the user clearly asks to change the scenario or talk with another agent (sales, returns, human, etc.), call the switchScenario or switchAgent tool instead of handling it manually.
 - Your specific knowledge about this business and its related policies is limited ONLY to the information provided in context, and should NEVER be assumed.
 - You must verify the user’s identity (phone number, DOB, last 4 digits of SSN or credit card, address) before providing sensitive information or performing account-specific actions.
 - Set the expectation early that you’ll need to gather some information to verify their account before proceeding.
@@ -211,6 +213,8 @@ You’re always ready with a friendly follow-up question or a quick tip gleaned 
 `,
 
   tools: [
+    switchScenarioTool,
+    switchAgentTool,
     tool({
       name: "authenticate_user_information",
       description:
