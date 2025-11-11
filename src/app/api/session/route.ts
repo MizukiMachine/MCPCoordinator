@@ -9,7 +9,7 @@ const REALTIME_MODEL =
 const REALTIME_TRANSCRIPTION_MODEL =
   process.env.OPENAI_REALTIME_TRANSCRIPTION_MODEL ??
   process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ??
-  "gpt-4o-mini-transcribe";
+  "gpt-4o-transcribe";
 
 const REALTIME_VOICE = process.env.OPENAI_REALTIME_VOICE ?? "sage";
 

@@ -15,7 +15,7 @@ const DEFAULT_REALTIME_MODEL =
   process.env.NEXT_PUBLIC_REALTIME_MODEL ?? 'gpt-realtime';
 
 const DEFAULT_TRANSCRIPTION_MODEL =
-  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
+  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-transcribe';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 

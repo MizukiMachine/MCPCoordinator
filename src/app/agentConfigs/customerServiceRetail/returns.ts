@@ -275,7 +275,7 @@ true/false/need_more_information
 `,
           },
         ];
-        const model = "o4-mini";
+        const model = "gpt-5";
         console.log(`checking order eligibility with model=${model}`);
 
         const response = await fetch("/api/responses", {
