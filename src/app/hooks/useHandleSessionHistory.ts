@@ -4,6 +4,48 @@ import { useRef } from "react";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
 
+export const extractMessageText = (content: any[] = []): string => {
+  if (!Array.isArray(content)) return "";
+
+  const normalizeChunk = (chunk: any): string => {
+    if (!chunk || typeof chunk !== "object") return "";
+    const textValue =
+      typeof chunk.text === "string"
+        ? chunk.text
+        : Array.isArray(chunk.text)
+          ? chunk.text.join("")
+          : undefined;
+
+    switch (chunk.type) {
+      case "input_text":
+      case "output_text":
+      case "text":
+        return textValue ?? "";
+      case "audio":
+      case "input_audio_transcription":
+      case "output_audio":
+        return (
+          (typeof chunk.transcript === "string" && chunk.transcript) ||
+          textValue ||
+          ""
+        );
+      default:
+        if (typeof chunk.transcript === "string") {
+          return chunk.transcript;
+        }
+        if (typeof chunk.content === "string") {
+          return chunk.content;
+        }
+        return textValue ?? "";
+    }
+  };
+
+  return content
+    .map((chunk) => normalizeChunk(chunk))
+    .filter((val) => typeof val === "string" && val.length > 0)
+    .join("\n");
+};
+
 export function useHandleSessionHistory() {
   const {
     transcriptItems,
@@ -16,20 +58,6 @@ export function useHandleSessionHistory() {
   const { logServerEvent } = useEvent();
 
   /* ----------------------- helpers ------------------------- */
-
-  const extractMessageText = (content: any[] = []): string => {
-    if (!Array.isArray(content)) return "";
-
-    return content
-      .map((c) => {
-        if (!c || typeof c !== "object") return "";
-        if (c.type === "input_text") return c.text ?? "";
-        if (c.type === "audio") return c.transcript ?? "";
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n");
-  };
 
   const extractFunctionCallByName = (name: string, content: any[] = []): any => {
     if (!Array.isArray(content)) return undefined;
