@@ -100,3 +100,11 @@ sequenceDiagram
     Escalation-->>returns: 結果を返却
     returns->>User: 返品手続きを案内
 ```
+
+## 言語・モデルポリシー
+- すべてのエージェントは、日本語で挨拶・案内・フィラーを行うようプロンプトを統一しています。ユーザーが他言語を希望した場合のみ一時的に切り替わります。
+- 背後で使用しているモデルは以下の通りです。
+  - `gpt-realtime` : 現場エージェント（chatSupervisor / customerServiceRetail / simpleHandoff）
+  - `gpt-4o-transcribe` : 音声入力のリアルタイム文字起こし
+  - `gpt-5-mini` : ガードレール／モデレーション
+  - `gpt-5` : スーパーバイザーおよび返品可否判定など高リスク判断
