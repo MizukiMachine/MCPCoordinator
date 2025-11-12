@@ -22,12 +22,34 @@ export interface ParallelCandidate extends CreativeModelResponse {
   reasoning?: string;
 }
 
+export interface JudgeScore {
+  candidateId: string;
+  score: number;
+  rationale: string;
+}
+
+export interface JudgeResult {
+  judgeId: string;
+  focus: string;
+  notes: string;
+  candidateScores: JudgeScore[];
+}
+
+export interface CandidateAverageScore {
+  candidateId: string;
+  average: number;
+  votes: number;
+}
+
 export interface ParallelEvaluation {
   winnerId: string;
   runnerUpId?: string;
   judgeSummary: string;
+  decisionReason: string;
   totalLatencyMs: number;
   rubric: string;
+  averages: CandidateAverageScore[];
+  judges: JudgeResult[];
 }
 
 export interface CreativeSingleResult {
