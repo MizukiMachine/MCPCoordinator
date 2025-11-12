@@ -50,6 +50,8 @@ export interface ParallelEvaluation {
   rubric: string;
   averages: CandidateAverageScore[];
   judges: JudgeResult[];
+  mergeApplied: boolean;
+  mergeReason: string;
 }
 
 export interface CreativeSingleResult {
@@ -62,7 +64,14 @@ export interface CreativeParallelResult {
   role: CreativeRoleKey;
   prompt: string;
   candidates: ParallelCandidate[];
-  mergedAnswer: CreativeModelResponse & { sourceCandidateId?: string };
+  mergedAnswer: CreativeModelResponse & {
+    sourceCandidateId?: string;
+    runnerUpCandidateId?: string;
+    mergeApplied: boolean;
+    mergeReason: string;
+    rawWinnerText: string;
+    rawRunnerUpText?: string;
+  };
   evaluation: ParallelEvaluation;
 }
 

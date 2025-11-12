@@ -3,12 +3,12 @@
 import React, { useMemo, useState } from 'react';
 
 import {
-  type CandidateAverageScore,
   creativeRoleOptions,
   getCreativeRoleProfile,
   type CreativeRoleKey,
 } from '@/app/creativeSandbox/roles';
 import type {
+  CandidateAverageScore,
   JudgeResult,
   CreativeParallelResult,
   CreativePromptPayload,
@@ -248,6 +248,9 @@ function ParallelResultCard({ status, result }: ParallelCardProps) {
           <div>
             <p className="text-sm text-emerald-300 font-medium">最終回答</p>
             <p className="mt-1 text-base whitespace-pre-wrap leading-relaxed">{result.mergedAnswer.text}</p>
+            <p className="text-xs text-slate-400 mt-2">
+              マージ: {result.evaluation.mergeApplied ? '実施' : '未実施'} / {result.evaluation.mergeReason}
+            </p>
           </div>
 
           <dl className="grid grid-cols-2 gap-3 text-sm text-slate-400">
@@ -317,6 +320,21 @@ function ParallelResultCard({ status, result }: ParallelCardProps) {
                 );
               })}
             </div>
+          </div>
+
+          <div className="space-y-2 text-xs text-slate-400">
+            <p className="text-slate-300">勝者原文</p>
+            <p className="whitespace-pre-wrap text-slate-200">
+              {result.mergedAnswer.rawWinnerText}
+            </p>
+            {result.mergedAnswer.rawRunnerUpText && (
+              <>
+                <p className="text-slate-300 mt-2">Runner-up 原文</p>
+                <p className="whitespace-pre-wrap text-slate-200">
+                  {result.mergedAnswer.rawRunnerUpText}
+                </p>
+              </>
+            )}
           </div>
         </div>
       ) : (

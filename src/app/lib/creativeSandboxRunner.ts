@@ -16,9 +16,13 @@ import type {
 import {
   CREATIVE_MODEL,
   CREATIVE_PARALLEL_COUNT,
+  MERGE_SCORE_GAP_THRESHOLD,
+  MERGE_RUNNER_MIN_SCORE,
   buildJudgePrompt,
   buildCreativeUserPrompt,
   createShuffledIndices,
+  evaluateMergeDecision,
+  buildMergePrompt,
   extractResponseText,
   mapTokenUsage,
 } from '@/app/lib/creativeSandboxUtils';
@@ -120,16 +124,52 @@ export function createCreativeSandboxRunner(openai: OpenAI): CreativeRunner {
     const totalLatencyMs = Date.now() - contestStart;
     const judgeSummary = buildJudgeSummary(aggregation.averages, aggregation.winnerId, aggregation.runnerUpId);
     const winnerText = winnerCandidate?.text ?? '';
+    const runnerText = runnerCandidate?.text;
+
+    const mergeDecision = evaluateMergeDecision(
+      aggregation.averages,
+      aggregation.winnerId,
+      aggregation.runnerUpId,
+      aggregation.scoreGap,
+      {
+        gapThreshold: MERGE_SCORE_GAP_THRESHOLD,
+        minRunnerScore: MERGE_RUNNER_MIN_SCORE,
+      },
+    );
+
+    let finalText = winnerText;
+    let mergeApplied = false;
+    let mergeReason = mergeDecision.reason;
+    let mergeTokenUsage;
+
+    if (mergeDecision.shouldMerge && winnerCandidate && runnerCandidate && runnerText) {
+      const mergeResponse = await openai.responses.create({
+        model: CREATIVE_MODEL,
+        input: [
+          { role: 'system', content: profile.instructions },
+          { role: 'user', content: buildMergePrompt(profile, payload, winnerText, runnerText) },
+        ],
+      });
+      finalText = extractResponseText(mergeResponse);
+      mergeTokenUsage = mapTokenUsage((mergeResponse as any).usage);
+      mergeApplied = true;
+    }
 
     return {
       role: payload.role,
       prompt: payload.userPrompt,
       candidates,
       mergedAnswer: {
-        text: winnerText,
+        text: finalText,
         latencyMs: totalLatencyMs,
         model: CREATIVE_MODEL,
+        tokenUsage: mergeTokenUsage,
         sourceCandidateId: aggregation.winnerId,
+        runnerUpCandidateId: aggregation.runnerUpId,
+        mergeApplied,
+        mergeReason,
+        rawWinnerText: winnerText,
+        rawRunnerUpText: runnerText,
       },
       evaluation: {
         winnerId: aggregation.winnerId,
@@ -140,6 +180,8 @@ export function createCreativeSandboxRunner(openai: OpenAI): CreativeRunner {
         rubric: profile.evaluationRubric,
         averages: aggregation.averages,
         judges: judgeResults,
+        mergeApplied,
+        mergeReason,
       },
     } satisfies CreativeParallelResult;
   };

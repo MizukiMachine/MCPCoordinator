@@ -7,6 +7,7 @@ import {
   buildCreativeUserPrompt,
   buildJudgePrompt,
   createShuffledIndices,
+  evaluateMergeDecision,
 } from '@/app/lib/creativeSandboxUtils';
 import { aggregateJudgeScores } from '@/app/lib/creativeAggregation';
 
@@ -101,5 +102,23 @@ describe('creative sandbox helpers', () => {
     expect(outcome.runnerUpId).toBe('long');
     expect(outcome.decisionReason).toContain('短い回答');
     expect(outcome.averages.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('evaluateMergeDecision enforces thresholds', () => {
+    const averages = [
+      { candidateId: 'win', average: 8.4, votes: 3 },
+      { candidateId: 'run', average: 8.2, votes: 3 },
+    ];
+    const allow = evaluateMergeDecision(averages, 'win', 'run', 0.1, {
+      gapThreshold: 0.5,
+      minRunnerScore: 8,
+    });
+    expect(allow.shouldMerge).toBe(true);
+
+    const deny = evaluateMergeDecision(averages, 'win', 'run', 0.7, {
+      gapThreshold: 0.5,
+      minRunnerScore: 8,
+    });
+    expect(deny.shouldMerge).toBe(false);
   });
 });

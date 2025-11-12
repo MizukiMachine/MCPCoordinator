@@ -20,6 +20,9 @@ interface AggregationOutcome {
   runnerUpId?: string;
   decisionReason: string;
   averages: CandidateAverageScore[];
+  winnerAverage: number;
+  runnerUpAverage?: number;
+  scoreGap?: number;
 }
 
 const DEFAULT_MARGIN = 1.0;
@@ -72,12 +75,12 @@ export function aggregateJudgeScores(
     votes: aggregate.votes,
   }));
 
-  const diff = runnerUp ? winner.average - runnerUp.average : winner.average;
+  const diff = runnerUp ? winner.average - runnerUp.average : undefined;
   let decisionReason = '';
 
   if (!runnerUp) {
     decisionReason = 'Runner-up 不在: スコア付き候補が1件のみ。';
-  } else if (diff >= earlyWinMargin) {
+  } else if (diff !== undefined && diff >= earlyWinMargin) {
     decisionReason = `平均差 ${diff.toFixed(2)} >= しきい値 ${earlyWinMargin.toFixed(2)} のため早期決定。`;
   } else {
     const tieDecision = breakTie(winner, runnerUp);
@@ -91,6 +94,9 @@ export function aggregateJudgeScores(
     runnerUpId: runnerUp?.candidate.candidateId,
     decisionReason,
     averages,
+    winnerAverage: Number(winner.average.toFixed(3)),
+    runnerUpAverage: runnerUp ? Number(runnerUp.average.toFixed(3)) : undefined,
+    scoreGap: diff !== undefined ? Number(diff.toFixed(3)) : undefined,
   } satisfies AggregationOutcome;
 }
 
