@@ -8,6 +8,8 @@ import {
   type CreativeRoleKey,
 } from '@/app/creativeSandbox/roles';
 import type {
+  CandidateAverageScore,
+  JudgeResult,
   CreativeParallelResult,
   CreativePromptPayload,
   CreativeSingleResult,
@@ -246,6 +248,9 @@ function ParallelResultCard({ status, result }: ParallelCardProps) {
           <div>
             <p className="text-sm text-emerald-300 font-medium">最終回答</p>
             <p className="mt-1 text-base whitespace-pre-wrap leading-relaxed">{result.mergedAnswer.text}</p>
+            <p className="text-xs text-slate-400 mt-2">
+              マージ: {result.evaluation.mergeApplied ? '実施' : '未実施'} / {result.evaluation.mergeReason}
+            </p>
           </div>
 
           <dl className="grid grid-cols-2 gap-3 text-sm text-slate-400">
@@ -271,6 +276,19 @@ function ParallelResultCard({ status, result }: ParallelCardProps) {
             <p className="font-medium">審査サマリ</p>
             <p className="mt-1 whitespace-pre-wrap">{result.evaluation.judgeSummary}</p>
           </div>
+
+          <div className="text-sm text-slate-300">
+            <p className="font-medium">決定理由</p>
+            <p className="mt-1 whitespace-pre-wrap">{result.evaluation.decisionReason}</p>
+          </div>
+
+          <ScoreTable
+            averages={result.evaluation.averages}
+            winnerId={winnerId ?? ''}
+            runnerUpId={runnerUpId}
+          />
+
+          <JudgePanelList judges={result.evaluation.judges} />
 
           <div className="space-y-3">
             <p className="text-sm text-slate-400">候補回答</p>
@@ -303,10 +321,95 @@ function ParallelResultCard({ status, result }: ParallelCardProps) {
               })}
             </div>
           </div>
+
+          <div className="space-y-2 text-xs text-slate-400">
+            <p className="text-slate-300">勝者原文</p>
+            <p className="whitespace-pre-wrap text-slate-200">
+              {result.mergedAnswer.rawWinnerText}
+            </p>
+            {result.mergedAnswer.rawRunnerUpText && (
+              <>
+                <p className="text-slate-300 mt-2">Runner-up 原文</p>
+                <p className="whitespace-pre-wrap text-slate-200">
+                  {result.mergedAnswer.rawRunnerUpText}
+                </p>
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <p className="text-sm text-slate-500">未実行です。</p>
       )}
     </article>
+  );
+}
+
+function ScoreTable({
+  averages,
+  winnerId,
+  runnerUpId,
+}: {
+  averages: CandidateAverageScore[];
+  winnerId: string;
+  runnerUpId?: string;
+}) {
+  if (!averages.length) return null;
+  return (
+    <div className="text-sm text-slate-300">
+      <p className="font-medium mb-2">平均スコア (0-10)</p>
+      <div className="space-y-2">
+        {averages.map((item) => {
+          const isWinner = item.candidateId === winnerId;
+          const isRunner = item.candidateId === runnerUpId;
+          return (
+            <div
+              key={item.candidateId}
+              className={`flex justify-between rounded-lg border px-3 py-2 ${
+                isWinner
+                  ? 'border-emerald-400/60 bg-emerald-400/5'
+                  : isRunner
+                    ? 'border-sky-400/40 bg-sky-400/5'
+                    : 'border-slate-700'
+              }`}
+            >
+              <span>
+                {item.candidateId}
+                {isWinner && ' · WINNER'}
+                {isRunner && !isWinner && ' · RUNNER-UP'}
+              </span>
+              <span>
+                {item.average.toFixed(2)}点 / {item.votes}票
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function JudgePanelList({ judges }: { judges: JudgeResult[] }) {
+  if (!judges.length) return null;
+  return (
+    <div className="space-y-3 text-sm text-slate-300">
+      <p className="font-medium">審判スコア詳細</p>
+      {judges.map((judge) => (
+        <div key={judge.judgeId} className="rounded-xl border border-slate-700 px-3 py-3">
+          <div className="flex justify-between text-xs uppercase tracking-wide text-slate-400 mb-1">
+            <span>{judge.judgeId}</span>
+            <span>{judge.focus}</span>
+          </div>
+          <p className="text-slate-200 text-xs mb-2">{judge.notes}</p>
+          <div className="space-y-1">
+            {judge.candidateScores.map((score) => (
+              <div key={`${judge.judgeId}-${score.candidateId}`} className="flex justify-between">
+                <span>{score.candidateId}</span>
+                <span>{score.score.toFixed(2)}点 · {score.rationale}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

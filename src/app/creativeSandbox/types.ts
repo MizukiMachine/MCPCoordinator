@@ -22,12 +22,36 @@ export interface ParallelCandidate extends CreativeModelResponse {
   reasoning?: string;
 }
 
+export interface JudgeScore {
+  candidateId: string;
+  score: number;
+  rationale: string;
+}
+
+export interface JudgeResult {
+  judgeId: string;
+  focus: string;
+  notes: string;
+  candidateScores: JudgeScore[];
+}
+
+export interface CandidateAverageScore {
+  candidateId: string;
+  average: number;
+  votes: number;
+}
+
 export interface ParallelEvaluation {
   winnerId: string;
   runnerUpId?: string;
   judgeSummary: string;
+  decisionReason: string;
   totalLatencyMs: number;
   rubric: string;
+  averages: CandidateAverageScore[];
+  judges: JudgeResult[];
+  mergeApplied: boolean;
+  mergeReason: string;
 }
 
 export interface CreativeSingleResult {
@@ -40,7 +64,14 @@ export interface CreativeParallelResult {
   role: CreativeRoleKey;
   prompt: string;
   candidates: ParallelCandidate[];
-  mergedAnswer: CreativeModelResponse & { sourceCandidateId?: string };
+  mergedAnswer: CreativeModelResponse & {
+    sourceCandidateId?: string;
+    runnerUpCandidateId?: string;
+    mergeApplied: boolean;
+    mergeReason: string;
+    rawWinnerText: string;
+    rawRunnerUpText?: string;
+  };
   evaluation: ParallelEvaluation;
 }
 

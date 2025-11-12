@@ -25,8 +25,13 @@ OpenAI Realtime API + Agents SDK デモです。
 - 背後で使用しているモデルは以下の通りです。
   - `gpt-realtime` : 現場エージェント（chatSupervisor / customerServiceRetail / simpleHandoff）
   - `gpt-4o-transcribe` : 音声入力のリアルタイム文字起こし
-  - `gpt-5-mini` : ガードレール／モデレーション
+- `gpt-5-mini` : ガードレール／モデレーション
   - `gpt-5` : スーパーバイザーおよび返品可否判定など高リスク判断
 
-
+## Creative Parallel Lab（開発者向け）
+- ルート: [http://localhost:3000/creative-lab](http://localhost:3000/creative-lab)
+- 映画評論家／文学評論家／コピーライターをプルダウンで切り替え、テキスト入力だけで単独 vs 並列の差分を比較できます。
+- 単独レーン: 選択ロールのシステムプロンプトで gpt-5-mini を1回実行。Latency/Token情報をカード表示。
+- 並列レーン: **MoA + Multi-Judge + Aggregation** 方式。4候補を完全並列生成 → 3審判が独立に採点 → 平均スコアとタイブレーク（短さ→レイテンシ→生成順）で勝者/Runner-upを決定。勝者テキストを基本採用しつつ、スコア差が小さく Runner-up が高得点だった場合のみ1行追加マージを行います。
+- 審査サマリ・決定理由・平均スコア表・審判別スコアをUIに表示し、`terminallog.log` にもJSONログを残すため、比較実験や振り返りが容易です。
 

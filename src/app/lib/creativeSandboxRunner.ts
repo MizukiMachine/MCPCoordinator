@@ -2,41 +2,49 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { zodTextFormat } from 'openai/helpers/zod';
 
-import { getCreativeRoleProfile } from '@/app/creativeSandbox/roles';
+import { getCreativeRoleProfile, type CreativeRoleProfile } from '@/app/creativeSandbox/roles';
+import { getCreativeJudgeProfiles, type CreativeJudgeProfile } from '@/app/creativeSandbox/judges';
 import type {
+  CandidateAverageScore,
   CreativeParallelResult,
   CreativePromptPayload,
   CreativeRunner,
   CreativeSingleResult,
+  JudgeResult,
   ParallelCandidate,
 } from '@/app/creativeSandbox/types';
 import {
   CREATIVE_MODEL,
   CREATIVE_PARALLEL_COUNT,
-  buildCreativeEvaluationPrompt,
+  MERGE_SCORE_GAP_THRESHOLD,
+  MERGE_RUNNER_MIN_SCORE,
+  buildJudgePrompt,
   buildCreativeUserPrompt,
+  createShuffledIndices,
+  evaluateMergeDecision,
+  buildMergePrompt,
   extractResponseText,
   mapTokenUsage,
 } from '@/app/lib/creativeSandboxUtils';
+import { aggregateJudgeScores } from '@/app/lib/creativeAggregation';
 
-const CreativeJudgeSchema = z.object({
-  winnerId: z.string().min(1),
-  runnerUpId: z.string().nullable(),
-  judgeSummary: z.string().min(1),
-  mergedAnswer: z.string().min(1),
+const JudgeScoreSchema = z.object({
+  candidateId: z.string().min(1),
+  score: z.number().min(0).max(10),
+  rationale: z.string().min(1),
 });
 
-export type CreativeJudgeOutput = z.infer<typeof CreativeJudgeSchema>;
-
-const evaluatorSystemPrompt = `あなたはクリエイティブ審査員です。候補の回答を比較し、
-1. ルーブリックに基づく勝者(winnerId)と次点(runnerUpId)を選ぶ。runnerUpが不在なら runnerUpId は null を明示する。
-2. 勝者を軸にしつつ、他候補の良さも統合した最終回答(mergedAnswer)を最大3行で作る。
-3. 審査根拠をjudgeSummaryとして1-2文でまとめる。
-出力は必ずJSONのみ。`;
+const JudgePanelSchema = z.object({
+  judgeId: z.string().min(1),
+  notes: z.string().min(1),
+  candidateScores: z.array(JudgeScoreSchema).min(2),
+});
 
 function createCandidateId(index: number) {
   return `candidate_${index + 1}`;
 }
+
+const MIN_SUCCEEDED_JUDGES = 2;
 
 export function createCreativeSandboxRunner(openai: OpenAI): CreativeRunner {
   const runSingle = async (payload: CreativePromptPayload): Promise<CreativeSingleResult> => {
@@ -90,41 +98,90 @@ export function createCreativeSandboxRunner(openai: OpenAI): CreativeRunner {
       }),
     );
 
-    const judgeResponse = await openai.responses.parse({
-      model: CREATIVE_MODEL,
-      input: [
-        { role: 'system', content: evaluatorSystemPrompt },
-        {
-          role: 'user',
-          content: buildCreativeEvaluationPrompt(profile, payload, candidates),
-        },
-      ],
-      text: {
-        format: zodTextFormat(CreativeJudgeSchema, 'creative_judge_output'),
-      },
-    });
+    const shuffledIndices = createShuffledIndices(candidates.length);
+    const judgeProfiles = getCreativeJudgeProfiles();
 
-    const parsed = CreativeJudgeSchema.parse((judgeResponse as any).output_parsed);
+    const judgeSettled = await Promise.allSettled(
+      judgeProfiles.map((judge) =>
+        runJudgeEvaluation(openai, judge, profile, payload, candidates, shuffledIndices),
+      ),
+    );
+
+    const judgeResults: JudgeResult[] = judgeSettled
+      .filter((result): result is PromiseFulfilledResult<JudgeResult> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
+    if (judgeResults.length < MIN_SUCCEEDED_JUDGES) {
+      throw new Error('Failed to obtain enough judge evaluations');
+    }
+
+    const aggregation = aggregateJudgeScores(candidates, judgeResults);
+    const winnerCandidate = candidates.find((candidate) => candidate.candidateId === aggregation.winnerId);
+    const runnerCandidate = aggregation.runnerUpId
+      ? candidates.find((candidate) => candidate.candidateId === aggregation.runnerUpId)
+      : undefined;
+
     const totalLatencyMs = Date.now() - contestStart;
-    const mergedAnswer = parsed.mergedAnswer.trim();
+    const judgeSummary = buildJudgeSummary(aggregation.averages, aggregation.winnerId, aggregation.runnerUpId);
+    const winnerText = winnerCandidate?.text ?? '';
+    const runnerText = runnerCandidate?.text;
+
+    const mergeDecision = evaluateMergeDecision(
+      aggregation.averages,
+      aggregation.winnerId,
+      aggregation.runnerUpId,
+      aggregation.scoreGap,
+      {
+        gapThreshold: MERGE_SCORE_GAP_THRESHOLD,
+        minRunnerScore: MERGE_RUNNER_MIN_SCORE,
+      },
+    );
+
+    let finalText = winnerText;
+    let mergeApplied = false;
+    let mergeReason = mergeDecision.reason;
+    let mergeTokenUsage;
+
+    if (mergeDecision.shouldMerge && winnerCandidate && runnerCandidate && runnerText) {
+      const mergeResponse = await openai.responses.create({
+        model: CREATIVE_MODEL,
+        input: [
+          { role: 'system', content: profile.instructions },
+          { role: 'user', content: buildMergePrompt(profile, payload, winnerText, runnerText) },
+        ],
+      });
+      finalText = extractResponseText(mergeResponse);
+      mergeTokenUsage = mapTokenUsage((mergeResponse as any).usage);
+      mergeApplied = true;
+    }
 
     return {
       role: payload.role,
       prompt: payload.userPrompt,
       candidates,
       mergedAnswer: {
-        text: mergedAnswer,
+        text: finalText,
         latencyMs: totalLatencyMs,
         model: CREATIVE_MODEL,
-        tokenUsage: mapTokenUsage((judgeResponse as any).usage),
-        sourceCandidateId: parsed.winnerId,
+        tokenUsage: mergeTokenUsage,
+        sourceCandidateId: aggregation.winnerId,
+        runnerUpCandidateId: aggregation.runnerUpId,
+        mergeApplied,
+        mergeReason,
+        rawWinnerText: winnerText,
+        rawRunnerUpText: runnerText,
       },
       evaluation: {
-        winnerId: parsed.winnerId,
-        runnerUpId: parsed.runnerUpId ?? undefined,
-        judgeSummary: parsed.judgeSummary,
+        winnerId: aggregation.winnerId,
+        runnerUpId: aggregation.runnerUpId,
+        judgeSummary,
+        decisionReason: aggregation.decisionReason,
         totalLatencyMs,
         rubric: profile.evaluationRubric,
+        averages: aggregation.averages,
+        judges: judgeResults,
+        mergeApplied,
+        mergeReason,
       },
     } satisfies CreativeParallelResult;
   };
@@ -133,4 +190,59 @@ export function createCreativeSandboxRunner(openai: OpenAI): CreativeRunner {
     runSingle,
     runParallel,
   } satisfies CreativeRunner;
+}
+
+async function runJudgeEvaluation(
+  openai: OpenAI,
+  judge: CreativeJudgeProfile,
+  roleProfile: CreativeRoleProfile,
+  payload: CreativePromptPayload,
+  candidates: ParallelCandidate[],
+  shuffledIndices: number[],
+): Promise<JudgeResult> {
+  const response = await openai.responses.parse({
+    model: CREATIVE_MODEL,
+    input: [
+      {
+        role: 'system',
+        content: `あなたは ${judge.label} です。評価観点: ${judge.focus}。JSONのみで回答してください。`,
+      },
+      {
+        role: 'user',
+        content: buildJudgePrompt(judge, roleProfile, payload, candidates, shuffledIndices),
+      },
+    ],
+    text: {
+      format: zodTextFormat(JudgePanelSchema, `${judge.id}_scorecard`),
+    },
+  });
+
+  const parsed = JudgePanelSchema.parse((response as any).output_parsed);
+  return {
+    judgeId: judge.id,
+    focus: judge.focus,
+    notes: parsed.notes,
+    candidateScores: parsed.candidateScores,
+  } satisfies JudgeResult;
+}
+
+function buildJudgeSummary(
+  averages: CandidateAverageScore[],
+  winnerId: string,
+  runnerUpId?: string,
+) {
+  const winnerScore = averages.find((item) => item.candidateId === winnerId);
+  const runnerScore = runnerUpId
+    ? averages.find((item) => item.candidateId === runnerUpId)
+    : undefined;
+
+  if (!winnerScore) {
+    return '勝者スコア情報が不足しています。';
+  }
+
+  if (!runnerScore) {
+    return `勝者 ${winnerId} 平均${winnerScore.average.toFixed(2)}点 / Runner-up なし`;
+  }
+
+  return `勝者 ${winnerId} 平均${winnerScore.average.toFixed(2)}点 / Runner ${runnerUpId} 平均${runnerScore.average.toFixed(2)}点`;
 }
