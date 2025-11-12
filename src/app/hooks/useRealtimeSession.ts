@@ -17,7 +17,7 @@ const DEFAULT_REALTIME_MODEL =
 const DEFAULT_TRANSCRIPTION_MODEL =
   process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-transcribe';
 
-const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio', 'text'];
+const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;

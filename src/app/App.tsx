@@ -48,6 +48,13 @@ import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 import { formatUiText, uiText } from "./i18n";
 
+const SERVER_VAD_TEMPLATE = {
+  type: 'server_vad' as const,
+  threshold: 0.9,
+  prefix_padding_ms: 300,
+  silence_duration_ms: 500,
+};
+
 function App() {
   const searchParams = useSearchParams()!;
   const router = useRouter();
@@ -458,16 +465,12 @@ function App() {
   );
 
   const updateSession = (shouldTriggerResponse: boolean = false) => {
-    // Reflect Push-to-Talk UI state by (de)activating server VAD on the
-    // backend. The Realtime SDK supports live session updates via the
-    // `session.update` event.
+    // Reflect Push-to-Talk UI state by toggling server-side VAD via a minimal session.update.
+    // We keep the payload scoped to the audio block so the agent instructions remain intact.
     const serverVadConfig = isPTTActive
       ? null
       : {
-          type: 'server_vad' as const,
-          threshold: 0.9,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
+          ...SERVER_VAD_TEMPLATE,
           create_response: true,
         };
 
