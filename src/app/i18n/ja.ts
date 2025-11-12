@@ -29,6 +29,20 @@ export const jaText: UiText = {
     placeholder: "メッセージを入力...",
     sendIconAlt: "送信",
     unknownItemTypeTemplate: "不明な項目タイプ: {{type}}",
+    expertContest: {
+      title: "並列エキスパート勝負の結果",
+      winnerLabel: "勝者",
+      runnerUpLabel: "次点",
+      totalLatencyLabel: "合計レイテンシー",
+      tieBreakerLabel: "タイブレーク",
+      judgeSummaryLabel: "評価メモ",
+      scoreboardLabel: "上位スコア",
+      expertHeading: "Expert",
+      scoreHeading: "Score",
+      confidenceHeading: "Confidence",
+      latencyHeading: "Latency",
+      baselineLabel: "単体エージェントの回答",
+    },
   },
   toolbar: {
     connectLabel: "接続",
@@ -47,6 +61,8 @@ export const jaText: UiText = {
   },
   events: {
     title: "ログ",
+    expertContestSummary:
+      "勝者={{winnerId}} ({{winnerScore}}点/{{winnerLatency}}ms)｜次点={{runnerUpId}} ({{runnerUpScore}}点)｜合計レイテンシー={{totalLatencyMs}}ms｜単体={{baselinePreview}}",
   },
   guardrail: {
     label: "ガードレール",
@@ -56,5 +72,13 @@ export const jaText: UiText = {
       fail: "警告",
     },
     categoryLabel: "判定カテゴリ",
+  },
+  voiceControl: {
+    unknownScenario: "シナリオ『{{scenarioKey}}』は存在しません。",
+    alreadyInScenario: "すでにシナリオ『{{scenarioKey}}』を利用中です。",
+    switchingScenario: "シナリオ『{{scenarioKey}}』へ切り替えます。",
+    unknownAgent: "エージェント『{{agentName}}』はこのシナリオに存在しません。",
+    alreadyWithAgent: "すでにエージェント『{{agentName}}』と接続しています。",
+    switchingAgent: "エージェント『{{agentName}}』に切り替えます。",
   },
 };

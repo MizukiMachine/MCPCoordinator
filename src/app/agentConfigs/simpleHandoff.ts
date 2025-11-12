@@ -1,14 +1,17 @@
 import {
   RealtimeAgent,
 } from '@openai/agents/realtime';
+import { switchScenarioTool, switchAgentTool } from './voiceControlTools';
+import { japaneseLanguagePreamble } from './languagePolicy';
 
 export const haikuWriterAgent = new RealtimeAgent({
   name: 'haikuWriter',
   voice: 'sage',
   instructions:
-    'Ask the user for a topic, then reply with a haiku about that topic.',
+    `${japaneseLanguagePreamble}
+ユーザーに俳句のテーマを尋ね、そのテーマに合わせた俳句を日本語で返してください。シナリオ変更のリクエストがあれば switchScenario、別の担当を希望されたら switchAgent を呼び出します。`,
   handoffs: [],
-  tools: [],
+  tools: [switchScenarioTool, switchAgentTool],
   handoffDescription: 'Agent that writes haikus',
 });
 
@@ -16,9 +19,10 @@ export const greeterAgent = new RealtimeAgent({
   name: 'greeter',
   voice: 'sage',
   instructions:
-    "Please greet the user and ask them if they'd like a Haiku. If yes, hand off to the 'haiku' agent.",
+    `${japaneseLanguagePreamble}
+最初に丁寧な日本語で挨拶し、俳句を聞きたいかどうかを確認してください。希望があれば haikuWriter へハンドオフし、別のシナリオや担当を求められた場合は switchScenario / switchAgent を使用します。`,
   handoffs: [haikuWriterAgent],
-  tools: [],
+  tools: [switchScenarioTool, switchAgentTool],
   handoffDescription: 'Agent that greets the user',
 });
 

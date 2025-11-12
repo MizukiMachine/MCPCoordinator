@@ -28,6 +28,20 @@ export interface UiText {
     placeholder: string;
     sendIconAlt: string;
     unknownItemTypeTemplate: string;
+    expertContest: {
+      title: string;
+      winnerLabel: string;
+      runnerUpLabel: string;
+      totalLatencyLabel: string;
+      tieBreakerLabel: string;
+      judgeSummaryLabel: string;
+      scoreboardLabel: string;
+      expertHeading: string;
+      scoreHeading: string;
+      confidenceHeading: string;
+      latencyHeading: string;
+      baselineLabel: string;
+    };
   };
   toolbar: {
     connectLabel: string;
@@ -46,6 +60,7 @@ export interface UiText {
   };
   events: {
     title: string;
+    expertContestSummary: string;
   };
   guardrail: {
     label: string;
@@ -55,5 +70,13 @@ export interface UiText {
       fail: string;
     };
     categoryLabel: string;
+  };
+  voiceControl: {
+    unknownScenario: string;
+    alreadyInScenario: string;
+    switchingScenario: string;
+    unknownAgent: string;
+    alreadyWithAgent: string;
+    switchingAgent: string;
   };
 }

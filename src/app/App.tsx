@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
@@ -21,23 +21,39 @@ import { useRealtimeSession } from "./hooks/useRealtimeSession";
 import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
-import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
+import { allAgentSets, agentSetMetadata, defaultAgentSetKey } from "@/app/agentConfigs";
 import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
-import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
+import { techExpertContestScenario } from "@/app/agentConfigs/techExpertContest";
+import { medExpertContestScenario } from "@/app/agentConfigs/medExpertContest";
+import { techContestPreset, medContestPreset, createContestRequestFromPreset } from "@/app/agentConfigs/expertContestPresets";
+import { callExpertContestApi, buildContestSummary, recordContestBreadcrumb, logContestEvent, ensureContestId } from "@/app/agentConfigs/tools/expertContestClient";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
+  techParallelContest: techExpertContestScenario,
+  medParallelContest: medExpertContestScenario,
 };
+
+const companyNameByScenario: Record<string, string> = Object.fromEntries(
+  Object.entries(agentSetMetadata).map(([key, meta]) => [key, meta.companyName]),
+);
+const defaultCompanyName = agentSetMetadata[defaultAgentSetKey]?.companyName ?? 'OpenAI Demo';
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 import { formatUiText, uiText } from "./i18n";
+
+const SERVER_VAD_TEMPLATE = {
+  type: 'server_vad' as const,
+  threshold: 0.9,
+  prefix_padding_ms: 300,
+  silence_duration_ms: 500,
+};
 
 function App() {
   const searchParams = useSearchParams()!;
@@ -61,6 +77,7 @@ function App() {
   // via global codecPatch at module load 
 
   const {
+    transcriptItems,
     addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
@@ -76,6 +93,9 @@ function App() {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+  const lastUserMessageRef = useRef<{ itemId: string; text: string } | null>(null);
+  const lastAssistantComparisonRef = useRef<string | null>(null);
+  const comparisonInFlightRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -112,6 +132,7 @@ function App() {
 
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
+  const pendingVoiceReconnectRef = useRef(false);
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);
@@ -125,6 +146,10 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
+
+  const schedulePostToolAction = useCallback((action: () => void) => {
+    setTimeout(action, 0);
+  }, []);
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
@@ -207,6 +232,18 @@ function App() {
     }
   }, [isPTTActive]);
 
+  useEffect(() => {
+    const latestUser = [...transcriptItems]
+      .filter((item) => item.role === 'user' && item.status === 'DONE')
+      .pop();
+    if (latestUser && latestUser.itemId !== lastUserMessageRef.current?.itemId) {
+      lastUserMessageRef.current = {
+        itemId: latestUser.itemId,
+        text: latestUser.title ?? '',
+      };
+    }
+  }, [transcriptItems]);
+
   const fetchEphemeralKey = async (): Promise<string | null> => {
     logClientEvent({ url: "/session" }, "fetch_session_token_request");
     const tokenResponse = await fetch("/api/session");
@@ -242,7 +279,75 @@ function App() {
     return clientSecret;
   };
 
-  const connectToRealtime = async (source: "auto" | "manual" = "manual") => {
+  const disconnectFromRealtime = () => {
+    disconnect();
+    setIsPTTUserSpeaking(false);
+  };
+
+  const requestScenarioChange = useCallback(async (scenarioKey: string) => {
+    addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
+    if (!allAgentSets[scenarioKey]) {
+      return {
+        success: false,
+        message: formatUiText(uiText.voiceControl.unknownScenario, { scenarioKey }),
+      };
+    }
+    if (scenarioKey === agentSetKey) {
+      return {
+        success: true,
+        message: formatUiText(uiText.voiceControl.alreadyInScenario, { scenarioKey }),
+      };
+    }
+
+    schedulePostToolAction(() => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (scenarioKey === defaultAgentSetKey) {
+        next.delete('agentConfig');
+      } else {
+        next.set('agentConfig', scenarioKey);
+      }
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+
+      setAgentSetKey(scenarioKey);
+      pendingVoiceReconnectRef.current = true;
+      disconnectFromRealtime();
+    });
+
+    return {
+      success: true,
+      message: formatUiText(uiText.voiceControl.switchingScenario, { scenarioKey }),
+    };
+  }, [addTranscriptBreadcrumb, agentSetKey, defaultAgentSetKey, disconnectFromRealtime, pathname, router, schedulePostToolAction, searchParams]);
+
+  const requestAgentChange = useCallback(async (agentName: string) => {
+    addTranscriptBreadcrumb('Voice agent switch request', { agentName });
+    const agents = selectedAgentConfigSet ?? [];
+    if (!agents.some((agent) => agent.name === agentName)) {
+      return {
+        success: false,
+        message: formatUiText(uiText.voiceControl.unknownAgent, { agentName }),
+      };
+    }
+    if (agentName === selectedAgentName) {
+      return {
+        success: true,
+        message: formatUiText(uiText.voiceControl.alreadyWithAgent, { agentName }),
+      };
+    }
+
+    schedulePostToolAction(() => {
+      disconnectFromRealtime();
+      setSelectedAgentName(agentName);
+      pendingVoiceReconnectRef.current = true;
+    });
+    return {
+      success: true,
+      message: formatUiText(uiText.voiceControl.switchingAgent, { agentName }),
+    };
+  }, [addTranscriptBreadcrumb, disconnectFromRealtime, schedulePostToolAction, selectedAgentConfigSet, selectedAgentName]);
+
+  const connectToRealtime = useCallback(async (source: "auto" | "manual" = "manual") => {
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
         console.info(
@@ -265,9 +370,7 @@ function App() {
           reorderedAgents.unshift(agent);
         }
 
-        const companyName = agentSetKey === 'customerServiceRetail'
-          ? customerServiceRetailCompanyName
-          : chatSupervisorCompanyName;
+        const companyName = companyNameByScenario[agentSetKey] ?? defaultCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
         await connect({
@@ -277,6 +380,9 @@ function App() {
           outputGuardrails: [guardrail],
           extraContext: {
             addTranscriptBreadcrumb,
+            requestScenarioChange,
+            requestAgentChange,
+            logClientEvent,
           },
         });
       } catch (err) {
@@ -285,12 +391,18 @@ function App() {
       }
       return;
     }
-  };
+  }, [agentSetKey, connect, createModerationGuardrail, defaultCompanyName, fetchEphemeralKey, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
-  const disconnectFromRealtime = () => {
-    disconnect();
-    setIsPTTUserSpeaking(false);
-  };
+  useEffect(() => {
+    if (
+      pendingVoiceReconnectRef.current &&
+      selectedAgentName &&
+      sessionStatus === 'DISCONNECTED'
+    ) {
+      pendingVoiceReconnectRef.current = false;
+      connectToRealtime('auto');
+    }
+  }, [connectToRealtime, selectedAgentName, sessionStatus]);
 
   const sendSimulatedUserMessage = (text: string) => {
     const id = uuidv4().slice(0, 32);
@@ -308,17 +420,57 @@ function App() {
     sendClientEvent({ type: 'response.create' }, '(simulated user text message)');
   };
 
+  const triggerParallelComparison = useCallback(
+    async (scenarioKey: string, userPrompt: string, baselineAnswer: string) => {
+      if (!userPrompt || !baselineAnswer) return;
+      const preset =
+        scenarioKey === 'techParallelContest' ? techContestPreset : medContestPreset;
+      const sharedContextExtra =
+        scenarioKey === 'techParallelContest'
+          ? ['TDD必須', '音声×MCP前提']
+          : ['ディスクレーマー必須', '緊急度=要確認'];
+
+      const contestId = ensureContestId();
+      const body = createContestRequestFromPreset(preset, {
+        contestId,
+        userPrompt,
+        relaySummary: baselineAnswer.slice(0, 600),
+        sharedContextExtra,
+        metadata: {
+          source: 'auto_compare',
+          scenario: scenarioKey,
+        },
+      });
+
+      body.contestId = contestId;
+
+      try {
+        const contest = await callExpertContestApi(body);
+        const summaryBase = buildContestSummary(contest);
+        const summary = {
+          ...summaryBase,
+          preset: scenarioKey,
+          baselineAnswer,
+        };
+        recordContestBreadcrumb(summary, addTranscriptBreadcrumb);
+        logContestEvent(summary, logClientEvent);
+      } catch (error: any) {
+        addTranscriptBreadcrumb('[parallel_compare_error]', {
+          scenarioKey,
+          message: error?.message ?? 'Failed to run expert contest',
+        });
+      }
+    },
+    [addTranscriptBreadcrumb, logClientEvent],
+  );
+
   const updateSession = (shouldTriggerResponse: boolean = false) => {
-    // Reflect Push-to-Talk UI state by (de)activating server VAD on the
-    // backend. The Realtime SDK supports live session updates via the
-    // `session.update` event.
+    // Reflect Push-to-Talk UI state by toggling server-side VAD via a minimal session.update.
+    // We keep the payload scoped to the audio block so the agent instructions remain intact.
     const serverVadConfig = isPTTActive
       ? null
       : {
-          type: 'server_vad' as const,
-          threshold: 0.9,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
+          ...SERVER_VAD_TEMPLATE,
           create_response: true,
         };
 
@@ -333,9 +485,9 @@ function App() {
       },
     });
 
-    // Send an initial 'hi' message to trigger the agent to greet the user
     if (shouldTriggerResponse) {
-      sendSimulatedUserMessage('hi');
+      // Auto-trigger without sending a synthetic user utterance.
+      sendClientEvent({ type: 'response.create' }, 'initial response trigger');
     }
     return;
   }
@@ -420,6 +572,33 @@ function App() {
     url.searchParams.set("codec", newCodec);
     window.location.replace(url.toString());
   };
+
+  useEffect(() => {
+    if (
+      agentSetKey !== 'techParallelContest' &&
+      agentSetKey !== 'medParallelContest'
+    ) {
+      lastAssistantComparisonRef.current = null;
+      return;
+    }
+    const latestAssistant = [...transcriptItems]
+      .filter((item) => item.role === 'assistant' && item.status === 'DONE')
+      .pop();
+    if (!latestAssistant) return;
+    if (lastAssistantComparisonRef.current === latestAssistant.itemId) return;
+    if (!lastUserMessageRef.current?.text) return;
+    const baselineAnswer = latestAssistant.title ?? '';
+    if (!baselineAnswer.trim()) return;
+    if (comparisonInFlightRef.current) return;
+
+    lastAssistantComparisonRef.current = latestAssistant.itemId;
+    comparisonInFlightRef.current = true;
+    triggerParallelComparison(agentSetKey, lastUserMessageRef.current.text, baselineAnswer)
+      .catch(() => {})
+      .finally(() => {
+        comparisonInFlightRef.current = false;
+      });
+  }, [agentSetKey, transcriptItems, triggerParallelComparison]);
 
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
@@ -534,7 +713,7 @@ function App() {
             >
               {Object.keys(allAgentSets).map((agentKey) => (
                 <option key={agentKey} value={agentKey}>
-                  {agentKey}
+                  {agentSetMetadata[agentKey]?.label ?? agentKey}
                 </option>
               ))}
             </select>

@@ -15,7 +15,7 @@ const DEFAULT_REALTIME_MODEL =
   process.env.NEXT_PUBLIC_REALTIME_MODEL ?? 'gpt-realtime';
 
 const DEFAULT_TRANSCRIPTION_MODEL =
-  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe';
+  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-transcribe';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 
@@ -76,7 +76,11 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         case 'conversation.item.input_audio_transcription.completed':
         case 'input_audio_transcription.completed':
         case 'response.audio_transcript.done':
-        case 'audio_transcript.done': {
+        case 'audio_transcript.done':
+        case 'response.output_audio_transcript.done':
+        case 'output_audio_transcript.done':
+        case 'response.output_text.done':
+        case 'output_text.done': {
           const normalized = normalizeTranscriptEvent({
             ...event,
             transcript: event?.transcript ?? event?.text ?? event?.delta ?? '',
@@ -86,7 +90,11 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         }
         case 'response.audio_transcript.delta':
         case 'transcript_delta':
-        case 'audio_transcript_delta': {
+        case 'audio_transcript_delta':
+        case 'response.output_audio_transcript.delta':
+        case 'output_audio_transcript.delta':
+        case 'response.output_text.delta':
+        case 'output_text.delta': {
           const normalized = normalizeTranscriptEvent({
             ...event,
             delta: event?.delta ?? event?.text ?? event?.transcript ?? '',
