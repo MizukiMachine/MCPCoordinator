@@ -7,6 +7,7 @@ OpenAI Realtime API + Agents SDK デモです。
 - Realtime API と @openai/agents@0.3.0 を使ったマルチエージェントのPoC実装
 - Next.js 15 + React 19 + TypeScript で構築し、UIは日本語化済み
 - 5つのデモシナリオを試せる（Simple / Retail / Chat Supervisor / Tech Parallel / Med Parallel）
+- 2025-11 以降は **BFF(WebSocket) 経由**でRealtime APIと接続し、クライアントはJWT+HTTP/WSのシンプルなAPIで利用可能
 
 ## 大型改修サマリ (2025-11)
 ### 目的
@@ -25,7 +26,7 @@ OpenAI Realtime API + Agents SDK デモです。
 
 ### 実装パス概要
 1. **0. 事前準備**: 環境変数整備、lint/testベースライン記録、1ページ提案書の追加、GCP/RAG運用要件の整理
-2. **1. API化**: SessionManager抽出、Next.js API Route化、zodバリデーションと共通エラーハンドラの導入
+2. **1. API化**: SessionManager抽出、Next.js API Route化、zodバリデーションと共通エラーハンドラの導入（完了 / Cloud Runデプロイ想定）
 3. **2. 画像入力**: `/api/session/{id}/event` に画像・メタデータを追加し、ストレージへのオフロードHookを設計
 4. **3. MCP対応**: ServiceManager配下にMCPプラグインを登録し、シナリオごとのオン/オフ切替を実装
 5. **4. File Search統合**: Google Drive分類/容量設計に沿って同期し、RAGハンドラから File Search を叩く
@@ -39,9 +40,27 @@ OpenAI Realtime API + Agents SDK デモです。
 ## 手順
 1.  `npm install` 
 2.  `.env` に`OPENAI_API_KEY` など必要な環境変数を設定
-3.  `npm run dev`
-4. ブラウザで [http://localhost:3000](http://localhost:3000) 
+3.  BFF用に `BFF_JWT_SECRET`, `BFF_JWT_AUDIENCE`, `BFF_JWT_ISSUER` を設定（開発中は `npm run dev` と同じプロセスでAPIが動作）
+4.  `npm run dev`
+5. ブラウザで [http://localhost:3000](http://localhost:3000) 
 - 右上の「シナリオ」「エージェント」プルダウンで構成を切り替え可能 (`?agentConfig=` クエリにも対応)
+
+### API/BFFを curl で試す
+
+```bash
+# 1. 開発用トークン（15分）を取得
+TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/token | jq -r .token)
+
+# 2. セッション作成
+SESSION=$(curl -s -X POST http://localhost:3000/api/session \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"agentKey":"chatSupervisor"}')
+
+echo $SESSION
+```
+
+WebSocketは `wscat -c "wss://.../api/session/<id>/stream?token=$TOKEN"` で接続でき、`{"type":"text_message","text":"こんにちは"}` を送ればガードレール/履歴イベントが返ってきます。
 
 
 ## 言語・仕様しているモデルの説明

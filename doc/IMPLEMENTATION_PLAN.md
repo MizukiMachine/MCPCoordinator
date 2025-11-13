@@ -26,22 +26,25 @@
 - （GCP/Gemini File Searchの実リソース整備は [セクション3](#3-mcp対応coreデータはローカル実装--追加アプリ拡張) に記載のタスクで実施）
 
 ## 1. API化（BFFレイヤー整備 → 既存UIの依存切り替え）
-- [ ] **API仕様ドラフト**  
+- [x] **API仕様ドラフト**  
   - `/api/session`（開始・初期エージェント指定・認証ヘッダ）  
   - `/api/session/{id}/event`（input_text / input_audio / input_image の共通ペイロード + ファイルメタ）  
-  - `/api/session/{id}/stream`（SSE or WebSocketでイベント配信、心拍・keep-alive設計）  
-  - 成功/エラー/再接続ルールを `docs/api-spec.md` にMarkdownでまとめ、レビューを通す
-- [ ] **サービスレイヤー抽出**  
+  - `/api/session/{id}/stream`（WebSocketでイベント配信。SSEは fallback としてHTTPエンドポイントを継続検討）  
+  - 成功/エラー/再接続ルールを `doc/api-spec.md` にMarkdownでまとめ済み（2025-11-13 rev1）
+  - **2025-11-13 仕様更新メモ**: クライアント→BFF の音声は WebM/Opus、小刻みチャンクをPOST/WS送信。BFF→OpenAI はPCM16 LE（base64）で仲介する。
+- [x] **サービスレイヤー抽出**  
   - `src/app/hooks/useRealtimeSession.ts` のロジックを `services/realtime/sessionManager.ts` に移植  
   - `SessionManager` は `ISessionTransport`/`IAgentSetResolver` などのインターフェイスで構成し、SDKなしでもモックできる状態にする  
   - ロギング/メトリクス/ガードレール呼び出しをフック化
-- [ ] **Next.js API Route追加**  
+- [x] **Next.js API Route追加**  
   - App Router の `app/api/session/route.ts` などでBFFハンドラを実装し、zodでバリデーション、共通エラーラッパを適用  
-  - **プロトタイプなので**簡易APIキー認証のみ（環境変数で1種類）とし、詳細なレートリミット/監査ログは未実装でOK
+  - **2025-11-13 決定**: 認証はJWT (短命トークン) を必須化し、`framework/auth/JwtVerifier` で検証。後段サービスに `AuthContext` を注入する。
+  - `/api/auth/token` を追加し、開発時のJWTを発行可能にした。
 - [ ] **テスト (TDD)**  
   - Vitestで API ハンドラ単位のテスト（成功/入力エラー/認証失敗/セッション未存在/並列アクセス）  
   - SessionManagerのユニットテスト（接続・中断・イベント送出・ガードレールトリップ）  
   - Supertest で軽いAPI統合テストを走らせ、CIで自動化
+  - **進捗**: SessionManagerのユニットテスト（`tests/services/SessionManager.test.ts`）を作成済み。APIルートの自動テストは今後追加する。
 - [ ] **UIの依存切り替え**  
   - `App.tsx` 側に API クライアントHook（`useVoiceApiClient`）を作成し、既存SDK呼び出しを置換  
   - これに伴い WebRTC 直接依存を削除し、ブラウザは音声ストリーム取得とAPI呼び出しだけに専念
