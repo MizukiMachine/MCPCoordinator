@@ -139,7 +139,7 @@ export function createCreativeSandboxRunner(openai: OpenAI): CreativeRunner {
 
     let finalText = winnerText;
     let mergeApplied = false;
-    let mergeReason = mergeDecision.reason;
+    const mergeReason = mergeDecision.reason;
     let mergeTokenUsage;
 
     if (mergeDecision.shouldMerge && winnerCandidate && runnerCandidate && runnerText) {
