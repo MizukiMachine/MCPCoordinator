@@ -1,0 +1,17 @@
+
+> realtime-examples@0.1.0 lint
+> next lint
+
+
+./src/app/App.tsx
+407:9  Warning: 'sendSimulatedUserMessage' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/agentConfigs/medExpertContest/index.ts
+5:10  Warning: 'medContestPreset' is defined but never used.  @typescript-eslint/no-unused-vars
+5:28  Warning: 'MED_DISCLAIMER' is defined but never used.  @typescript-eslint/no-unused-vars
+5:44  Warning: 'EMERGENCY_PROMPT' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/agentConfigs/techExpertContest/index.ts
+5:10  Warning: 'techContestPreset' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules

@@ -1,0 +1,29 @@
+Command: npm run lint
+Timestamp: 2025-11-13T12:34:00+09:00 (JST assumed)
+Exit status: 1
+
+Failure summary:
+- prefer-const error at src/app/lib/creativeSandboxRunner.ts:142
+- unused variable warnings at src/app/App.tsx:407 and agentConfigs (med/tech)
+
+Full ESLint output:
+`next lint` is deprecated and will be removed in Next.js 16.
+For new projects, use create-next-app to choose your preferred linter.
+For existing projects, migrate to the ESLint CLI:
+npx @next/codemod@canary next-lint-to-eslint-cli .
+
+./src/app/App.tsx
+407:9  Warning: 'sendSimulatedUserMessage' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/agentConfigs/medExpertContest/index.ts
+5:10  Warning: 'medContestPreset' is defined but never used.  @typescript-eslint/no-unused-vars
+5:28  Warning: 'MED_DISCLAIMER' is defined but never used.  @typescript-eslint/no-unused-vars
+5:44  Warning: 'EMERGENCY_PROMPT' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/agentConfigs/techExpertContest/index.ts
+5:10  Warning: 'techContestPreset' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/lib/creativeSandboxRunner.ts
+142:9  Error: 'mergeReason' is never reassigned. Use 'const' instead.  prefer-const
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
