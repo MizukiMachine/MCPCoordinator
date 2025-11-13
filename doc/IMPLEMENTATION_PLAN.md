@@ -23,10 +23,7 @@
   - 2025-11-13 PM: lint修正後のグリーン結果を `doc/baseline/2025-11-13-lint-pass.log` に追記し、初期レッドとの差分を追跡できるようにした。
 - [x] `docs/` または `README.md` に今回の大型改修の要旨（API化・画像入力・MCP＋File Search）を1ページの提案書として追記し、チームとの合意を得る  
   - README に「大型改修サマリ (2025-11)」セクションを追加し、目的/非目的/完了条件/実装パスを1ページ構成で記述。
-- [ ] Google Cloud プロジェクトと Gemini File Search API を有効化し、サービスアカウント／APIキーの取得・権限設定（Drive等データソース別スコープ）を完了する  
-  - 2025-11-13: `doc/GCP_FILE_SEARCH_SETUP.md` に有効化手順と `gcloud` コマンド群を整理。**実プロジェクトの作成・API有効化・SA発行は未実施**（`mcpc-coordinator-dev` は例示名）。gcloud CLI 破損のため、再インストール後に本作業を着手するTODO。
-- [ ] Google Drive など RAG対象ストレージの情報分類・アクセス権ルールを確認し、File Search ストア容量（初期1GB単位）とファイルサイズ上限への対応策をまとめる  
-  - 2025-11-13: ルールと運用手順を `doc/rag-playbook.md` に追記（文書ベースでの整理のみ完了）。Driveフォルダ/権限の実設定とFile Search ストア確保は次ステップとして残タスク。
+- （GCP/Gemini File Searchの実リソース整備は [セクション3](#3-mcp対応coreデータはローカル実装--追加アプリ拡張) に記載のタスクで実施）
 
 ## 1. API化（BFFレイヤー整備 → 既存UIの依存切り替え）
 - [ ] **API仕様ドラフト**  
@@ -79,6 +76,11 @@
   - `docs/api-spec.md` に画像送信用curl例・レスポンス例を掲載し、Playground手順も更新
 
 ## 3. MCP対応（Coreデータはローカル実装 + 追加アプリ拡張）
+- [ ] **GCP / Gemini File Search 基盤整備**  
+  - 具体的なプロジェクトIDを決定し、`gcloud` CLI を再インストール → `gcloud init` / `gcloud auth login` で利用可能な状態に戻す  
+  - `doc/GCP_FILE_SEARCH_SETUP.md` の手順に沿って API 有効化、`file-search-admin` サービスアカウント作成、鍵の発行、`logging sinks` 設定を完了する  
+  - Drive 側の対象フォルダとアクセス権を確定し、`doc/rag-playbook.md` で定義した分類ルールを実データへ適用（`rag-editors@` 等グループの権限付与）  
+  - File Search ストアの容量・ラベル命名規約・監査ログ確認手順を `doc/baseline/gcp-setup-<date>.log` として記録し、Feature Flag (`USE_GEMINI_FILE_SEARCH`) のデフォルト値を決定
 - [ ] **ServiceManager基盤**  
   - `framework/mcp/ServiceManager.ts` を作成し、`register(name, factory)` / `get(name)` / `shutdownAll()` を提供  
   - DI対応のため、ServiceManager自体をシングルトン化せず、API層・テストで差し替えできるようにする  
