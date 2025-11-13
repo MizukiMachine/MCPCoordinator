@@ -8,6 +8,30 @@ OpenAI Realtime API + Agents SDK デモです。
 - Next.js 15 + React 19 + TypeScript で構築し、UIは日本語化済み
 - 5つのデモシナリオを試せる（Simple / Retail / Chat Supervisor / Tech Parallel / Med Parallel）
 
+## 大型改修サマリ (2025-11)
+### 目的
+- Realtime機能をBFF(API)化してクライアント依存を分離
+- 画像入力と外部APIブリッジを統一インターフェイスで扱い、今後のMCPプラグイン拡張に備える
+- CoreデータはローカルDB/ベクトルストアで保持しつつ、RAGにはGemini File Search + Drive同期を採用
+
+### 非目的
+- SOC2/ISMAP等の本番セキュリティ監査、WAF、OAuth再設計は本タスクでは未着手
+- 画像ウイルススキャンや高度モデレーションはインターフェイスのみ準備し後続タスクで実装
+
+### 完了条件
+1. `doc/IMPLEMENTATION_PLAN.md` に沿ってBFF/API設計→実装→UI切り替えが完了
+2. 画像入力・外部API・MCP連携がテスト駆動で検証され、CI（lint/test/e2e）がグリーン
+3. `doc/GCP_FILE_SEARCH_SETUP.md`/`doc/rag-playbook.md` の手順に従い、Gemini File Search + Drive同期が有効化され容量/権限管理を満たす
+
+### 実装パス概要
+1. **0. 事前準備**: 環境変数整備、lint/testベースライン記録、1ページ提案書の追加、GCP/RAG運用要件の整理
+2. **1. API化**: SessionManager抽出、Next.js API Route化、zodバリデーションと共通エラーハンドラの導入
+3. **2. 画像入力**: `/api/session/{id}/event` に画像・メタデータを追加し、ストレージへのオフロードHookを設計
+4. **3. MCP対応**: ServiceManager配下にMCPプラグインを登録し、シナリオごとのオン/オフ切替を実装
+5. **4. File Search統合**: Google Drive分類/容量設計に沿って同期し、RAGハンドラから File Search を叩く
+
+詳細は `doc/IMPLEMENTATION_PLAN.md` を参照してください。
+
 ## プロジェクト概要
 - Web クライアントは `src/app` にあり、Transcript／イベントログ／ツールバーを個別コンポーネントとして分離
 - エージェント定義は `src/app/agentConfigs/` 以下にまとまっており、SDK へそのまま渡せる JSON 互換構造
@@ -34,4 +58,3 @@ OpenAI Realtime API + Agents SDK デモです。
 - 単独レーン: 選択ロールのシステムプロンプトで gpt-5-mini を1回実行。Latency/Token情報をカード表示。
 - 並列レーン: **MoA + Multi-Judge + Aggregation** 方式。4候補を完全並列生成 → 3審判が独立に採点 → 平均スコアとタイブレーク（短さ→レイテンシ→生成順）で勝者/Runner-upを決定。勝者テキストを基本採用しつつ、スコア差が小さく Runner-up が高得点だった場合のみ1行追加マージを行います。
 - 審査サマリ・決定理由・平均スコア表・審判別スコアをUIに表示し、`terminallog.log` にもJSONログを残すため、比較実験や振り返りが容易です。
-

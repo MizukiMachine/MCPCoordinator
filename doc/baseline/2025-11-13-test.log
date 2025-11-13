@@ -1,0 +1,11 @@
+Command: npm run test
+Timestamp: 2025-11-13T12:36:00+09:00 (JST assumed)
+Exit status: 0
+
+Vitest summary (v4.0.8):
+- tests/expertContest.test.ts (4)
+- src/app/i18n/__tests__/uiText.test.ts (2)
+- tests/creativeSandbox.test.ts (6)
+- tests/extractMessageText.test.ts (5)
+- src/app/hooks/__tests__/useRealtimeSession.test.tsx (2)
+Total: 5 files, 19 tests, 0 failures, duration 1.43s
