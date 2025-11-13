@@ -16,6 +16,7 @@
   - 画像のウイルススキャン/高度モデレーション等も“後で差し込める”ようインターフェイスだけ意識し、現段階では省略
 
 ## 0. 事前準備（ベースライン確認）
+<<<<<<< HEAD
 - [x] `.env` にRealtime/API用キーが揃っているか確認し、ダミー値はモックに差し替える（秘密情報をコミットしない）  
   - 2025-11-13: 実ファイル内のキーを確認済み。`.env.sample` に OpenAI/BFF/Google 用プレースホルダとコメントを追加し、共有秘密をコミットしない運用を明文化。
 - [x] `npm run lint` / `npm run test` を実行し、現在の失敗ケースを記録（TDD前提の初期“レッド”をissue化）  
@@ -24,6 +25,19 @@
 - [x] `docs/` または `README.md` に今回の大型改修の要旨（API化・画像入力・MCP＋File Search）を1ページの提案書として追記し、チームとの合意を得る  
   - README に「大型改修サマリ (2025-11)」セクションを追加し、目的/非目的/完了条件/実装パスを1ページ構成で記述。
 - （GCP/Gemini File Searchの実リソース整備は [セクション3](#3-mcp対応coreデータはローカル実装--追加アプリ拡張) に記載のタスクで実施）
+=======
+- [ ] `.env` にRealtime/API用キーが揃っているか確認し、ダミー値はモックに差し替える（秘密情報をコミットしない）  
+  - `OPENAI_API_KEY` / `NEXT_PUBLIC_REALTIME_*` / BFF用シークレット / Google API鍵を明示的に確認  
+  - `.env.sample` も最新値へ追随させ、チームメンバーが迷わないようコメントを追加
+- [ ] `npm run lint` / `npm run test` を実行し、現在の失敗ケースを記録（TDD前提の初期“レッド”をissue化）  
+  - 既存失敗がある場合はログを保存し、後続タスクで比較できるようにする
+- [ ] `docs/` または `README.md` に今回の大型改修の要旨（API化・画像入力・MCP＋File Search）を1ページの提案書として追記し、チームとの合意を得る  
+  - 決裁者が増えても方向性がぶれないよう、“目的/非目的/完了条件”を明文化
+- [ ] Google Cloud プロジェクトと Gemini File Search API を有効化し、サービスアカウント／APIキーの取得・権限設定（Drive等データソース別スコープ）を完了する  
+  - `gcloud` CLIで`file-search-admin`ロールを付与し、IAM監査ログを有効化
+- [ ] Google Drive など RAG対象ストレージの情報分類・アクセス権ルールを確認し、File Search ストア容量（初期1GB単位）とファイルサイズ上限への対応策をまとめる  
+  - 1ファイル100MB上限を超える資料は分割手順を`docs/rag-playbook.md`に記載
+>>>>>>> cd8850f (feat: doc)
 
 ## 1. API化（BFFレイヤー整備 → 既存UIの依存切り替え）
 - [ ] **API仕様ドラフト**  
@@ -76,11 +90,14 @@
   - `docs/api-spec.md` に画像送信用curl例・レスポンス例を掲載し、Playground手順も更新
 
 ## 3. MCP対応（Coreデータはローカル実装 + 追加アプリ拡張）
+<<<<<<< HEAD
 - [ ] **GCP / Gemini File Search 基盤整備**  
   - 具体的なプロジェクトIDを決定し、`gcloud` CLI を再インストール → `gcloud init` / `gcloud auth login` で利用可能な状態に戻す  
   - `doc/GCP_FILE_SEARCH_SETUP.md` の手順に沿って API 有効化、`file-search-admin` サービスアカウント作成、鍵の発行、`logging sinks` 設定を完了する  
   - Drive 側の対象フォルダとアクセス権を確定し、`doc/rag-playbook.md` で定義した分類ルールを実データへ適用（`rag-editors@` 等グループの権限付与）  
   - File Search ストアの容量・ラベル命名規約・監査ログ確認手順を `doc/baseline/gcp-setup-<date>.log` として記録し、Feature Flag (`USE_GEMINI_FILE_SEARCH`) のデフォルト値を決定
+=======
+>>>>>>> cd8850f (feat: doc)
 - [ ] **ServiceManager基盤**  
   - `framework/mcp/ServiceManager.ts` を作成し、`register(name, factory)` / `get(name)` / `shutdownAll()` を提供  
   - DI対応のため、ServiceManager自体をシングルトン化せず、API層・テストで差し替えできるようにする  
