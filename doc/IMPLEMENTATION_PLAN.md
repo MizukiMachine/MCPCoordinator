@@ -20,12 +20,13 @@
   - 2025-11-13: 実ファイル内のキーを確認済み。`.env.sample` に OpenAI/BFF/Google 用プレースホルダとコメントを追加し、共有秘密をコミットしない運用を明文化。
 - [x] `npm run lint` / `npm run test` を実行し、現在の失敗ケースを記録（TDD前提の初期“レッド”をissue化）  
   - 2025-11-13: lint は `src/app/lib/creativeSandboxRunner.ts:142 prefer-const` で失敗、警告も記録。テストは全件パス。結果ログは `doc/baseline/2025-11-13-*.log` に保存。
+  - 2025-11-13 PM: lint修正後のグリーン結果を `doc/baseline/2025-11-13-lint-pass.log` に追記し、初期レッドとの差分を追跡できるようにした。
 - [x] `docs/` または `README.md` に今回の大型改修の要旨（API化・画像入力・MCP＋File Search）を1ページの提案書として追記し、チームとの合意を得る  
   - README に「大型改修サマリ (2025-11)」セクションを追加し、目的/非目的/完了条件/実装パスを1ページ構成で記述。
-- [x] Google Cloud プロジェクトと Gemini File Search API を有効化し、サービスアカウント／APIキーの取得・権限設定（Drive等データソース別スコープ）を完了する  
-  - `doc/GCP_FILE_SEARCH_SETUP.md` に有効化手順と `gcloud` コマンド群を整理。現在リポジトリ環境の gcloud は依存欠損で起動不可なため再インストールが必要（詳細を同ドキュメントに記録）。
-- [x] Google Drive など RAG対象ストレージの情報分類・アクセス権ルールを確認し、File Search ストア容量（初期1GB単位）とファイルサイズ上限への対応策をまとめる  
-  - ルールと運用手順を `doc/rag-playbook.md` に追記。100MB超ファイルの分割手順とグループベースのアクセス制御を明文化。
+- [ ] Google Cloud プロジェクトと Gemini File Search API を有効化し、サービスアカウント／APIキーの取得・権限設定（Drive等データソース別スコープ）を完了する  
+  - 2025-11-13: `doc/GCP_FILE_SEARCH_SETUP.md` に有効化手順と `gcloud` コマンド群を整理。**実プロジェクトの作成・API有効化・SA発行は未実施**（`mcpc-coordinator-dev` は例示名）。gcloud CLI 破損のため、再インストール後に本作業を着手するTODO。
+- [ ] Google Drive など RAG対象ストレージの情報分類・アクセス権ルールを確認し、File Search ストア容量（初期1GB単位）とファイルサイズ上限への対応策をまとめる  
+  - 2025-11-13: ルールと運用手順を `doc/rag-playbook.md` に追記（文書ベースでの整理のみ完了）。Driveフォルダ/権限の実設定とFile Search ストア確保は次ステップとして残タスク。
 
 ## 1. API化（BFFレイヤー整備 → 既存UIの依存切り替え）
 - [ ] **API仕様ドラフト**  
