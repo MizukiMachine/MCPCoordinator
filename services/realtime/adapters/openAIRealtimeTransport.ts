@@ -10,7 +10,7 @@ import type {
   SessionTransportRequest,
 } from '../types';
 
-interface OpenAIRealtimeTransportOptions {
+export interface OpenAIRealtimeTransportOptions {
   model?: string;
   transcriptionModel?: string;
   defaultOutputModalities?: Array<'audio' | 'text'>;

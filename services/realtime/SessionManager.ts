@@ -7,6 +7,7 @@ import {
   SessionEventHandler,
   ResolvedAgentSet,
   SessionTransportRequest,
+  ISessionManager,
 } from './types';
 
 const FORWARDED_EVENTS = [
@@ -20,7 +21,9 @@ const FORWARDED_EVENTS = [
   'transport_event',
 ] as const;
 
-export class SessionManager<TAgentHandle = unknown> {
+export class SessionManager<TAgentHandle = unknown>
+  implements ISessionManager<TAgentHandle>
+{
   private status: SessionLifecycleStatus = 'DISCONNECTED';
   private handle: ISessionHandle | null = null;
   private hooks: SessionManagerHooks;

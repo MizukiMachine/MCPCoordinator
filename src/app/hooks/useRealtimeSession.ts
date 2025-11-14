@@ -9,9 +9,8 @@ import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
 import { allAgentSets } from '@/app/agentConfigs';
-import { SessionManager } from '../../../services/realtime/SessionManager';
-import { OpenAIRealtimeTransport } from '../../../services/realtime/adapters/openAIRealtimeTransport';
-import { OpenAIAgentSetResolver } from '../../../services/realtime/adapters/openAIAgentSetResolver';
+import type { ISessionManager, SessionManagerHooks } from '../../../services/realtime/types';
+import { createOpenAISessionManager } from '../../../services/realtime/adapters/createOpenAISessionManager';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 
@@ -30,14 +29,15 @@ export interface ConnectOptions {
 }
 
 export interface RealtimeSessionHookOverrides {
-  createSessionManager?: () => SessionManager<RealtimeAgent>;
+  createSessionManager?: () => ISessionManager<RealtimeAgent>;
+  initialSessionHooks?: SessionManagerHooks;
 }
 
 export function useRealtimeSession(
   callbacks: RealtimeSessionCallbacks = {},
   overrides: RealtimeSessionHookOverrides = {},
 ) {
-  const sessionManagerRef = useRef<SessionManager<RealtimeAgent> | null>(null);
+  const sessionManagerRef = useRef<ISessionManager<RealtimeAgent> | null>(null);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
   const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
   const { logClientEvent, logServerEvent } = useEvent();
@@ -56,12 +56,12 @@ export function useRealtimeSession(
     const createManager =
       overrides.createSessionManager ??
       (() =>
-        new SessionManager<RealtimeAgent>({
-          agentResolver: new OpenAIAgentSetResolver(allAgentSets),
-          transportFactory: () =>
-            new OpenAIRealtimeTransport({
-              defaultOutputModalities: OUTPUT_MODALITIES,
-            }),
+        createOpenAISessionManager({
+          scenarioMap: allAgentSets,
+          hooks: overrides.initialSessionHooks,
+          transport: {
+            defaultOutputModalities: OUTPUT_MODALITIES,
+          },
         }));
     sessionManagerRef.current = createManager();
   }

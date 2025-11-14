@@ -37,6 +37,21 @@ export interface SessionManagerHooks {
   guardrail?: GuardrailHooks;
 }
 
+export interface ISessionManager<TAgentHandle = unknown> {
+  getStatus(): SessionLifecycleStatus;
+  updateHooks(next: SessionManagerHooks): void;
+  connect(options: SessionConnectOptions<TAgentHandle>): Promise<void>;
+  disconnect(): void;
+  sendUserText(text: string): void;
+  sendEvent(event: Record<string, any>): void;
+  interrupt(): void;
+  mute(muted: boolean): void;
+  pushToTalkStart(): void;
+  pushToTalkStop(): void;
+  on(event: string, handler: SessionEventHandler): void;
+  off(event: string, handler: SessionEventHandler): void;
+}
+
 export interface SessionManagerOptions<TAgentHandle = unknown> {
   agentResolver: IAgentSetResolver<TAgentHandle>;
   transportFactory: () => ISessionTransport<TAgentHandle>;
