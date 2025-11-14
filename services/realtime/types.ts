@@ -29,12 +29,37 @@ export interface GuardrailHooks {
   onGuardrailTripped?: (payload: any) => void | Promise<void>;
 }
 
+export type SessionEventName =
+  | 'error'
+  | 'agent_handoff'
+  | 'agent_tool_start'
+  | 'agent_tool_end'
+  | 'history_updated'
+  | 'history_added'
+  | 'guardrail_tripped'
+  | 'transport_event';
+
 export interface SessionManagerHooks {
   logger?: SessionLogger;
   metrics?: SessionMetricRecorder;
   onStatusChange?: (status: SessionLifecycleStatus) => void;
   onServerEvent?: (eventName: string, payload: any) => void;
   guardrail?: GuardrailHooks;
+}
+
+export interface ISessionManager<TAgentHandle = unknown> {
+  getStatus(): SessionLifecycleStatus;
+  updateHooks(next: SessionManagerHooks): void;
+  connect(options: SessionConnectOptions<TAgentHandle>): Promise<void>;
+  disconnect(): void;
+  sendUserText(text: string): void;
+  sendEvent(event: Record<string, any>): void;
+  interrupt(): void;
+  mute(muted: boolean): void;
+  pushToTalkStart(): void;
+  pushToTalkStop(): void;
+  on(event: string, handler: SessionEventHandler): void;
+  off(event: string, handler: SessionEventHandler): void;
 }
 
 export interface SessionManagerOptions<TAgentHandle = unknown> {
@@ -58,7 +83,7 @@ export interface SessionConnectOptions<TAgentHandle = unknown> {
 export interface TransportOverrides {
   changePeerConnection?: (
     pc: RTCPeerConnection,
-  ) => Promise<RTCPeerConnection> | RTCPeerConnection;
+  ) => Promise<RTCPeerConnection> | RTCPeerConnection | void;
 }
 
 export interface SessionTransportRequest<TAgentHandle = unknown> {
@@ -69,12 +94,14 @@ export interface SessionTransportRequest<TAgentHandle = unknown> {
   outputGuardrails?: any[];
   outputModalities?: Array<'text' | 'audio'>;
   transportOverrides?: TransportOverrides;
+  signal?: AbortSignal;
 }
 
 export interface ISessionTransport<TAgentHandle = unknown> {
   createSession(
     request: SessionTransportRequest<TAgentHandle>,
   ): Promise<ISessionHandle>;
+  dispose?(): void;
 }
 
 export interface ISessionHandle {

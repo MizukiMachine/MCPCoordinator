@@ -9,11 +9,52 @@ import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
 import { allAgentSets } from '@/app/agentConfigs';
-import { SessionManager } from '../../../services/realtime/SessionManager';
-import { OpenAIRealtimeTransport } from '../../../services/realtime/adapters/openAIRealtimeTransport';
-import { OpenAIAgentSetResolver } from '../../../services/realtime/adapters/openAIAgentSetResolver';
+import type { ISessionManager, SessionManagerHooks } from '../../../services/realtime/types';
+import { createOpenAISessionManager } from '../../../services/realtime/adapters/createOpenAISessionManager';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
+const TRANSCRIPTION_COMPLETED_EVENTS = new Set([
+  'conversation.item.input_audio_transcription.completed',
+  'input_audio_transcription.completed',
+  'response.audio_transcript.done',
+  'audio_transcript.done',
+  'response.output_audio_transcript.done',
+  'output_audio_transcript.done',
+  'response.output_text.done',
+  'output_text.done',
+]);
+const TRANSCRIPTION_DELTA_EVENTS = new Set([
+  'response.audio_transcript.delta',
+  'transcript_delta',
+  'audio_transcript_delta',
+  'response.output_audio_transcript.delta',
+  'output_audio_transcript.delta',
+  'response.output_text.delta',
+  'output_text.delta',
+]);
+
+function addFallbackItemId(event: any) {
+  if (!event || typeof event !== 'object') return event;
+  const fallbackId =
+    event.item_id ??
+    event.itemId ??
+    event.item?.id ??
+    event.response_id ??
+    event.responseId ??
+    event.id ??
+    null;
+  return fallbackId && event.item_id !== fallbackId
+    ? {
+        ...event,
+        item_id: fallbackId,
+      }
+    : event;
+}
+
+function transcriptTextFromEvent(event: any, field: 'transcript' | 'delta') {
+  const value = event?.[field] ?? event?.text ?? event?.delta ?? '';
+  return typeof value === 'string' ? value : '';
+}
 
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
@@ -30,14 +71,15 @@ export interface ConnectOptions {
 }
 
 export interface RealtimeSessionHookOverrides {
-  createSessionManager?: () => SessionManager<RealtimeAgent>;
+  createSessionManager?: () => ISessionManager<RealtimeAgent>;
+  initialSessionHooks?: SessionManagerHooks;
 }
 
 export function useRealtimeSession(
   callbacks: RealtimeSessionCallbacks = {},
   overrides: RealtimeSessionHookOverrides = {},
 ) {
-  const sessionManagerRef = useRef<SessionManager<RealtimeAgent> | null>(null);
+  const sessionManagerRef = useRef<ISessionManager<RealtimeAgent> | null>(null);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
   const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
   const { logClientEvent, logServerEvent } = useEvent();
@@ -56,68 +98,33 @@ export function useRealtimeSession(
     const createManager =
       overrides.createSessionManager ??
       (() =>
-        new SessionManager<RealtimeAgent>({
-          agentResolver: new OpenAIAgentSetResolver(allAgentSets),
-          transportFactory: () =>
-            new OpenAIRealtimeTransport({
-              defaultOutputModalities: OUTPUT_MODALITIES,
-            }),
+        createOpenAISessionManager({
+          scenarioMap: allAgentSets,
+          hooks: overrides.initialSessionHooks,
+          transport: {
+            defaultOutputModalities: OUTPUT_MODALITIES,
+          },
         }));
     sessionManagerRef.current = createManager();
   }
 
-  const normalizeTranscriptEvent = (event: any) => {
-    if (!event || typeof event !== 'object') return event;
-    const fallbackId =
-      event.item_id ??
-      event.itemId ??
-      event.item?.id ??
-      event.response_id ??
-      event.responseId ??
-      event.id ??
-      null;
-
-    return {
-      ...event,
-      item_id: fallbackId,
-    };
-  };
-
   const handleTransportEvent = useCallback(
     (event: any) => {
       const eventType = event?.type;
-      switch (eventType) {
-        case 'conversation.item.input_audio_transcription.completed':
-        case 'input_audio_transcription.completed':
-        case 'response.audio_transcript.done':
-        case 'audio_transcript.done':
-        case 'response.output_audio_transcript.done':
-        case 'output_audio_transcript.done':
-        case 'response.output_text.done':
-        case 'output_text.done': {
-          const normalized = normalizeTranscriptEvent({
-            ...event,
-            transcript: event?.transcript ?? event?.text ?? event?.delta ?? '',
-          });
-          historyHandlers.handleTranscriptionCompleted(normalized);
-          break;
-        }
-        case 'response.audio_transcript.delta':
-        case 'transcript_delta':
-        case 'audio_transcript_delta':
-        case 'response.output_audio_transcript.delta':
-        case 'output_audio_transcript.delta':
-        case 'response.output_text.delta':
-        case 'output_text.delta': {
-          const normalized = normalizeTranscriptEvent({
-            ...event,
-            delta: event?.delta ?? event?.text ?? event?.transcript ?? '',
-          });
-          historyHandlers.handleTranscriptionDelta(normalized);
-          break;
-        }
-        default:
-          break;
+      if (TRANSCRIPTION_COMPLETED_EVENTS.has(eventType)) {
+        const normalized = addFallbackItemId({
+          ...event,
+          transcript: transcriptTextFromEvent(event, 'transcript'),
+        });
+        historyHandlers.handleTranscriptionCompleted(normalized);
+        return;
+      }
+      if (TRANSCRIPTION_DELTA_EVENTS.has(eventType)) {
+        const normalized = addFallbackItemId({
+          ...event,
+          delta: transcriptTextFromEvent(event, 'delta'),
+        });
+        historyHandlers.handleTranscriptionDelta(normalized);
       }
     },
     [historyHandlers],
@@ -266,6 +273,10 @@ export function useRealtimeSession(
     detachSessionListeners();
   }, [detachSessionListeners]);
 
+  /**
+   * Throws when the underlying SessionManager is not connected.
+   * Consumers should wrap calls in try/catch if they want to handle this state.
+   */
   const assertConnected = () => {
     const manager = sessionManagerRef.current;
     if (!manager || manager.getStatus() === 'DISCONNECTED') {

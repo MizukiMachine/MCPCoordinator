@@ -7,9 +7,12 @@ import {
   SessionEventHandler,
   ResolvedAgentSet,
   SessionTransportRequest,
+  SessionEventName,
+  ISessionTransport,
+  ISessionManager,
 } from './types';
 
-const FORWARDED_EVENTS = [
+const FORWARDED_EVENTS: SessionEventName[] = [
   'error',
   'agent_handoff',
   'agent_tool_start',
@@ -18,16 +21,20 @@ const FORWARDED_EVENTS = [
   'history_added',
   'guardrail_tripped',
   'transport_event',
-] as const;
+];
 
-export class SessionManager<TAgentHandle = unknown> {
+export class SessionManager<TAgentHandle = unknown>
+  implements ISessionManager<TAgentHandle>
+{
   private status: SessionLifecycleStatus = 'DISCONNECTED';
   private handle: ISessionHandle | null = null;
   private hooks: SessionManagerHooks;
-  private listeners = new Map<string, Set<SessionEventHandler>>();
-  private boundHandlers = new Map<string, SessionEventHandler>();
+  private listeners = new Map<SessionEventName, Set<SessionEventHandler>>();
+  private boundHandlers = new Map<SessionEventName, SessionEventHandler>();
   private pendingHandlePromise: Promise<ISessionHandle> | null = null;
   private cancelRequested = false;
+  private pendingConnectAbort: AbortController | null = null;
+  private activeTransport: ISessionTransport<TAgentHandle> | null = null;
 
   constructor(
     private readonly options: SessionManagerOptions<TAgentHandle>,
@@ -59,8 +66,8 @@ export class SessionManager<TAgentHandle = unknown> {
   }
 
   async connect(options: SessionConnectOptions<TAgentHandle>): Promise<void> {
-    if (this.status !== 'DISCONNECTED' || this.pendingHandlePromise) {
-      const message = `connect() called while status=${this.status}`;
+    if (this.status === 'CONNECTED') {
+      const message = 'connect() called while already connected';
       this.hooks.logger?.warn?.(message);
       this.hooks.metrics?.increment?.('session_connect_conflict_total', 1, {
         status: this.status,
@@ -68,8 +75,13 @@ export class SessionManager<TAgentHandle = unknown> {
       throw new Error(message);
     }
 
+    if (this.pendingHandlePromise) {
+      await this.abortPendingConnect('connect_reentry');
+    }
+
     this.cancelRequested = false;
     this.setStatus('CONNECTING');
+    this.pendingConnectAbort = this.createAbortController();
 
     let agentSet: ResolvedAgentSet<TAgentHandle>;
     try {
@@ -95,7 +107,11 @@ export class SessionManager<TAgentHandle = unknown> {
     };
 
     const transport = this.options.transportFactory();
-    const handlePromise = transport.createSession(transportRequest);
+    this.activeTransport = transport;
+    const handlePromise = transport.createSession({
+      ...transportRequest,
+      signal: this.pendingConnectAbort?.signal,
+    });
     this.pendingHandlePromise = handlePromise;
 
     try {
@@ -135,6 +151,10 @@ export class SessionManager<TAgentHandle = unknown> {
       });
       this.hooks.metrics?.increment?.('session_connect_failure_total', 1);
       throw error;
+    } finally {
+      this.pendingConnectAbort = null;
+      this.activeTransport?.dispose?.();
+      this.activeTransport = null;
     }
   }
 
@@ -147,13 +167,14 @@ export class SessionManager<TAgentHandle = unknown> {
     }
 
     if (isPendingConnect) {
-      this.cancelRequested = true;
+      this.requestPendingConnectAbort('disconnect');
       this.hooks.logger?.info?.('Disconnect requested while connecting.');
     }
 
     if (hadHandle) {
-      this.handle!.disconnect();
-      this.teardownHandle();
+      const activeHandle = this.handle;
+      activeHandle?.disconnect();
+      this.teardownHandle(activeHandle);
       this.handle = null;
       this.cancelRequested = false;
     }
@@ -191,14 +212,14 @@ export class SessionManager<TAgentHandle = unknown> {
     this.handle?.pushToTalkStop();
   }
 
-  on(event: string, handler: SessionEventHandler) {
+  on(event: SessionEventName, handler: SessionEventHandler) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)!.add(handler);
   }
 
-  off(event: string, handler: SessionEventHandler) {
+  off(event: SessionEventName, handler: SessionEventHandler) {
     this.listeners.get(event)?.delete(handler);
   }
 
@@ -220,8 +241,17 @@ export class SessionManager<TAgentHandle = unknown> {
     });
   }
 
-  private emit(event: string, payload: any) {
-    this.listeners.get(event)?.forEach((handler) => handler(payload));
+  private emit(event: SessionEventName, payload: any) {
+    this.listeners.get(event)?.forEach((handler) => {
+      try {
+        handler(payload);
+      } catch (error) {
+        this.hooks.logger?.error?.('Session listener threw error', {
+          event,
+          error,
+        });
+      }
+    });
   }
 
   private setStatus(next: SessionLifecycleStatus) {
@@ -231,7 +261,6 @@ export class SessionManager<TAgentHandle = unknown> {
   }
 
   private bindHandle(handle: ISessionHandle) {
-    this.teardownHandle();
     FORWARDED_EVENTS.forEach((event) => {
       const listener = (payload: any) => {
         if (event === 'guardrail_tripped') {
@@ -252,16 +281,50 @@ export class SessionManager<TAgentHandle = unknown> {
     });
   }
 
-  private teardownHandle() {
-    if (!this.handle) return;
+  private teardownHandle(handle: ISessionHandle | null = this.handle) {
+    if (!handle) return;
     this.boundHandlers.forEach((handler, event) => {
-      this.handle!.off(event, handler);
+      handle.off(event, handler);
     });
     this.boundHandlers.clear();
   }
 
+  private requestPendingConnectAbort(reason: string) {
+    this.cancelRequested = true;
+    if (!this.pendingHandlePromise) return;
+    if (this.pendingConnectAbort && !this.pendingConnectAbort.signal.aborted) {
+      this.pendingConnectAbort.abort();
+    }
+    this.hooks.logger?.info?.('Cancelling pending connection', { reason });
+  }
+
+  private async abortPendingConnect(reason: string) {
+    if (!this.pendingHandlePromise) return;
+    this.requestPendingConnectAbort(reason);
+    try {
+      await this.pendingHandlePromise;
+    } catch (error) {
+      this.hooks.logger?.debug?.('Pending connection rejected', {
+        error,
+        reason,
+      });
+    } finally {
+      this.pendingHandlePromise = null;
+    }
+    this.pendingConnectAbort = null;
+    this.setStatus('DISCONNECTED');
+  }
+
   private attachHandle(handle: ISessionHandle) {
+    this.teardownHandle(this.handle);
     this.handle = handle;
     this.bindHandle(handle);
+  }
+
+  private createAbortController(): AbortController | null {
+    if (typeof AbortController === 'undefined') {
+      return null;
+    }
+    return new AbortController();
   }
 }

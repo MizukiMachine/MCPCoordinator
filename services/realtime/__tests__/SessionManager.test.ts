@@ -114,6 +114,15 @@ describe('SessionManager', () => {
     expect(hooks.onStatusChange).toHaveBeenCalledWith('CONNECTED');
   });
 
+  it('supplies an AbortSignal to transports for cancellation support', async () => {
+    const manager = createManager();
+    await manager.connect(connectOptions);
+
+    const lastRequest = (handle as any).request;
+    expect(lastRequest.signal).toBeDefined();
+    expect(typeof lastRequest.signal?.addEventListener).toBe('function');
+  });
+
   it('forwards guardrail events to hooks and listeners', async () => {
     const manager = createManager();
     const guardrailListener = vi.fn();
@@ -152,20 +161,23 @@ describe('SessionManager', () => {
     expect(guardrailListener).not.toHaveBeenCalled();
   });
 
-  it('throws when connect is called while already connecting', async () => {
+  it('cancels a pending connect when connect is re-invoked', async () => {
     const manager = createManager();
-    const deferred = createDeferred<ISessionHandle>();
-    transport.createSession.mockReturnValueOnce(deferred.promise);
+    const firstDeferred = createDeferred<ISessionHandle>();
+    transport.createSession.mockReturnValueOnce(firstDeferred.promise);
 
     const firstConnect = manager.connect(connectOptions);
+    await Promise.resolve();
 
-    await expect(manager.connect(connectOptions)).rejects.toThrow(
-      /status=CONNECTING/,
-    );
+    transport.createSession.mockReturnValueOnce(Promise.resolve(handle));
+    const secondConnect = manager.connect(connectOptions);
 
-    deferred.resolve(handle);
+    firstDeferred.resolve(handle);
     await firstConnect;
-    manager.disconnect();
+
+    await secondConnect;
+    expect(transport.createSession).toHaveBeenCalledTimes(2);
+    expect(manager.getStatus()).toBe('CONNECTED');
   });
 
   it('allows disconnect while connecting and closes the handle once ready', async () => {
@@ -184,6 +196,24 @@ describe('SessionManager', () => {
 
     expect(handle.disconnect).toHaveBeenCalled();
     expect(manager.getStatus()).toBe('DISCONNECTED');
+  });
+
+  it('logs listener errors instead of throwing', async () => {
+    const manager = createManager();
+    const listenerError = new Error('listener failed');
+    const faultyListener = vi.fn(() => {
+      throw listenerError;
+    });
+    manager.on('history_updated', faultyListener);
+
+    await manager.connect(connectOptions);
+    handle.emit('history_updated', { id: '1' });
+
+    expect(faultyListener).toHaveBeenCalled();
+    expect(hooks.logger?.error).toHaveBeenCalledWith(
+      'Session listener threw error',
+      expect.objectContaining({ event: 'history_updated', error: listenerError }),
+    );
   });
 });
 

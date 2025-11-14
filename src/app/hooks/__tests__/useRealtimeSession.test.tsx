@@ -1,19 +1,28 @@
 /// <reference types="vitest" />
 import { renderHook, act } from '@testing-library/react';
 import { EventEmitter } from 'events';
+import type {
+  ISessionManager,
+  SessionLifecycleStatus,
+  SessionManagerHooks,
+  SessionEventName,
+} from '../../../../services/realtime/types';
 
 const noop = () => {};
 
 let useRealtimeSession: typeof import('../useRealtimeSession').useRealtimeSession;
 
-class FakeSessionManager extends EventEmitter {
+class FakeSessionManager
+  extends EventEmitter
+  implements ISessionManager<unknown>
+{
   public failFirstConnect = false;
   public connectSpy = vi.fn();
   public disconnectSpy = vi.fn();
-  public status: 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' = 'DISCONNECTED';
-  public hooks: any = {};
+  public status: SessionLifecycleStatus = 'DISCONNECTED';
+  public hooks: SessionManagerHooks = {};
 
-  updateHooks(nextHooks: any) {
+  updateHooks(nextHooks: SessionManagerHooks) {
     this.hooks = nextHooks;
   }
 
@@ -48,12 +57,12 @@ class FakeSessionManager extends EventEmitter {
   pushToTalkStart = vi.fn();
   pushToTalkStop = vi.fn();
 
-  override on(event: string, handler: (...args: any[]) => void): this {
-    return super.on(event, handler);
+  on(event: SessionEventName, handler: (...args: any[]) => void): void {
+    super.on(event, handler);
   }
 
-  override off(event: string, handler: (...args: any[]) => void): this {
-    return super.off(event, handler);
+  off(event: SessionEventName, handler: (...args: any[]) => void): void {
+    super.off(event, handler);
   }
 }
 
