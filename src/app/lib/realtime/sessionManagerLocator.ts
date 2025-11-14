@@ -77,7 +77,7 @@ const defaultProviders: ProviderMap = {
   test: () => new NoopSessionManager(),
 };
 
-let defaultServiceManager: ServiceManager | null = null;
+const REGISTRY_KEY = Symbol.for('mcpc.realtime.defaultServiceManagerRegistry');
 
 const defaultLogger: ServiceManagerLogger = {
   error: (message, context) => {
@@ -91,6 +91,33 @@ const defaultLogger: ServiceManagerLogger = {
     }
   },
 };
+
+type ServiceManagerRegistry = Map<string, ServiceManager>;
+
+function getServiceManagerRegistry(): ServiceManagerRegistry {
+  const globalScope = globalThis as Record<symbol | string, unknown>;
+  const existing = globalScope[REGISTRY_KEY] as ServiceManagerRegistry | undefined;
+  if (existing) {
+    return existing;
+  }
+
+  const registry: ServiceManagerRegistry = new Map();
+  globalScope[REGISTRY_KEY] = registry;
+  return registry;
+}
+
+async function teardownServiceManagerRegistry(): Promise<void> {
+  const registry = getServiceManagerRegistry();
+  const managers = Array.from(registry.values());
+  await Promise.all(
+    managers.map((manager) =>
+      manager.shutdownAll().catch((error) => {
+        defaultLogger.warn?.('Failed to shutdown default ServiceManager', { error });
+      }),
+    ),
+  );
+  registry.clear();
+}
 
 export class ServiceConfigurationError extends Error {
   constructor(message: string) {
@@ -111,12 +138,7 @@ export function setSessionManagerProvider(
 }
 
 export async function resetRealtimeServiceRegistry(): Promise<void> {
-  if (defaultServiceManager) {
-    await defaultServiceManager.shutdownAll().catch((error) => {
-      defaultLogger.warn?.('Failed to shutdown default ServiceManager', { error });
-    });
-    defaultServiceManager = null;
-  }
+  await teardownServiceManagerRegistry();
 
   Object.keys(providerOverrides).forEach((key) => {
     delete providerOverrides[key as RuntimeEnvironment];
@@ -129,7 +151,7 @@ export function getSessionManager(
   const logger = options.logger ?? defaultLogger;
   const environment = options.environment ?? detectRuntimeEnvironment();
   const serviceManager =
-    options.serviceManager ?? getDefaultServiceManager(options.logger);
+    options.serviceManager ?? getDefaultServiceManager(environment, logger);
   const token = sessionTokens[environment];
 
   if (!serviceManager.has(token)) {
@@ -170,11 +192,20 @@ function resolveProvider(
   );
 }
 
-function getDefaultServiceManager(logger?: ServiceManagerLogger): ServiceManager {
-  if (!defaultServiceManager) {
-    defaultServiceManager = new ServiceManager({ logger: logger ?? defaultLogger });
+function getDefaultServiceManager(
+  environment: RuntimeEnvironment,
+  logger: ServiceManagerLogger,
+): ServiceManager {
+  const registry = getServiceManagerRegistry();
+  const key = `env:${environment}`;
+  const cached = registry.get(key);
+  if (cached) {
+    return cached;
   }
-  return defaultServiceManager;
+
+  const manager = new ServiceManager({ logger });
+  registry.set(key, manager);
+  return manager;
 }
 
 class NoopSessionManager implements ISessionManager<RealtimeAgent> {

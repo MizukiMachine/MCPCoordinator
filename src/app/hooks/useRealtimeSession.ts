@@ -12,25 +12,24 @@ import type { ISessionManager, SessionManagerHooks } from '../../../services/rea
 import { getSessionManager } from '@/app/lib/realtime/sessionManagerLocator';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
-const TRANSCRIPTION_COMPLETED_EVENTS = new Set([
-  'conversation.item.input_audio_transcription.completed',
-  'input_audio_transcription.completed',
-  'response.audio_transcript.done',
-  'audio_transcript.done',
-  'response.output_audio_transcript.done',
-  'output_audio_transcript.done',
-  'response.output_text.done',
-  'output_text.done',
-]);
-const TRANSCRIPTION_DELTA_EVENTS = new Set([
-  'response.audio_transcript.delta',
-  'transcript_delta',
-  'audio_transcript_delta',
-  'response.output_audio_transcript.delta',
-  'output_audio_transcript.delta',
-  'response.output_text.delta',
-  'output_text.delta',
-]);
+type TranscriptEventStage = 'completed' | 'delta';
+const TRANSCRIPTION_EVENT_KIND: Record<string, TranscriptEventStage> = {
+  'conversation.item.input_audio_transcription.completed': 'completed',
+  'input_audio_transcription.completed': 'completed',
+  'response.audio_transcript.done': 'completed',
+  'audio_transcript.done': 'completed',
+  'response.output_audio_transcript.done': 'completed',
+  'output_audio_transcript.done': 'completed',
+  'response.output_text.done': 'completed',
+  'output_text.done': 'completed',
+  'response.audio_transcript.delta': 'delta',
+  transcript_delta: 'delta',
+  audio_transcript_delta: 'delta',
+  'response.output_audio_transcript.delta': 'delta',
+  'output_audio_transcript.delta': 'delta',
+  'response.output_text.delta': 'delta',
+  'output_text.delta': 'delta',
+} as const;
 
 function addFallbackItemId(event: any) {
   if (!event || typeof event !== 'object') return event;
@@ -109,19 +108,20 @@ export function useRealtimeSession(
   const handleTransportEvent = useCallback(
     (event: any) => {
       const eventType = event?.type;
-      if (TRANSCRIPTION_COMPLETED_EVENTS.has(eventType)) {
-        const normalized = addFallbackItemId({
-          ...event,
-          transcript: transcriptTextFromEvent(event, 'transcript'),
-        });
-        historyHandlers.handleTranscriptionCompleted(normalized);
+      const stage = eventType ? TRANSCRIPTION_EVENT_KIND[eventType] : undefined;
+      if (!stage) {
         return;
       }
-      if (TRANSCRIPTION_DELTA_EVENTS.has(eventType)) {
-        const normalized = addFallbackItemId({
-          ...event,
-          delta: transcriptTextFromEvent(event, 'delta'),
-        });
+
+      const payloadKey = stage === 'completed' ? 'transcript' : 'delta';
+      const normalized = addFallbackItemId({
+        ...event,
+        [payloadKey]: transcriptTextFromEvent(event, payloadKey),
+      });
+
+      if (stage === 'completed') {
+        historyHandlers.handleTranscriptionCompleted(normalized);
+      } else {
         historyHandlers.handleTranscriptionDelta(normalized);
       }
     },
@@ -271,23 +271,23 @@ export function useRealtimeSession(
     detachSessionListeners();
   }, [detachSessionListeners]);
 
-  /**
-   * Throws when the underlying SessionManager is not connected.
-   * Consumers should wrap calls in try/catch if they want to handle this state.
-   */
-  const assertConnected = () => {
-    const manager = sessionManagerRef.current;
-    if (!manager || manager.getStatus() === 'DISCONNECTED') {
-      throw new Error('RealtimeSession not connected');
-    }
-  };
-
   const sendUserText = useCallback(
     (text: string) => {
-      assertConnected();
-      sessionManagerRef.current!.sendUserText(text);
+      const manager = sessionManagerRef.current;
+      if (!manager || manager.getStatus() === 'DISCONNECTED') {
+        logClientEvent(
+          {
+            type: 'session_warning',
+            message: 'sendUserText ignored because realtime session is disconnected',
+          },
+          'session_warning',
+        );
+        return;
+      }
+
+      manager.sendUserText(text);
     },
-    [],
+    [logClientEvent],
   );
 
   const sendEvent = useCallback(

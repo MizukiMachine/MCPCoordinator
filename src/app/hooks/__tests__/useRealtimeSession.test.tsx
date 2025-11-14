@@ -127,11 +127,21 @@ describe('useRealtimeSession', () => {
       result.current.disconnect();
     });
 
+    act(() => {
+      result.current.sendUserText('should not throw while disconnected');
+    });
+    expect(fakeManager.sendUserText).not.toHaveBeenCalled();
+
     await act(async () => {
       await result.current.connect(baseConnectOptions as any);
     });
 
     expect(fakeManager.connectSpy).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      result.current.sendUserText('connected message');
+    });
+    expect(fakeManager.sendUserText).toHaveBeenCalledWith('connected message');
   });
 
   // Session teardown validations now live in SessionManager tests.

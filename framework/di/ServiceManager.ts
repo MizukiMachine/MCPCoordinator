@@ -101,7 +101,7 @@ export class ServiceManager {
     await Promise.all(pending);
 
     if (errors.length > 0) {
-      throw new AggregateError(errors, 'One or more services failed to dispose');
+      throw createServiceAggregateError(errors, 'One or more services failed to dispose');
     }
   }
 
@@ -133,6 +133,28 @@ export class ServiceManager {
   private describeToken(token: ServiceToken<any>): string {
     return token.description ?? token.toString();
   }
+}
+
+class ServiceDisposeError extends Error {
+  public readonly errors: Error[];
+
+  constructor(message: string, errors: Error[]) {
+    super(message);
+    this.name = 'ServiceDisposeError';
+    this.errors = errors;
+  }
+}
+
+function createServiceAggregateError(errors: Error[], message: string): Error {
+  const AggregateErrorCtor = (globalThis as typeof globalThis & {
+    AggregateError?: typeof AggregateError;
+  }).AggregateError;
+
+  if (typeof AggregateErrorCtor === 'function') {
+    return new AggregateErrorCtor(errors, message);
+  }
+
+  return new ServiceDisposeError(message, errors);
 }
 
 export function createServiceToken<T>(name: string): ServiceToken<T> {
