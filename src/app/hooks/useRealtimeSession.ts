@@ -8,9 +8,8 @@ import { applyCodecPreferences } from '../lib/codecUtils';
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
-import { allAgentSets } from '@/app/agentConfigs';
 import type { ISessionManager, SessionManagerHooks } from '../../../services/realtime/types';
-import { createOpenAISessionManager } from '../../../services/realtime/adapters/createOpenAISessionManager';
+import { getSessionManager } from '@/app/lib/realtime/sessionManagerLocator';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 const TRANSCRIPTION_COMPLETED_EVENTS = new Set([
@@ -98,8 +97,7 @@ export function useRealtimeSession(
     const createManager =
       overrides.createSessionManager ??
       (() =>
-        createOpenAISessionManager({
-          scenarioMap: allAgentSets,
+        getSessionManager({
           hooks: overrides.initialSessionHooks,
           transport: {
             defaultOutputModalities: OUTPUT_MODALITIES,
