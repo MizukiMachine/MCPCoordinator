@@ -5,6 +5,7 @@ import type {
   ISessionManager,
   SessionLifecycleStatus,
   SessionManagerHooks,
+  SessionEventName,
 } from '../../../../services/realtime/types';
 
 const noop = () => {};
@@ -56,11 +57,11 @@ class FakeSessionManager
   pushToTalkStart = vi.fn();
   pushToTalkStop = vi.fn();
 
-  on(event: string, handler: (...args: any[]) => void): void {
+  on(event: SessionEventName, handler: (...args: any[]) => void): void {
     super.on(event, handler);
   }
 
-  off(event: string, handler: (...args: any[]) => void): void {
+  off(event: SessionEventName, handler: (...args: any[]) => void): void {
     super.off(event, handler);
   }
 }

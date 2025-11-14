@@ -54,6 +54,7 @@ vi.mock('../openAIRealtimeTransport', () => {
     }
 
     createSession = vi.fn();
+    dispose = vi.fn();
   }
 
   return {

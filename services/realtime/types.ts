@@ -29,6 +29,16 @@ export interface GuardrailHooks {
   onGuardrailTripped?: (payload: any) => void | Promise<void>;
 }
 
+export type SessionEventName =
+  | 'error'
+  | 'agent_handoff'
+  | 'agent_tool_start'
+  | 'agent_tool_end'
+  | 'history_updated'
+  | 'history_added'
+  | 'guardrail_tripped'
+  | 'transport_event';
+
 export interface SessionManagerHooks {
   logger?: SessionLogger;
   metrics?: SessionMetricRecorder;
@@ -73,7 +83,7 @@ export interface SessionConnectOptions<TAgentHandle = unknown> {
 export interface TransportOverrides {
   changePeerConnection?: (
     pc: RTCPeerConnection,
-  ) => Promise<RTCPeerConnection> | RTCPeerConnection;
+  ) => Promise<RTCPeerConnection> | RTCPeerConnection | void;
 }
 
 export interface SessionTransportRequest<TAgentHandle = unknown> {
@@ -84,12 +94,14 @@ export interface SessionTransportRequest<TAgentHandle = unknown> {
   outputGuardrails?: any[];
   outputModalities?: Array<'text' | 'audio'>;
   transportOverrides?: TransportOverrides;
+  signal?: AbortSignal;
 }
 
 export interface ISessionTransport<TAgentHandle = unknown> {
   createSession(
     request: SessionTransportRequest<TAgentHandle>,
   ): Promise<ISessionHandle>;
+  dispose?(): void;
 }
 
 export interface ISessionHandle {
