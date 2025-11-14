@@ -26,6 +26,8 @@ export class SessionManager<TAgentHandle = unknown> {
   private hooks: SessionManagerHooks;
   private listeners = new Map<string, Set<SessionEventHandler>>();
   private boundHandlers = new Map<string, SessionEventHandler>();
+  private pendingHandlePromise: Promise<ISessionHandle> | null = null;
+  private cancelRequested = false;
 
   constructor(
     private readonly options: SessionManagerOptions<TAgentHandle>,
@@ -57,13 +59,16 @@ export class SessionManager<TAgentHandle = unknown> {
   }
 
   async connect(options: SessionConnectOptions<TAgentHandle>): Promise<void> {
-    if (this.status === 'CONNECTING' || this.handle) {
-      this.hooks.logger?.debug?.('connect() skipped because session is active', {
+    if (this.status !== 'DISCONNECTED' || this.pendingHandlePromise) {
+      const message = `connect() called while status=${this.status}`;
+      this.hooks.logger?.warn?.(message);
+      this.hooks.metrics?.increment?.('session_connect_conflict_total', 1, {
         status: this.status,
       });
-      return;
+      throw new Error(message);
     }
 
+    this.cancelRequested = false;
     this.setStatus('CONNECTING');
 
     let agentSet: ResolvedAgentSet<TAgentHandle>;
@@ -89,9 +94,28 @@ export class SessionManager<TAgentHandle = unknown> {
       transportOverrides: options.transportOverrides,
     };
 
+    const transport = this.options.transportFactory();
+    const handlePromise = transport.createSession(transportRequest);
+    this.pendingHandlePromise = handlePromise;
+
     try {
-      const transport = this.options.transportFactory();
-      const handle = await transport.createSession(transportRequest);
+      const handle = await handlePromise;
+      this.pendingHandlePromise = null;
+
+      if (this.cancelRequested) {
+        this.hooks.logger?.info?.(
+          'Session connect aborted before completion. Closing handle.',
+        );
+        this.hooks.metrics?.increment?.('session_connect_aborted_total', 1);
+        this.cancelRequested = false;
+        try {
+          handle.disconnect();
+        } finally {
+          this.setStatus('DISCONNECTED');
+        }
+        return;
+      }
+
       this.attachHandle(handle);
       this.hooks.logger?.info?.('Session connected', {
         agentSetKey: options.agentSetKey,
@@ -100,6 +124,8 @@ export class SessionManager<TAgentHandle = unknown> {
       this.hooks.metrics?.increment?.('session_connect_success_total', 1);
       this.setStatus('CONNECTED');
     } catch (error) {
+      this.pendingHandlePromise = null;
+      this.cancelRequested = false;
       this.teardownHandle();
       this.handle = null;
       this.setStatus('DISCONNECTED');
@@ -113,13 +139,30 @@ export class SessionManager<TAgentHandle = unknown> {
   }
 
   disconnect() {
-    if (!this.handle) return;
-    this.handle.disconnect();
-    this.teardownHandle();
-    this.handle = null;
+    const hadHandle = Boolean(this.handle);
+    const isPendingConnect = !this.handle && this.status === 'CONNECTING';
+
+    if (!hadHandle && !isPendingConnect && this.status === 'DISCONNECTED') {
+      return;
+    }
+
+    if (isPendingConnect) {
+      this.cancelRequested = true;
+      this.hooks.logger?.info?.('Disconnect requested while connecting.');
+    }
+
+    if (hadHandle) {
+      this.handle!.disconnect();
+      this.teardownHandle();
+      this.handle = null;
+      this.cancelRequested = false;
+    }
+
     this.setStatus('DISCONNECTED');
     this.hooks.logger?.info?.('Session disconnected');
-    this.hooks.metrics?.increment?.('session_disconnect_total', 1);
+    this.hooks.metrics?.increment?.('session_disconnect_total', 1, {
+      stage: hadHandle ? 'connected' : 'connecting',
+    });
   }
 
   sendUserText(text: string) {

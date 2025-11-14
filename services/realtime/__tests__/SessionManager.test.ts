@@ -151,4 +151,48 @@ describe('SessionManager', () => {
     handle.emit('guardrail_tripped', { test: true });
     expect(guardrailListener).not.toHaveBeenCalled();
   });
+
+  it('throws when connect is called while already connecting', async () => {
+    const manager = createManager();
+    const deferred = createDeferred<ISessionHandle>();
+    transport.createSession.mockReturnValueOnce(deferred.promise);
+
+    const firstConnect = manager.connect(connectOptions);
+
+    await expect(manager.connect(connectOptions)).rejects.toThrow(
+      /status=CONNECTING/,
+    );
+
+    deferred.resolve(handle);
+    await firstConnect;
+    manager.disconnect();
+  });
+
+  it('allows disconnect while connecting and closes the handle once ready', async () => {
+    const manager = createManager();
+    const deferred = createDeferred<ISessionHandle>();
+    transport.createSession.mockReturnValueOnce(deferred.promise);
+
+    const connectPromise = manager.connect(connectOptions);
+    expect(manager.getStatus()).toBe('CONNECTING');
+
+    manager.disconnect();
+    expect(manager.getStatus()).toBe('DISCONNECTED');
+
+    deferred.resolve(handle);
+    await connectPromise;
+
+    expect(handle.disconnect).toHaveBeenCalled();
+    expect(manager.getStatus()).toBe('DISCONNECTED');
+  });
 });
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: any) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
