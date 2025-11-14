@@ -36,15 +36,20 @@
   - `src/app/hooks/useRealtimeSession.ts` のロジックを `services/realtime/sessionManager.ts` に移植  
   - `SessionManager` は `ISessionTransport`/`IAgentSetResolver` などのインターフェイスで構成し、SDKなしでもモックできる状態にする  
   - ロギング/メトリクス/ガードレール呼び出しをフック化
+  - **2025-11-14 追記**: TTL自動クリーンアップ・`sessionFactory` 失敗ハンドリング・`shutdown()` を実装し、WebSocket切断時/期限切れ時にセッションが残留しないようにした。
 - [x] **Next.js API Route追加**  
   - App Router の `app/api/session/route.ts` などでBFFハンドラを実装し、zodでバリデーション、共通エラーラッパを適用  
   - **2025-11-13 決定**: 認証はJWT (短命トークン) を必須化し、`framework/auth/JwtVerifier` で検証。後段サービスに `AuthContext` を注入する。
   - `/api/auth/token` を追加し、開発時のJWTを発行可能にした。
+  - **2025-11-14 更新**: `/api/session/[id]/stream` で WebSocket Close/Error/Abort 時に SessionManager を確実に `closeSession` し、500系エラーは汎用メッセージのみ返すよう sanitization を導入。
+  - **2025-11-14 追記**: `JwtVerifier` が `sub` 不在時でも `userId` クレームを段階的に検証し、`device_id`/`locale` を安全に抽出できるよう型ガードを導入。ユニットテスト (`tests/framework/JwtVerifier.test.ts`) を追加。
+- [x] **音声トランスコード安全性向上**  
+  - `FfmpegWebmOpusTranscoder` に入力サイズ上限制御（5MiB）と15秒タイムアウトを追加し、FFmpegハングやDoSを防止（2025-11-14）。
 - [ ] **テスト (TDD)**  
   - Vitestで API ハンドラ単位のテスト（成功/入力エラー/認証失敗/セッション未存在/並列アクセス）  
   - SessionManagerのユニットテスト（接続・中断・イベント送出・ガードレールトリップ）  
   - Supertest で軽いAPI統合テストを走らせ、CIで自動化
-  - **進捗**: SessionManagerのユニットテスト（`tests/services/SessionManager.test.ts`）を作成済み。APIルートの自動テストは今後追加する。
+  - **進捗**: `tests/services/SessionManager.test.ts` に TTLクリーンアップ＆`sessionFactory`失敗ケースを追加済み（2025-11-14）。APIルートの自動テストは今後追加予定。
 - [ ] **UIの依存切り替え**  
   - `App.tsx` 側に API クライアントHook（`useVoiceApiClient`）を作成し、既存SDK呼び出しを置換  
   - これに伴い WebRTC 直接依存を削除し、ブラウザは音声ストリーム取得とAPI呼び出しだけに専念
@@ -79,14 +84,11 @@
   - `docs/api-spec.md` に画像送信用curl例・レスポンス例を掲載し、Playground手順も更新
 
 ## 3. MCP対応（Coreデータはローカル実装 + 追加アプリ拡張）
-<<<<<<< HEAD
 - [ ] **GCP / Gemini File Search 基盤整備**  
   - 具体的なプロジェクトIDを決定し、`gcloud` CLI を再インストール → `gcloud init` / `gcloud auth login` で利用可能な状態に戻す  
   - `doc/GCP_FILE_SEARCH_SETUP.md` の手順に沿って API 有効化、`file-search-admin` サービスアカウント作成、鍵の発行、`logging sinks` 設定を完了する  
   - Drive 側の対象フォルダとアクセス権を確定し、`doc/rag-playbook.md` で定義した分類ルールを実データへ適用（`rag-editors@` 等グループの権限付与）  
   - File Search ストアの容量・ラベル命名規約・監査ログ確認手順を `doc/baseline/gcp-setup-<date>.log` として記録し、Feature Flag (`USE_GEMINI_FILE_SEARCH`) のデフォルト値を決定
-=======
->>>>>>> cd8850f (feat: doc)
 - [ ] **ServiceManager基盤**  
   - `framework/mcp/ServiceManager.ts` を作成し、`register(name, factory)` / `get(name)` / `shutdownAll()` を提供  
   - DI対応のため、ServiceManager自体をシングルトン化せず、API層・テストで差し替えできるようにする  

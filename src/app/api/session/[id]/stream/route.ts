@@ -10,6 +10,8 @@ import { getSessionManager } from '../../../../../../services/realtime/sessionMa
 
 export const runtime = 'nodejs';
 
+type VerifiedAuthContext = Awaited<ReturnType<ReturnType<typeof getJwtVerifier>['verify']>>;
+
 type RouteContext = {
   params: { id: string };
 };
@@ -23,12 +25,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const [client, server] = pair;
   server.accept();
 
+  let unsubscribe: (() => void) | null = null;
+  let auth: VerifiedAuthContext | null = null;
+  let manager: ReturnType<typeof getSessionManager> | null = null;
+  let cleanedUp = false;
+
   try {
     const token = extractToken(request);
-    const auth = await getJwtVerifier().verify(token);
-    const manager = getSessionManager();
+    auth = await getJwtVerifier().verify(token);
+    manager = getSessionManager();
 
-    const unsubscribe = manager.subscribe(context.params.id, auth, (event) => {
+    unsubscribe = manager.subscribe(context.params.id, auth, (event) => {
       try {
         server.send(JSON.stringify(event));
       } catch (error) {
@@ -45,18 +52,39 @@ export async function GET(request: NextRequest, context: RouteContext) {
         const parsed = clientEventSchema.parse(JSON.parse(raw));
         await manager.handleClientEvent(context.params.id, auth, parsed);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message = formatClientErrorMessage(error);
         server.send(JSON.stringify({ type: 'error', message }));
+        if (message === GENERIC_ERROR_MESSAGE) {
+          console.error('Unhandled error in session stream message handler', error);
+        }
       }
     });
 
-    server.addEventListener('close', () => {
-      unsubscribe();
-    });
+    const runCleanup = () => {
+      if (cleanedUp) {
+        return;
+      }
+      void cleanupSession(manager, context.params.id, auth, unsubscribe, () => {
+        cleanedUp = true;
+        unsubscribe = null;
+      });
+    };
+
+    server.addEventListener('close', runCleanup);
+    server.addEventListener('error', runCleanup);
+    if (request.signal.aborted) {
+      runCleanup();
+    } else {
+      request.signal.addEventListener('abort', runCleanup, { once: true });
+    }
 
     return new NextResponse(null, { status: 101, webSocket: client });
   } catch (error) {
-    server.close(1011, error instanceof Error ? error.message : 'Internal error');
+    await cleanupSession(manager, context.params.id, auth, unsubscribe, () => {
+      cleanedUp = true;
+      unsubscribe = null;
+    });
+    server.close(1011, formatClientErrorMessage(error));
     return respondWithError(error);
   }
 }
@@ -84,9 +112,47 @@ function extractToken(request: NextRequest): string {
 }
 
 function respondWithError(error: unknown) {
-  if (error instanceof HttpError) {
-    return NextResponse.json({ error: error.message }, { status: error.statusCode });
+  const status = error instanceof HttpError ? error.statusCode : 500;
+  if (!(error instanceof HttpError) || status >= 500) {
+    console.error('Unexpected error in GET /api/session/[id]/stream', error);
   }
-  console.error('Unexpected error in GET /api/session/[id]/stream', error);
-  return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  return NextResponse.json({ error: formatPublicErrorMessage(error) }, { status });
+}
+
+async function cleanupSession(
+  manager: ReturnType<typeof getSessionManager> | null,
+  sessionId: string,
+  auth: VerifiedAuthContext | null,
+  unsubscribe: (() => void) | null,
+  markCleaned: () => void,
+) {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+  markCleaned();
+  if (!auth || !manager) return;
+  try {
+    await manager.closeSession(sessionId, auth);
+  } catch (error) {
+    if (error instanceof HttpError && error.statusCode === 404) {
+      return;
+    }
+    console.warn('Failed to close realtime session', error);
+  }
+}
+
+const GENERIC_ERROR_MESSAGE = 'Internal Server Error';
+
+function formatClientErrorMessage(error: unknown): string {
+  if (error instanceof HttpError && error.statusCode < 500) {
+    return error.message;
+  }
+  return GENERIC_ERROR_MESSAGE;
+}
+
+function formatPublicErrorMessage(error: unknown): string {
+  if (error instanceof HttpError) {
+    return error.statusCode < 500 ? error.message : GENERIC_ERROR_MESSAGE;
+  }
+  return GENERIC_ERROR_MESSAGE;
 }

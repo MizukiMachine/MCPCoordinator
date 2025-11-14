@@ -1,3 +1,5 @@
+import { createSecretKey, type KeyObject } from 'node:crypto';
+
 import { jwtVerify, type JWTPayload } from 'jose';
 
 import { HttpError } from '../errors/HttpError';
@@ -16,10 +18,10 @@ interface JwtVerifierConfig {
 }
 
 export class JwtVerifier {
-  private readonly secretKey: Uint8Array;
+  private readonly secretKey: KeyObject;
 
   constructor(private readonly config: JwtVerifierConfig) {
-    this.secretKey = new TextEncoder().encode(config.secret);
+    this.secretKey = createSecretKey(Buffer.from(config.secret, 'utf8'));
   }
 
   async verify(token: string): Promise<AuthContext> {
@@ -38,14 +40,10 @@ export class JwtVerifier {
   }
 
   private parsePayload(payload: JWTPayload): AuthContext {
-    const userId = typeof payload.sub === 'string' ? payload.sub : (payload as any).userId;
-    if (typeof userId !== 'string' || !userId) {
-      throw new HttpError(401, 'JWT payload missing "sub" claim');
-    }
-
+    const userId = this.extractUserId(payload);
     const scopes = this.parseScopes(payload.scope);
-    const deviceId = typeof (payload as any).device_id === 'string' ? (payload as any).device_id : undefined;
-    const locale = typeof payload.locale === 'string' ? payload.locale : undefined;
+    const deviceId = this.readOptionalStringClaim(payload, ['device_id', 'deviceId']);
+    const locale = this.readOptionalStringClaim(payload, ['locale']);
 
     return {
       userId,
@@ -60,6 +58,28 @@ export class JwtVerifier {
       return scopeClaim.trim().split(/\s+/);
     }
     return [];
+  }
+
+  private extractUserId(payload: JWTPayload): string {
+    if (typeof payload.sub === 'string' && payload.sub.trim().length > 0) {
+      return payload.sub;
+    }
+    const fallback = (payload as Record<string, unknown>).userId;
+    if (typeof fallback === 'string' && fallback.trim().length > 0) {
+      return fallback;
+    }
+    throw new HttpError(401, 'JWT payload missing "sub" claim');
+  }
+
+  private readOptionalStringClaim(payload: JWTPayload, keys: string[]): string | undefined {
+    const record = payload as Record<string, unknown>;
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value;
+      }
+    }
+    return undefined;
   }
 }
 

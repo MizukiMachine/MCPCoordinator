@@ -47,6 +47,7 @@ export interface SessionManagerOptions {
   voice: string;
   sessionTtlMs?: number;
   sessionFactory?: SessionFactory;
+  cleanupIntervalMs?: number;
 }
 
 export class SessionManager {
@@ -58,6 +59,8 @@ export class SessionManager {
   private readonly voice: string;
   private readonly sessionTtlMs: number;
   private readonly sessionFactory: SessionFactory;
+  private readonly cleanupIntervalMs: number;
+  private cleanupTimer?: NodeJS.Timeout;
 
   constructor(options: SessionManagerOptions) {
     this.audioTranscoder = options.audioTranscoder;
@@ -67,6 +70,8 @@ export class SessionManager {
     this.voice = options.voice;
     this.sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
     this.sessionFactory = options.sessionFactory ?? defaultSessionFactory;
+    this.cleanupIntervalMs = options.cleanupIntervalMs ?? Math.min(this.sessionTtlMs, 60_000);
+    this.startCleanupLoop();
   }
 
   async createSession(options: CreateSessionOptions): Promise<SessionHandle> {
@@ -80,20 +85,7 @@ export class SessionManager {
     const sessionId = randomUUID();
     const now = Date.now();
 
-    const session = await this.sessionFactory({
-      agent: rootAgent,
-      openAiApiKey: this.openAiApiKey,
-      realtimeModel: this.realtimeModel,
-      transcriptionModel: this.transcriptionModel,
-      voice: this.voice,
-      context: {
-        userId: options.auth.userId,
-        deviceId: options.auth.deviceId,
-        scopes: options.auth.scopes,
-        locale: options.locale ?? options.auth.locale,
-        deviceInfo: options.deviceInfo,
-      },
-    });
+    const session = await this.createRealtimeSession(rootAgent, options);
 
     const bus = new SessionEventBus();
     const disposer = this.registerSessionListeners(sessionId, session, bus);
@@ -132,8 +124,8 @@ export class SessionManager {
         await this.handleAudioChunk(record, event);
         break;
       case 'audio_commit':
-        record.session.transport.sendEvent({ type: 'input_audio_buffer.commit' } as any);
-        record.session.transport.sendEvent({ type: 'response.create' } as any);
+        record.session.transport.sendEvent(commitEvent);
+        record.session.transport.sendEvent(responseEvent);
         break;
       case 'text_message':
         record.session.sendMessage(event.text);
@@ -171,11 +163,12 @@ export class SessionManager {
     }
     const binary = Buffer.from(event.data, 'base64');
     const pcm = await this.audioTranscoder.transcodeWebmOpusToLinear16(binary);
-    record.session.transport.sendEvent({
+    const appendEvent: TransportEvent = {
       type: 'input_audio_buffer.append',
       audio: pcm.toString('base64'),
       mime_type: 'audio/pcm',
-    } as any);
+    };
+    record.session.transport.sendEvent(appendEvent);
   }
 
   private registerSessionListeners(sessionId: string, session: RealtimeSessionType, bus: SessionEventBus) {
@@ -206,9 +199,73 @@ export class SessionManager {
   }
 
   private teardownSession(record: SessionRecord) {
-    record.disposer();
+    try {
+      record.disposer();
+    } catch (error) {
+      console.warn(`Failed to teardown session ${record.id}`, error);
+    }
+  }
+
+  private startCleanupLoop() {
+    if (this.cleanupIntervalMs <= 0) {
+      return;
+    }
+    this.cleanupTimer = setInterval(() => {
+      this.pruneExpiredSessions();
+    }, this.cleanupIntervalMs);
+    if (typeof this.cleanupTimer.unref === 'function') {
+      this.cleanupTimer.unref();
+    }
+  }
+
+  private pruneExpiredSessions(now = Date.now()) {
+    for (const record of this.sessions.values()) {
+      if (record.expiresAt <= now) {
+        this.teardownSession(record);
+      }
+    }
+  }
+
+  private async createRealtimeSession(
+    agent: RealtimeAgent,
+    options: CreateSessionOptions,
+  ): Promise<RealtimeSessionType> {
+    try {
+      const session = await this.sessionFactory({
+        agent,
+        openAiApiKey: this.openAiApiKey,
+        realtimeModel: this.realtimeModel,
+        transcriptionModel: this.transcriptionModel,
+        voice: this.voice,
+        context: {
+          userId: options.auth.userId,
+          deviceId: options.auth.deviceId,
+          scopes: options.auth.scopes,
+          locale: options.locale ?? options.auth.locale,
+          deviceInfo: options.deviceInfo,
+        },
+      });
+      return session;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown session error';
+      throw new HttpError(502, `Failed to initialize realtime session: ${reason}`);
+    }
+  }
+
+  shutdown() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+    }
+    for (const record of Array.from(this.sessions.values())) {
+      this.teardownSession(record);
+    }
   }
 }
+
+type TransportEvent = Parameters<RealtimeSessionType['transport']['sendEvent']>[0];
+const commitEvent: TransportEvent = { type: 'input_audio_buffer.commit' };
+const responseEvent: TransportEvent = { type: 'response.create' };
 
 const defaultSessionFactory: SessionFactory = async ({
   agent,
