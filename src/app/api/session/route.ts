@@ -1,60 +1,113 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import type { ClientSecretCreateParams } from "openai/resources/realtime/client-secrets";
 
-import { defaultAgentSetKey } from '@/app/agentConfigs';
-import { getJwtVerifier } from '../../../../framework/auth';
-import { HttpError } from '../../../../framework/errors/HttpError';
-import { requireBearerToken } from '../../../../framework/http/headers';
-import { getSessionManager } from '../../../../services/realtime/sessionManagerSingleton';
+const REALTIME_MODEL =
+  process.env.OPENAI_REALTIME_MODEL ??
+  process.env.NEXT_PUBLIC_REALTIME_MODEL ??
+  "gpt-realtime";
 
-const createSessionSchema = z.object({
-  agentKey: z.string().optional(),
-  locale: z.string().optional(),
-  deviceInfo: z.record(z.any()).optional(),
-});
+const REALTIME_TRANSCRIPTION_MODEL =
+  process.env.OPENAI_REALTIME_TRANSCRIPTION_MODEL ??
+  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ??
+  "gpt-4o-transcribe";
 
-export async function POST(request: NextRequest) {
+const REALTIME_VOICE = process.env.OPENAI_REALTIME_VOICE ?? "sage";
+
+const API_KEY_PATTERN = /(sk-(?:live|test|proj)-[A-Za-z0-9]+)/g;
+const DEFAULT_OUTPUT_MODALITIES: Array<"text" | "audio"> = ["audio"];
+const DEFAULT_SERVER_VAD = {
+  type: "server_vad" as const,
+  threshold: 0.9,
+  prefix_padding_ms: 300,
+  silence_duration_ms: 500,
+  create_response: true,
+};
+
+type OpenAIError = {
+  error?: {
+    message?: string;
+    code?: string;
+    type?: string;
+  };
+};
+
+function scrubApiKeys(input?: string | null) {
+  if (!input) return input ?? undefined;
+  return input.replace(API_KEY_PATTERN, "sk-xxxxxx");
+}
+
+function normalizeOpenAIError(payload: OpenAIError) {
+  const rawMessage =
+    typeof payload?.error?.message === "string"
+      ? payload.error.message
+      : "Failed to create realtime client secret.";
+  return {
+    message: scrubApiKeys(rawMessage) ?? "Failed to create realtime client secret.",
+    code: payload?.error?.code ?? "openai_realtime_error",
+    type: payload?.error?.type ?? "invalid_request_error",
+  };
+}
+
+export async function GET() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "OPENAI_API_KEY is not configured" },
+      { status: 500 }
+    );
+  }
+
   try {
-    const token = requireBearerToken(request.headers.get('authorization'));
-    const auth = await getJwtVerifier().verify(token);
-    const payload = createSessionSchema.parse(await request.json());
+    const sessionPayload = {
+      session: {
+        type: "realtime",
+        model: REALTIME_MODEL,
+        output_modalities: DEFAULT_OUTPUT_MODALITIES,
+        audio: {
+          input: {
+            transcription: {
+              model: REALTIME_TRANSCRIPTION_MODEL,
+            },
+            turn_detection: DEFAULT_SERVER_VAD,
+          },
+          output: {
+            voice: REALTIME_VOICE,
+          },
+        },
+      },
+    } satisfies ClientSecretCreateParams;
 
-    const handle = await getSessionManager().createSession({
-      agentKey: payload.agentKey ?? defaultAgentSetKey,
-      auth,
-      locale: payload.locale,
-      deviceInfo: payload.deviceInfo,
-    });
+    const response = await fetch(
+      "https://api.openai.com/v1/realtime/client_secrets",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sessionPayload),
+      }
+    );
+    const data = await response.json();
 
-    const base = new URL(request.url);
-    const relativeStreamPath = `/api/session/${handle.sessionId}/stream`;
-    const relativeEventPath = `/api/session/${handle.sessionId}/event`;
+    if (!response.ok) {
+      const normalizedError = normalizeOpenAIError(data);
+      console.error("Realtime client secret request failed", normalizedError);
+      return NextResponse.json(
+        {
+          error: normalizedError.message,
+          code: normalizedError.code,
+        },
+        { status: response.status }
+      );
+    }
 
-    return NextResponse.json({
-      sessionId: handle.sessionId,
-      expiresAt: handle.expiresAt.toISOString(),
-      streamPath: relativeStreamPath,
-      eventPath: relativeEventPath,
-      absoluteStreamUrl: absolutify(base, relativeStreamPath, true),
-      absoluteEventUrl: absolutify(base, relativeEventPath, false),
-    });
+    return NextResponse.json(data);
   } catch (error) {
-    return respondWithError(error);
+    console.error("Error in /session:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
-}
-
-function absolutify(base: URL, relativePath: string, preferWebSocket: boolean) {
-  const url = new URL(relativePath, base.origin);
-  if (preferWebSocket && url.protocol.startsWith('http')) {
-    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  }
-  return url.toString();
-}
-
-function respondWithError(error: unknown) {
-  if (error instanceof HttpError) {
-    return NextResponse.json({ error: error.message }, { status: error.statusCode });
-  }
-  console.error('Unexpected error in POST /api/session', error);
-  return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
 }
