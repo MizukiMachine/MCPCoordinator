@@ -2,11 +2,60 @@
 import { renderHook, act } from '@testing-library/react';
 import { EventEmitter } from 'events';
 
-const sessionStore: any[] = [];
 const noop = () => {};
 
 let useRealtimeSession: typeof import('../useRealtimeSession').useRealtimeSession;
-let RealtimeSession: any;
+
+class FakeSessionManager extends EventEmitter {
+  public failFirstConnect = false;
+  public connectSpy = vi.fn();
+  public disconnectSpy = vi.fn();
+  public status: 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' = 'DISCONNECTED';
+  public hooks: any = {};
+
+  updateHooks(nextHooks: any) {
+    this.hooks = nextHooks;
+  }
+
+  getStatus() {
+    return this.status;
+  }
+
+  async connect(request: any) {
+    this.connectSpy(request);
+    this.status = 'CONNECTING';
+    this.hooks.onStatusChange?.('CONNECTING');
+    if (this.failFirstConnect) {
+      this.failFirstConnect = false;
+      this.status = 'DISCONNECTED';
+      this.hooks.onStatusChange?.('DISCONNECTED');
+      throw new Error('network down');
+    }
+    this.status = 'CONNECTED';
+    this.hooks.onStatusChange?.('CONNECTED');
+  }
+
+  disconnect() {
+    this.disconnectSpy();
+    this.status = 'DISCONNECTED';
+    this.hooks.onStatusChange?.('DISCONNECTED');
+  }
+
+  sendUserText = vi.fn();
+  sendEvent = vi.fn();
+  interrupt = vi.fn();
+  mute = vi.fn();
+  pushToTalkStart = vi.fn();
+  pushToTalkStop = vi.fn();
+
+  override on(event: string, handler: (...args: any[]) => void): this {
+    return super.on(event, handler);
+  }
+
+  override off(event: string, handler: (...args: any[]) => void): this {
+    return super.off(event, handler);
+  }
+}
 
 beforeAll(async () => {
   vi.doMock('@/app/contexts/EventContext', () => {
@@ -34,68 +83,27 @@ beforeAll(async () => {
     };
   });
 
-  vi.doMock('@openai/agents/realtime', () => {
-    class FakeSession extends EventEmitter {
-      public transport = { sendEvent: noop };
-      public initialAgent: any;
-      public options: any;
-
-      constructor(agent: any, options: any) {
-        super();
-        this.initialAgent = agent;
-        this.options = options;
-        sessionStore.push(this);
-      }
-
-      async connect() {
-        /* no-op */
-      }
-
-      close() {
-        this.removeAllListeners();
-      }
-
-      interrupt() {}
-      sendMessage() {}
-      mute() {}
-    }
-
-    class FakeTransport {
-      public options: any;
-      constructor(options: any) {
-        this.options = options;
-      }
-    }
-
-    return {
-      RealtimeSession: FakeSession,
-      OpenAIRealtimeWebRTC: FakeTransport,
-    };
-  });
-
   ({ useRealtimeSession } = await import('../useRealtimeSession'));
-  ({ RealtimeSession } = await import('@openai/agents/realtime'));
 });
 
 describe('useRealtimeSession', () => {
   const baseConnectOptions = {
     getEphemeralKey: async () => 'fake-ek',
-    initialAgents: [{ name: 'rootAgent' } as any],
+    agentSetKey: 'chatSupervisor',
+    preferredAgentName: 'rootAgent',
   };
 
   beforeEach(() => {
-    sessionStore.length = 0;
     vi.clearAllMocks();
   });
 
   it('recovers gracefully after connection failures and allows retry', async () => {
+    const fakeManager = new FakeSessionManager();
+    fakeManager.failFirstConnect = true;
     const onConnectionChange = vi.fn();
-    const { result } = renderHook(() => useRealtimeSession({ onConnectionChange }));
-
-    const connectSpy = vi
-      .spyOn(RealtimeSession.prototype, 'connect')
-      .mockRejectedValueOnce(new Error('network down'))
-      .mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useRealtimeSession({ onConnectionChange }, { createSessionManager: () => fakeManager }),
+    );
 
     await expect(
       act(async () => {
@@ -114,35 +122,8 @@ describe('useRealtimeSession', () => {
       await result.current.connect(baseConnectOptions as any);
     });
 
-    expect(connectSpy).toHaveBeenCalledTimes(2);
-    expect(sessionStore).toHaveLength(2);
+    expect(fakeManager.connectSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('cleans up sessions on disconnect so a fresh connection can be created', async () => {
-    const { result } = renderHook(() => useRealtimeSession());
-
-    const closeSpy = vi
-      .spyOn(RealtimeSession.prototype, 'close')
-      .mockImplementation(function close(this: any) {
-        EventEmitter.prototype.removeAllListeners.call(this);
-      });
-
-    await act(async () => {
-      await result.current.connect(baseConnectOptions as any);
-    });
-
-    expect(sessionStore).toHaveLength(1);
-
-    await act(() => {
-      result.current.disconnect();
-    });
-
-    expect(closeSpy).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      await result.current.connect(baseConnectOptions as any);
-    });
-
-    expect(sessionStore).toHaveLength(2);
-  });
+  // Session teardown validations now live in SessionManager tests.
 });

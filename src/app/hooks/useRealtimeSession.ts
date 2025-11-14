@@ -1,8 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
-import {
-  RealtimeSession,
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
   RealtimeAgent,
-  OpenAIRealtimeWebRTC,
   RealtimeOutputGuardrail,
 } from '@openai/agents/realtime';
 
@@ -10,12 +8,10 @@ import { applyCodecPreferences } from '../lib/codecUtils';
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
-
-const DEFAULT_REALTIME_MODEL =
-  process.env.NEXT_PUBLIC_REALTIME_MODEL ?? 'gpt-realtime';
-
-const DEFAULT_TRANSCRIPTION_MODEL =
-  process.env.NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL ?? 'gpt-4o-transcribe';
+import { allAgentSets } from '@/app/agentConfigs';
+import { SessionManager } from '../../../services/realtime/SessionManager';
+import { OpenAIRealtimeTransport } from '../../../services/realtime/adapters/openAIRealtimeTransport';
+import { OpenAIAgentSetResolver } from '../../../services/realtime/adapters/openAIAgentSetResolver';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 
@@ -26,30 +22,49 @@ export interface RealtimeSessionCallbacks {
 
 export interface ConnectOptions {
   getEphemeralKey: () => Promise<string>;
-  initialAgents: RealtimeAgent[];
-  audioElement?: HTMLAudioElement;
+  agentSetKey: string;
+  preferredAgentName?: string;
+  audioElement?: HTMLAudioElement | null;
   extraContext?: Record<string, any>;
   outputGuardrails?: RealtimeOutputGuardrail[];
 }
 
-export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
-  const sessionRef = useRef<RealtimeSession | null>(null);
-  const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
-  const { logClientEvent } = useEvent();
+export interface RealtimeSessionHookOverrides {
+  createSessionManager?: () => SessionManager<RealtimeAgent>;
+}
+
+export function useRealtimeSession(
+  callbacks: RealtimeSessionCallbacks = {},
+  overrides: RealtimeSessionHookOverrides = {},
+) {
+  const sessionManagerRef = useRef<SessionManager<RealtimeAgent> | null>(null);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
+  const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
+  const { logClientEvent, logServerEvent } = useEvent();
+  const historyHandlers = useHandleSessionHistory().current;
 
   const updateStatus = useCallback(
     (s: SessionStatus) => {
       setStatus(s);
       callbacks.onConnectionChange?.(s);
-      logClientEvent({}, s);
+      logClientEvent({ type: 'session_status', status: s }, 'session_status');
     },
     [callbacks, logClientEvent],
   );
 
-  const { logServerEvent } = useEvent();
-
-  const historyHandlers = useHandleSessionHistory().current;
+  if (!sessionManagerRef.current) {
+    const createManager =
+      overrides.createSessionManager ??
+      (() =>
+        new SessionManager<RealtimeAgent>({
+          agentResolver: new OpenAIAgentSetResolver(allAgentSets),
+          transportFactory: () =>
+            new OpenAIRealtimeTransport({
+              defaultOutputModalities: OUTPUT_MODALITIES,
+            }),
+        }));
+    sessionManagerRef.current = createManager();
+  }
 
   const normalizeTranscriptEvent = (event: any) => {
     if (!event || typeof event !== 'object') return event;
@@ -70,7 +85,6 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   const handleTransportEvent = useCallback(
     (event: any) => {
-      // Handle additional server events that aren't managed by the session
       const eventType = event?.type;
       switch (eventType) {
         case 'conversation.item.input_audio_transcription.completed':
@@ -102,25 +116,20 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
           historyHandlers.handleTranscriptionDelta(normalized);
           break;
         }
-        default: {
-          logServerEvent(event);
+        default:
           break;
-        }
       }
     },
-    [historyHandlers, logServerEvent],
+    [historyHandlers],
   );
 
   const codecParamRef = useRef<string>(
     (typeof window !== 'undefined'
       ? (new URLSearchParams(window.location.search).get('codec') ?? 'opus')
-      : 'opus')
-      .toLowerCase(),
+      : 'opus'
+    ).toLowerCase(),
   );
 
-  // Wrapper to pass current codec param.
-  // This lets you use the codec selector in the UI to force narrow-band (8 kHz) codecs to
-  // simulate how the voice agent sounds over a PSTN/SIP phone call.
   const applyCodec = useCallback(
     (pc: RTCPeerConnection) => applyCodecPreferences(pc, codecParamRef.current),
     [],
@@ -155,143 +164,147 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
     listenerCleanupRef.current = null;
   }, []);
 
-  const registerSessionListeners = useCallback(
-    (session: RealtimeSession) => {
-      detachSessionListeners();
-      const disposers: Array<() => void> = [];
+  const registerSessionListeners = useCallback(() => {
+    const manager = sessionManagerRef.current;
+    if (!manager) return;
+    detachSessionListeners();
+    const disposers: Array<() => void> = [];
 
-      const addListener = (event: string, handler: (...args: any[]) => void) => {
-        (session as any).on(event, handler);
-        disposers.push(() => {
-          if (typeof (session as any).off === 'function') {
-            (session as any).off(event, handler);
-          } else if (typeof (session as any).removeListener === 'function') {
-            (session as any).removeListener(event, handler);
-          }
-        });
-      };
+    const addListener = (event: string, handler: (...args: any[]) => void) => {
+      manager.on(event, handler);
+      disposers.push(() => manager.off(event, handler));
+    };
 
-      addListener('error', (message: unknown) => {
-        logServerEvent({
-          type: 'error',
-          message,
-        });
+    addListener('error', (message: unknown) => {
+      logServerEvent({
+        type: 'error',
+        message,
       });
-      addListener('agent_handoff', handleAgentHandoff);
-      addListener('agent_tool_start', historyHandlers.handleAgentToolStart);
-      addListener('agent_tool_end', historyHandlers.handleAgentToolEnd);
-      addListener('history_updated', historyHandlers.handleHistoryUpdated);
-      addListener('history_added', historyHandlers.handleHistoryAdded);
-      addListener('guardrail_tripped', historyHandlers.handleGuardrailTripped);
-      addListener('transport_event', handleTransportEvent);
+    });
+    addListener('agent_handoff', handleAgentHandoff);
+    addListener('agent_tool_start', historyHandlers.handleAgentToolStart);
+    addListener('agent_tool_end', historyHandlers.handleAgentToolEnd);
+    addListener('history_updated', historyHandlers.handleHistoryUpdated);
+    addListener('history_added', historyHandlers.handleHistoryAdded);
+    addListener('transport_event', handleTransportEvent);
 
-      listenerCleanupRef.current = () => {
-        disposers.forEach((dispose) => dispose());
-      };
-    },
-    [detachSessionListeners, handleAgentHandoff, handleTransportEvent, historyHandlers, logServerEvent],
-  );
+    listenerCleanupRef.current = () => {
+      disposers.forEach((dispose) => dispose());
+    };
+  }, [
+    detachSessionListeners,
+    handleAgentHandoff,
+    handleTransportEvent,
+    historyHandlers.handleAgentToolEnd,
+    historyHandlers.handleAgentToolStart,
+    historyHandlers.handleHistoryAdded,
+    historyHandlers.handleHistoryUpdated,
+    logServerEvent,
+  ]);
+
+  useEffect(() => {
+    const manager = sessionManagerRef.current;
+    if (!manager) return;
+    manager.updateHooks({
+      onStatusChange: updateStatus,
+      logger: {
+        info: (message, context) => logClientEvent(context ?? {}, message),
+        error: (message, context) =>
+          logClientEvent({ ...(context ?? {}), level: 'error' }, message),
+        debug: (message, context) =>
+          logClientEvent({ ...(context ?? {}), level: 'debug' }, message),
+      },
+      metrics: {
+        increment: (name, value, tags) =>
+          logClientEvent({ metric: name, value, tags }, 'metric'),
+      },
+      onServerEvent: (_event, payload) => logServerEvent(payload),
+      guardrail: {
+        onGuardrailTripped: historyHandlers.handleGuardrailTripped,
+      },
+    });
+  }, [historyHandlers, logClientEvent, logServerEvent, updateStatus]);
 
   const connect = useCallback(
     async ({
       getEphemeralKey,
-      initialAgents,
+      agentSetKey,
+      preferredAgentName,
       audioElement,
       extraContext,
       outputGuardrails,
     }: ConnectOptions) => {
-      if (sessionRef.current) return; // already connected
-
-      updateStatus('CONNECTING');
+      const manager = sessionManagerRef.current;
+      if (!manager) {
+        throw new Error('SessionManager is not initialized');
+      }
 
       try {
-        const ek = await getEphemeralKey();
-        const rootAgent = initialAgents[0];
-
-        const session = new RealtimeSession(rootAgent, {
-          transport: new OpenAIRealtimeWebRTC({
-            audioElement,
-            // Set preferred codec before offer creation
-            changePeerConnection: async (pc: RTCPeerConnection) => {
-              applyCodec(pc);
-              return pc;
-            },
-          }),
-          model: DEFAULT_REALTIME_MODEL,
-          config: {
-            outputModalities: OUTPUT_MODALITIES,
-            audio: {
-              input: {
-                transcription: {
-                  model: DEFAULT_TRANSCRIPTION_MODEL,
-                },
-              },
-              ...(rootAgent.voice
-                ? { output: { voice: rootAgent.voice } }
-                : {}),
-            },
+        await manager.connect({
+          getEphemeralKey,
+          agentSetKey,
+          preferredAgentName,
+          audioElement,
+          extraContext,
+          outputGuardrails,
+          outputModalities: OUTPUT_MODALITIES,
+          transportOverrides: {
+            changePeerConnection: applyCodec,
           },
-          outputGuardrails: outputGuardrails ?? [],
-          automaticallyTriggerResponseForMcpToolCalls: true,
-          context: extraContext ?? {},
         });
-
-        sessionRef.current = session;
-        registerSessionListeners(session);
-        await session.connect({ apiKey: ek });
-        updateStatus('CONNECTED');
+        registerSessionListeners();
       } catch (error) {
         detachSessionListeners();
-        sessionRef.current?.close();
-        sessionRef.current = null;
-        updateStatus('DISCONNECTED');
         throw error;
       }
     },
-    [detachSessionListeners, registerSessionListeners, updateStatus],
+    [applyCodec, detachSessionListeners, registerSessionListeners],
   );
 
   const disconnect = useCallback(() => {
-    if (sessionRef.current) {
-      detachSessionListeners();
-      sessionRef.current.close();
-      sessionRef.current = null;
-    }
-    updateStatus('DISCONNECTED');
-  }, [detachSessionListeners, updateStatus]);
+    sessionManagerRef.current?.disconnect();
+    detachSessionListeners();
+  }, [detachSessionListeners]);
 
-  const assertconnected = () => {
-    if (!sessionRef.current) throw new Error('RealtimeSession not connected');
+  const assertConnected = () => {
+    const manager = sessionManagerRef.current;
+    if (!manager || manager.getStatus() === 'DISCONNECTED') {
+      throw new Error('RealtimeSession not connected');
+    }
   };
 
-  /* ----------------------- message helpers ------------------------- */
+  const sendUserText = useCallback(
+    (text: string) => {
+      assertConnected();
+      sessionManagerRef.current!.sendUserText(text);
+    },
+    [],
+  );
+
+  const sendEvent = useCallback(
+    (ev: any) => {
+      sessionManagerRef.current?.sendEvent(ev);
+    },
+    [],
+  );
+
+  const mute = useCallback(
+    (m: boolean) => {
+      sessionManagerRef.current?.mute(m);
+    },
+    [],
+  );
 
   const interrupt = useCallback(() => {
-    sessionRef.current?.interrupt();
-  }, []);
-  
-  const sendUserText = useCallback((text: string) => {
-    assertconnected();
-    sessionRef.current!.sendMessage(text);
-  }, []);
-
-  const sendEvent = useCallback((ev: any) => {
-    sessionRef.current?.transport.sendEvent(ev);
-  }, []);
-
-  const mute = useCallback((m: boolean) => {
-    sessionRef.current?.mute(m);
+    sessionManagerRef.current?.interrupt();
   }, []);
 
   const pushToTalkStart = useCallback(() => {
-    if (!sessionRef.current) return;
-    sessionRef.current.transport.sendEvent({ type: 'input_audio_buffer.clear' } as any);
+    sessionManagerRef.current?.pushToTalkStart();
   }, []);
 
   const pushToTalkStop = useCallback(() => {
-    if (!sessionRef.current) return;
-    sessionRef.current.transport.sendEvent({ type: 'input_audio_buffer.commit' } as any);
-    sessionRef.current.transport.sendEvent({ type: 'response.create' } as any);
+    sessionManagerRef.current?.pushToTalkStop();
   }, []);
 
   return {

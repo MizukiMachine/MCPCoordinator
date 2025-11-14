@@ -22,22 +22,8 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
 import { allAgentSets, agentSetMetadata, defaultAgentSetKey } from "@/app/agentConfigs";
-import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
-import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
-import { techExpertContestScenario } from "@/app/agentConfigs/techExpertContest";
-import { medExpertContestScenario } from "@/app/agentConfigs/medExpertContest";
 import { techContestPreset, medContestPreset, createContestRequestFromPreset } from "@/app/agentConfigs/expertContestPresets";
 import { callExpertContestApi, buildContestSummary, recordContestBreadcrumb, logContestEvent, ensureContestId } from "@/app/agentConfigs/tools/expertContestClient";
-
-// Map used by connect logic for scenarios defined via the SDK.
-const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
-  simpleHandoff: simpleHandoffScenario,
-  customerServiceRetail: customerServiceRetailScenario,
-  chatSupervisor: chatSupervisorScenario,
-  techParallelContest: techExpertContestScenario,
-  medParallelContest: medExpertContestScenario,
-};
 
 const companyNameByScenario: Record<string, string> = Object.fromEntries(
   Object.entries(agentSetMetadata).map(([key, meta]) => [key, meta.companyName]),
@@ -348,50 +334,44 @@ function App() {
   }, [addTranscriptBreadcrumb, disconnectFromRealtime, schedulePostToolAction, selectedAgentConfigSet, selectedAgentName]);
 
   const connectToRealtime = useCallback(async (source: "auto" | "manual" = "manual") => {
-    if (sdkScenarioMap[agentSetKey]) {
-      if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
-        console.info(
-          "[connectToRealtime] ignored because status=%s (source=%s)",
-          sessionStatus,
-          source,
-        );
-        return;
-      }
-
-      try {
-        const EPHEMERAL_KEY = await fetchEphemeralKey();
-        if (!EPHEMERAL_KEY) return;
-
-        // Ensure the selectedAgentName is first so that it becomes the root
-        const reorderedAgents = [...sdkScenarioMap[agentSetKey]];
-        const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
-        if (idx > 0) {
-          const [agent] = reorderedAgents.splice(idx, 1);
-          reorderedAgents.unshift(agent);
-        }
-
-        const companyName = companyNameByScenario[agentSetKey] ?? defaultCompanyName;
-        const guardrail = createModerationGuardrail(companyName);
-
-        await connect({
-          getEphemeralKey: async () => EPHEMERAL_KEY,
-          initialAgents: reorderedAgents,
-          audioElement: audioElementRef.current ?? undefined,
-          outputGuardrails: [guardrail],
-          extraContext: {
-            addTranscriptBreadcrumb,
-            requestScenarioChange,
-            requestAgentChange,
-            logClientEvent,
-          },
-        });
-      } catch (err) {
-        console.error("Error connecting via SDK:", err);
-          setSessionStatus("DISCONNECTED");
-      }
+    if (!allAgentSets[agentSetKey]) {
       return;
     }
-  }, [agentSetKey, connect, createModerationGuardrail, defaultCompanyName, fetchEphemeralKey, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+
+    if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
+      console.info(
+        "[connectToRealtime] ignored because status=%s (source=%s)",
+        sessionStatus,
+        source,
+      );
+      return;
+    }
+
+    try {
+      const EPHEMERAL_KEY = await fetchEphemeralKey();
+      if (!EPHEMERAL_KEY) return;
+
+      const companyName = companyNameByScenario[agentSetKey] ?? defaultCompanyName;
+      const guardrail = createModerationGuardrail(companyName);
+
+      await connect({
+        getEphemeralKey: async () => EPHEMERAL_KEY,
+        agentSetKey,
+        preferredAgentName: selectedAgentName,
+        audioElement: audioElementRef.current ?? undefined,
+        outputGuardrails: [guardrail],
+        extraContext: {
+          addTranscriptBreadcrumb,
+          requestScenarioChange,
+          requestAgentChange,
+          logClientEvent,
+        },
+      });
+    } catch (err) {
+      console.error("Error connecting via SDK:", err);
+      setSessionStatus("DISCONNECTED");
+    }
+  }, [addTranscriptBreadcrumb, agentSetKey, connect, createModerationGuardrail, defaultCompanyName, fetchEphemeralKey, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
   useEffect(() => {
     if (
