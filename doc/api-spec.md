@@ -44,7 +44,7 @@
   "streamUrl": "/api/session/sess_c1d704ef9a/stream",
   "expiresAt": "2025-11-16T01:23:45.000Z",
   "heartbeatIntervalMs": 25000,
-  "allowedModalities": ["text", "audio"],
+  "allowedModalities": ["audio"],
   "capabilityWarnings": [],
   "agentSet": {
     "key": "chatSupervisor",
@@ -53,10 +53,12 @@
 }
 ```
 - `capabilityWarnings`: サーバーのRealtime設定に関する警告一覧。音声権限が無効な場合の理由などを含み、UIがフォールバックUIを表示する際に利用する。
+- `allowedModalities`: Realtime API仕様上、`["audio"]` か `["text"]` のどちらかのみが有効。音声権限がある環境では `["audio"]`、そうでなければ `["text"]` が返る。
 - **エラー**: 400（不正入力） / 401（認証） / 500（内部）
 
 ### 3.2 DELETE /api/session/{id}
 - **用途**: クライアント明示終了。一定時間通信がない場合はBFF側でもTTLで自動終了するが、UI終了時に呼ぶ。
+- **クエリ**: `reason`（任意）を付与すると BFF ログに切断理由が記録される。明示指定がない場合は `client_request`。
 - **レスポンス**: `{ "ok": true }` or 404/410 when already終了。
 
 ### 3.3 POST /api/session/{id}/event

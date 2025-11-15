@@ -129,16 +129,22 @@ interface SessionContext {
   expiresAt: number;
   maxLifetimeAt: number;
   status: SessionLifecycleStatus;
+  connectedAt?: number;
   agentSetKey: string;
   preferredAgentName?: string;
   manager: ISessionManager<RealtimeAgent>;
   subscribers: Map<string, SessionSubscriber>;
   emitter: EventEmitter;
-  destroy: () => Promise<void>;
+  destroy: (options?: DestroySessionOptions) => Promise<void>;
   heartbeatTimer?: ReturnType<typeof setInterval>;
   streamIdleTimer?: ReturnType<typeof setTimeout>;
   rateLimiter: SessionRateLimiter;
   lastCommandAt: number;
+}
+
+interface DestroySessionOptions {
+  reason?: string;
+  initiatedBy?: 'client' | 'server' | 'system';
 }
 
 interface SessionHostDeps {
@@ -187,11 +193,20 @@ export class SessionHost {
     });
 
     const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
+    let contextRef: SessionContext | null = null;
 
     const hooks: SessionManagerHooks = {
       logger: sessionLogger,
       metrics: sessionMetrics,
-      onStatusChange: (status) => this.broadcast(sessionId, 'status', { status }),
+      onStatusChange: (status) => {
+        if (contextRef) {
+          contextRef.status = status;
+          if (status === 'CONNECTED') {
+            contextRef.connectedAt = this.now();
+          }
+        }
+        this.broadcast(sessionId, 'status', { status });
+      },
       onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
       guardrail: {
         onGuardrailTripped: (payload) =>
@@ -212,7 +227,7 @@ export class SessionHost {
       manager,
       subscribers: new Map(),
       emitter: new EventEmitter(),
-      destroy: async () => {
+      destroy: async (destroyOptions: DestroySessionOptions = {}) => {
         this.clearTimers(context);
         this.sessions.delete(sessionId);
         try {
@@ -220,11 +235,18 @@ export class SessionHost {
         } catch (error) {
           this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
         }
-        this.metrics.increment('bff.session.closed_total');
+        const reason = destroyOptions.reason ?? 'unspecified';
+        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
+        this.logger.info('Session destroyed', { sessionId, reason, initiatedBy });
+        this.metrics.increment('bff.session.closed_total', 1, {
+          initiatedBy,
+          reason,
+        });
       },
       rateLimiter: { hits: [] },
       lastCommandAt: now,
     };
+    contextRef = context;
 
     this.sessions.set(sessionId, context);
 
@@ -279,12 +301,12 @@ export class SessionHost {
     };
   }
 
-  async destroySession(sessionId: string): Promise<boolean> {
+  async destroySession(sessionId: string, options: DestroySessionOptions = {}): Promise<boolean> {
     const context = this.sessions.get(sessionId);
     if (!context) {
       return false;
     }
-    await context.destroy();
+    await context.destroy(options);
     return true;
   }
 
@@ -296,12 +318,12 @@ export class SessionHost {
 
     const now = this.now();
     if (now > context.maxLifetimeAt) {
-      void context.destroy();
+      void context.destroy({ reason: 'max_lifetime_exceeded', initiatedBy: 'system' });
       throw new SessionHostError('Session lifetime exceeded', 'session_expired', 410);
     }
 
     if (now > context.expiresAt) {
-      void context.destroy();
+      void context.destroy({ reason: 'session_ttl_expired', initiatedBy: 'system' });
       throw new SessionHostError('Session expired', 'session_expired', 410);
     }
 
@@ -410,7 +432,10 @@ export class SessionHost {
       context.emitter.off('message', subscriber.send);
       if (context.subscribers.size === 0) {
         context.streamIdleTimer = setTimeout(() => {
-          this.destroySession(sessionId).catch((error) =>
+          this.destroySession(sessionId, {
+            reason: 'sse_idle_timeout',
+            initiatedBy: 'system',
+          }).catch((error) =>
             this.logger.error('Failed to cleanup idle session', { sessionId, error }),
           );
         }, STREAM_IDLE_CLEANUP_MS);
@@ -451,7 +476,7 @@ export class SessionHost {
     if (!snapshot.audio.enabled) {
       return ['text'];
     }
-    return ['audio', 'text'];
+    return ['audio'];
   }
 
   private normalizeRealtimeError(payload: any): SessionErrorSummary {
@@ -565,7 +590,10 @@ export class SessionHost {
       this.broadcast(context.id, 'heartbeat', { ts: Date.now() });
       const now = this.now();
       if (now - context.lastCommandAt > SESSION_TTL_MS) {
-        this.destroySession(context.id).catch((error) =>
+        this.destroySession(context.id, {
+          reason: 'heartbeat_timeout',
+          initiatedBy: 'system',
+        }).catch((error) =>
           this.logger.error('Failed to cleanup inactive session', { sessionId: context.id, error }),
         );
       }

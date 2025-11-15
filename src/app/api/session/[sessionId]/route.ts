@@ -11,7 +11,12 @@ export async function DELETE(request: Request, context: RouteParams) {
   try {
     requireBffSecret(request);
     const { sessionId } = await context.params;
-    const deleted = await sessionHost.destroySession(sessionId);
+    const url = new URL(request.url);
+    const reason = url.searchParams.get('reason') ?? 'client_request';
+    const deleted = await sessionHost.destroySession(sessionId, {
+      reason,
+      initiatedBy: 'client',
+    });
     if (!deleted) {
       return NextResponse.json({ error: 'session_not_found' }, { status: 404 });
     }

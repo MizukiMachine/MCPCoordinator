@@ -27,6 +27,7 @@ const TRANSCRIPTION_EVENT_KIND: Record<string, TranscriptEventStage> = {
 } as const;
 
 const BFF_API_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
+const CLIENT_DISCONNECT_REASON = 'client_request';
 
 function addFallbackItemId(event: any) {
   if (!event || typeof event !== 'object') return event;
@@ -267,7 +268,8 @@ export function useRealtimeSession(
     updateStatus('DISCONNECTED');
 
     try {
-      await fetchImpl(`/api/session/${active.sessionId}`, {
+      const reasonParam = `reason=${encodeURIComponent(CLIENT_DISCONNECT_REASON)}`;
+      await fetchImpl(`/api/session/${active.sessionId}?${reasonParam}`, {
         method: 'DELETE',
         headers: buildHeaders(),
       });

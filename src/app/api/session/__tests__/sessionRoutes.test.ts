@@ -98,6 +98,9 @@ describe('session API routes', () => {
 
     expect(response.status).toBe(200);
     expect(payload.ok).toBe(true);
-    expect(sessionHostMock.destroySession).toHaveBeenCalledWith('sess_test');
+    expect(sessionHostMock.destroySession).toHaveBeenCalledWith('sess_test', {
+      reason: 'client_request',
+      initiatedBy: 'client',
+    });
   });
 });
