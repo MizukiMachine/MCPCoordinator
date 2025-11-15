@@ -50,6 +50,7 @@ export interface UiText {
     pushToTalkLabel: string;
     talkButtonLabel: string;
     audioPlaybackLabel: string;
+    textOutputLabel: string;
     logsLabel: string;
     codecLabel: string;
     codecOptions: {

@@ -1,30 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
-import { PcmAudioPlayer } from '../lib/audio/pcmPlayer';
+import { PcmAudioPlayer } from '@/app/lib/audio/pcmPlayer';
 import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmitter';
 import type { SessionCommand } from '../../../services/api/bff/sessionHost';
-
-type TranscriptEventStage = 'completed' | 'delta';
-const TRANSCRIPTION_EVENT_KIND: Record<string, TranscriptEventStage> = {
-  'conversation.item.input_audio_transcription.completed': 'completed',
-  'input_audio_transcription.completed': 'completed',
-  'response.audio_transcript.done': 'completed',
-  'audio_transcript.done': 'completed',
-  'response.output_audio_transcript.done': 'completed',
-  'output_audio_transcript.done': 'completed',
-  'response.output_text.done': 'completed',
-  'output_text.done': 'completed',
-  'response.audio_transcript.delta': 'delta',
-  transcript_delta: 'delta',
-  audio_transcript_delta: 'delta',
-  'response.output_audio_transcript.delta': 'delta',
-  'output_audio_transcript.delta': 'delta',
-  'response.output_text.delta': 'delta',
-  'output_text.delta': 'delta',
-} as const;
+import { getTranscriptionEventStage } from '@/shared/realtimeTranscriptionEvents';
 
 const BFF_API_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
 const CLIENT_DISCONNECT_REASON = 'client_request';
@@ -65,15 +47,26 @@ export interface RealtimeSessionCallbacks {
   onAgentHandoff?: (agentName: string) => void;
 }
 
+export interface ClientCapabilityOverrides {
+  audio?: boolean;
+  images?: boolean;
+  outputText?: boolean;
+}
+
 export interface ConnectOptions {
   agentSetKey: string;
   preferredAgentName?: string;
   extraContext?: Record<string, any>;
+  clientCapabilities?: ClientCapabilityOverrides;
 }
 
 export interface RealtimeSessionHookOverrides {
   fetchImpl?: typeof fetch;
   createEventSource?: (url: string) => EventSource;
+}
+
+export interface RealtimeSessionConfig {
+  defaultCapabilities?: ClientCapabilityOverrides;
 }
 
 interface ActiveSessionState {
@@ -82,9 +75,55 @@ interface ActiveSessionState {
   eventSource: EventSource;
 }
 
+type TransportHistoryHandlers = Pick<
+  ReturnType<typeof useHandleSessionHistory>['current'],
+  'handleTranscriptionCompleted' | 'handleTranscriptionDelta'
+>;
+
+export interface TransportEventHandlerDeps {
+  ensureAudioPlayer: () => PcmAudioPlayer;
+  historyHandlers: TransportHistoryHandlers;
+  audioMutedRef: MutableRefObject<boolean>;
+  textOutputEnabledRef: MutableRefObject<boolean>;
+}
+
+export function createTransportEventHandler({
+  ensureAudioPlayer,
+  historyHandlers,
+  audioMutedRef,
+  textOutputEnabledRef,
+}: TransportEventHandlerDeps) {
+  return (event: any) => {
+    const eventType = event?.type;
+    if (eventType === 'response.output_audio.delta' && typeof event?.delta === 'string') {
+      if (!audioMutedRef.current) {
+        void ensureAudioPlayer().enqueue(event.delta);
+      }
+    }
+
+    const stage = getTranscriptionEventStage(event);
+    if (!stage || !textOutputEnabledRef.current) {
+      return;
+    }
+
+    const payloadKey = stage === 'completed' ? 'transcript' : 'delta';
+    const normalized = addFallbackItemId({
+      ...event,
+      [payloadKey]: transcriptTextFromEvent(event, payloadKey),
+    });
+
+    if (stage === 'completed') {
+      historyHandlers.handleTranscriptionCompleted(normalized);
+    } else {
+      historyHandlers.handleTranscriptionDelta(normalized);
+    }
+  };
+}
+
 export function useRealtimeSession(
   callbacks: RealtimeSessionCallbacks = {},
   overrides: RealtimeSessionHookOverrides = {},
+  config: RealtimeSessionConfig = {},
 ) {
   const fetchImpl = overrides.fetchImpl ?? fetch;
   const createEventSource =
@@ -94,6 +133,12 @@ export function useRealtimeSession(
   const sessionStateRef = useRef<ActiveSessionState | null>(null);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
   const sessionMetadataRef = useRef<{ sessionId: string | null }>({ sessionId: null });
+  const defaultCapabilitiesRef = useRef<ClientCapabilityOverrides>({
+    audio: config.defaultCapabilities?.audio ?? true,
+    images: config.defaultCapabilities?.images,
+    outputText: config.defaultCapabilities?.outputText ?? true,
+  });
+  const serverTextOutputEnabledRef = useRef(true);
   const metricEmitterRef = useRef(createConsoleMetricEmitter('client.session_manager'));
   const audioPlayerRef = useRef<PcmAudioPlayer | null>(null);
   const audioMutedRef = useRef(false);
@@ -129,33 +174,22 @@ export function useRealtimeSession(
     return audioPlayerRef.current;
   }, []);
 
-  const handleTransportEvent = useCallback(
-    (event: any) => {
-      const eventType = event?.type;
-      if (eventType === 'response.output_audio.delta' && typeof event?.delta === 'string') {
-        if (!audioMutedRef.current) {
-          void ensureAudioPlayer().enqueue(event.delta);
-        }
-      }
-
-      const stage = eventType ? TRANSCRIPTION_EVENT_KIND[eventType] : undefined;
-      if (!stage) {
-        return;
-      }
-
-      const payloadKey = stage === 'completed' ? 'transcript' : 'delta';
-      const normalized = addFallbackItemId({
-        ...event,
-        [payloadKey]: transcriptTextFromEvent(event, payloadKey),
-      });
-
-      if (stage === 'completed') {
-        historyHandlers.handleTranscriptionCompleted(normalized);
-      } else {
-        historyHandlers.handleTranscriptionDelta(normalized);
-      }
-    },
-    [ensureAudioPlayer, historyHandlers],
+  const transportEventHandler = useMemo(
+    () =>
+      createTransportEventHandler({
+        ensureAudioPlayer,
+        historyHandlers: {
+          handleTranscriptionCompleted: historyHandlers.handleTranscriptionCompleted,
+          handleTranscriptionDelta: historyHandlers.handleTranscriptionDelta,
+        },
+        audioMutedRef,
+        textOutputEnabledRef: serverTextOutputEnabledRef,
+      }),
+    [
+      ensureAudioPlayer,
+      historyHandlers.handleTranscriptionCompleted,
+      historyHandlers.handleTranscriptionDelta,
+    ],
   );
 
   const detachStreamListeners = useCallback(() => {
@@ -208,7 +242,7 @@ export function useRealtimeSession(
           historyHandlers.handleGuardrailTripped(payload);
         }
       });
-      addListener('transport_event', handleTransportEvent);
+      addListener('transport_event', transportEventHandler);
       addListener('status', (payload) => {
         if (payload?.status) {
           updateStatus(payload.status as SessionStatus);
@@ -247,10 +281,10 @@ export function useRealtimeSession(
     [
       callbacks,
       detachStreamListeners,
-      handleTransportEvent,
       historyHandlers,
       logClientEvent,
       logServerEvent,
+      transportEventHandler,
       updateStatus,
     ],
   );
@@ -262,6 +296,7 @@ export function useRealtimeSession(
     detachStreamListeners();
     active.eventSource.close();
     sessionStateRef.current = null;
+    serverTextOutputEnabledRef.current = true;
     audioPlayerRef.current?.close();
     audioPlayerRef.current = null;
     clearSessionId();
@@ -279,7 +314,7 @@ export function useRealtimeSession(
   }, [clearSessionId, detachStreamListeners, fetchImpl, updateStatus]);
 
   const connect = useCallback(
-    async ({ agentSetKey, preferredAgentName, extraContext }: ConnectOptions) => {
+    async ({ agentSetKey, preferredAgentName, extraContext, clientCapabilities }: ConnectOptions) => {
       if (sessionStateRef.current) {
         console.info('Session already active, ignoring connect request');
         return;
@@ -287,6 +322,20 @@ export function useRealtimeSession(
 
       assignSessionId();
       updateStatus('CONNECTING');
+
+      const resolvedCapabilities = {
+        audio: clientCapabilities?.audio ?? defaultCapabilitiesRef.current.audio ?? true,
+        outputText:
+          clientCapabilities?.outputText ?? defaultCapabilitiesRef.current.outputText ?? true,
+        images: clientCapabilities?.images ?? defaultCapabilitiesRef.current.images,
+      };
+      const clientCapabilitiesPayload: ClientCapabilityOverrides = {
+        audio: resolvedCapabilities.audio,
+        outputText: resolvedCapabilities.outputText,
+      };
+      if (typeof resolvedCapabilities.images === 'boolean') {
+        clientCapabilitiesPayload.images = resolvedCapabilities.images;
+      }
 
       const response = await fetchImpl('/api/session', {
         method: 'POST',
@@ -298,7 +347,7 @@ export function useRealtimeSession(
           agentSetKey,
           preferredAgentName,
           metadata: extraContext ?? {},
-          clientCapabilities: { audio: true },
+          clientCapabilities: clientCapabilitiesPayload,
         }),
       });
 
@@ -321,15 +370,30 @@ export function useRealtimeSession(
         );
       }
 
-      if (
-        Array.isArray(data.allowedModalities) &&
-        data.allowedModalities.length > 0 &&
-        !data.allowedModalities.includes('audio')
-      ) {
+      const allowedModalities: string[] = Array.isArray(data.allowedModalities)
+        ? data.allowedModalities
+        : [];
+      const hasAudio = allowedModalities.includes('audio');
+      const serverTextOutputEnabled =
+        typeof data.textOutputEnabled === 'boolean'
+          ? Boolean(data.textOutputEnabled)
+          : resolvedCapabilities.outputText;
+      serverTextOutputEnabledRef.current = serverTextOutputEnabled;
+
+      if (allowedModalities.length > 0 && !hasAudio) {
         logClientEvent(
           {
             type: 'session_warning',
             message: 'Audio output disabled by server capabilities.',
+          },
+          'session_warning',
+        );
+      }
+      if (resolvedCapabilities.outputText && !serverTextOutputEnabled) {
+        logClientEvent(
+          {
+            type: 'session_warning',
+            message: 'Text output disabled by server capabilities.',
           },
           'session_warning',
         );
@@ -346,11 +410,19 @@ export function useRealtimeSession(
     [assignSessionId, createEventSource, fetchImpl, logClientEvent, registerStreamListeners, updateStatus],
   );
 
+  const disconnectRef = useRef(disconnect);
+  useEffect(() => {
+    disconnectRef.current = disconnect;
+  }, [disconnect]);
+
   useEffect(() => {
     return () => {
-      void disconnect();
+      const fn = disconnectRef.current;
+      if (fn) {
+        void fn();
+      }
     };
-  }, [disconnect]);
+  }, []);
 
   const postSessionCommand = useCallback(
     async (command: SessionCommand) => {

@@ -34,6 +34,7 @@ describe('session API routes', () => {
       expiresAt: new Date().toISOString(),
       heartbeatIntervalMs: 25000,
       allowedModalities: ['text'],
+      textOutputEnabled: true,
       capabilityWarnings: [],
       agentSet: { key: 'demo', primary: 'demo-agent' },
     });

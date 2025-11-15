@@ -8,6 +8,7 @@ export const createSessionSchema = z.object({
     .object({
       audio: z.boolean().optional(),
       images: z.boolean().optional(),
+      outputText: z.boolean().optional(),
     })
     .optional(),
   metadata: z.record(z.any()).optional(),
