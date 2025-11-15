@@ -410,11 +410,19 @@ export function useRealtimeSession(
     [assignSessionId, createEventSource, fetchImpl, logClientEvent, registerStreamListeners, updateStatus],
   );
 
+  const disconnectRef = useRef(disconnect);
+  useEffect(() => {
+    disconnectRef.current = disconnect;
+  }, [disconnect]);
+
   useEffect(() => {
     return () => {
-      void disconnect();
+      const fn = disconnectRef.current;
+      if (fn) {
+        void fn();
+      }
     };
-  }, [disconnect]);
+  }, []);
 
   const postSessionCommand = useCallback(
     async (command: SessionCommand) => {
