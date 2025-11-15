@@ -76,12 +76,30 @@ export interface CreateSessionResult {
     key: string;
     primary: string;
   };
+  capabilityWarnings: string[];
 }
 
 export interface SessionStreamMessage {
   event: string;
   data: Record<string, any> | string | null;
   timestamp: string;
+}
+
+export interface RealtimeEnvironmentSnapshot {
+  warnings: string[];
+  audio: {
+    enabled: boolean;
+    reason?: string;
+  };
+}
+
+interface SessionErrorSummary {
+  code?: string;
+  message?: string;
+  type?: string;
+  status?: number;
+  retryable?: boolean;
+  eventId?: string;
 }
 
 export class SessionHostError extends Error {
@@ -111,16 +129,22 @@ interface SessionContext {
   expiresAt: number;
   maxLifetimeAt: number;
   status: SessionLifecycleStatus;
+  connectedAt?: number;
   agentSetKey: string;
   preferredAgentName?: string;
   manager: ISessionManager<RealtimeAgent>;
   subscribers: Map<string, SessionSubscriber>;
   emitter: EventEmitter;
-  destroy: () => Promise<void>;
+  destroy: (options?: DestroySessionOptions) => Promise<void>;
   heartbeatTimer?: ReturnType<typeof setInterval>;
   streamIdleTimer?: ReturnType<typeof setTimeout>;
   rateLimiter: SessionRateLimiter;
   lastCommandAt: number;
+}
+
+interface DestroySessionOptions {
+  reason?: string;
+  initiatedBy?: 'client' | 'server' | 'system';
 }
 
 interface SessionHostDeps {
@@ -129,6 +153,7 @@ interface SessionHostDeps {
   now?: () => number;
   sessionManagerFactory?: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   scenarioMap?: Record<string, RealtimeAgent[]>;
+  envInspector?: () => RealtimeEnvironmentSnapshot;
 }
 
 export class SessionHost {
@@ -138,12 +163,14 @@ export class SessionHost {
   private readonly now: () => number;
   private readonly sessionManagerFactory: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   private readonly scenarioMap: Record<string, RealtimeAgent[]>;
+  private readonly inspectEnvironment: () => RealtimeEnvironmentSnapshot;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
     this.metrics = deps.metrics ?? createConsoleMetricEmitter('bff.session');
     this.now = deps.now ?? (() => Date.now());
     this.scenarioMap = deps.scenarioMap ?? allAgentSets;
+    this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
     this.sessionManagerFactory =
       deps.sessionManagerFactory ??
       ((hooks) =>
@@ -166,11 +193,20 @@ export class SessionHost {
     });
 
     const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
+    let contextRef: SessionContext | null = null;
 
     const hooks: SessionManagerHooks = {
       logger: sessionLogger,
       metrics: sessionMetrics,
-      onStatusChange: (status) => this.broadcast(sessionId, 'status', { status }),
+      onStatusChange: (status) => {
+        if (contextRef) {
+          contextRef.status = status;
+          if (status === 'CONNECTED') {
+            contextRef.connectedAt = this.now();
+          }
+        }
+        this.broadcast(sessionId, 'status', { status });
+      },
       onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
       guardrail: {
         onGuardrailTripped: (payload) =>
@@ -191,7 +227,7 @@ export class SessionHost {
       manager,
       subscribers: new Map(),
       emitter: new EventEmitter(),
-      destroy: async () => {
+      destroy: async (destroyOptions: DestroySessionOptions = {}) => {
         this.clearTimers(context);
         this.sessions.delete(sessionId);
         try {
@@ -199,16 +235,39 @@ export class SessionHost {
         } catch (error) {
           this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
         }
-        this.metrics.increment('bff.session.closed_total');
+        const reason = destroyOptions.reason ?? 'unspecified';
+        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
+        this.logger.info('Session destroyed', { sessionId, reason, initiatedBy });
+        this.metrics.increment('bff.session.closed_total', 1, {
+          initiatedBy,
+          reason,
+        });
       },
       rateLimiter: { hits: [] },
       lastCommandAt: now,
     };
+    contextRef = context;
 
     this.sessions.set(sessionId, context);
 
     const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
     const guardrail = createModerationGuardrail(companyName);
+    const envSnapshot = this.inspectEnvironment();
+    const resolvedModalities = this.resolveModalities(options, envSnapshot);
+
+    if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
+      this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
+        sessionId,
+        reason: envSnapshot.audio.reason,
+      });
+    }
+
+    if (envSnapshot.warnings.length > 0) {
+      this.logger.warn('Realtime environment warnings detected', {
+        sessionId,
+        warnings: envSnapshot.warnings,
+      });
+    }
 
     await manager.connect({
       agentSetKey: options.agentSetKey,
@@ -220,7 +279,7 @@ export class SessionHost {
         clientCapabilities: options.clientCapabilities ?? {},
       },
       outputGuardrails: [guardrail],
-      outputModalities: this.resolveModalities(options),
+      outputModalities: resolvedModalities,
     });
 
     this.attachManagerListeners(context);
@@ -233,7 +292,8 @@ export class SessionHost {
       streamUrl: `/api/session/${sessionId}/stream`,
       expiresAt: new Date(context.expiresAt).toISOString(),
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
-      allowedModalities: this.resolveModalities(options),
+      allowedModalities: resolvedModalities,
+      capabilityWarnings: envSnapshot.warnings,
       agentSet: {
         key: options.agentSetKey,
         primary: agentSet[0]?.name ?? 'agent',
@@ -241,12 +301,12 @@ export class SessionHost {
     };
   }
 
-  async destroySession(sessionId: string): Promise<boolean> {
+  async destroySession(sessionId: string, options: DestroySessionOptions = {}): Promise<boolean> {
     const context = this.sessions.get(sessionId);
     if (!context) {
       return false;
     }
-    await context.destroy();
+    await context.destroy(options);
     return true;
   }
 
@@ -258,12 +318,12 @@ export class SessionHost {
 
     const now = this.now();
     if (now > context.maxLifetimeAt) {
-      void context.destroy();
+      void context.destroy({ reason: 'max_lifetime_exceeded', initiatedBy: 'system' });
       throw new SessionHostError('Session lifetime exceeded', 'session_expired', 410);
     }
 
     if (now > context.expiresAt) {
-      void context.destroy();
+      void context.destroy({ reason: 'session_ttl_expired', initiatedBy: 'system' });
       throw new SessionHostError('Session expired', 'session_expired', 410);
     }
 
@@ -372,7 +432,10 @@ export class SessionHost {
       context.emitter.off('message', subscriber.send);
       if (context.subscribers.size === 0) {
         context.streamIdleTimer = setTimeout(() => {
-          this.destroySession(sessionId).catch((error) =>
+          this.destroySession(sessionId, {
+            reason: 'sse_idle_timeout',
+            initiatedBy: 'system',
+          }).catch((error) =>
             this.logger.error('Failed to cleanup idle session', { sessionId, error }),
           );
         }, STREAM_IDLE_CLEANUP_MS);
@@ -403,11 +466,77 @@ export class SessionHost {
     }
   }
 
-  private resolveModalities(options: CreateSessionOptions): Array<'text' | 'audio'> {
+  private resolveModalities(
+    options: CreateSessionOptions,
+    snapshot: RealtimeEnvironmentSnapshot,
+  ): Array<'text' | 'audio'> {
     if (options.clientCapabilities?.audio === false) {
       return ['text'];
     }
-    return ['audio', 'text'];
+    if (!snapshot.audio.enabled) {
+      return ['text'];
+    }
+    return ['audio'];
+  }
+
+  private normalizeRealtimeError(payload: any): SessionErrorSummary {
+    const pickString = (value: unknown) =>
+      typeof value === 'string' && value.length > 0 ? value : undefined;
+
+    if (!payload || typeof payload !== 'object') {
+      return {
+        message: pickString(payload as string) ?? 'Unknown Realtime error',
+      };
+    }
+
+    const source = typeof payload.error === 'object' && payload.error ? payload.error : payload;
+    const nestedErrorCandidate = Array.isArray((source as any).errors)
+      ? (source as any).errors[0]
+      : undefined;
+    const leaf =
+      typeof (source as any).error === 'object' && (source as any).error
+        ? (source as any).error
+        : nestedErrorCandidate ?? source;
+
+    const summary: SessionErrorSummary = {
+      code: pickString((leaf as any).code) ?? pickString((source as any).code),
+      message:
+        pickString((leaf as any).message) ??
+        pickString((source as any).message) ??
+        pickString((payload as any).message),
+      type: pickString((leaf as any).type) ?? pickString((source as any).type),
+      eventId: pickString((source as any).event_id ?? (source as any).eventId),
+    };
+
+    if (typeof (leaf as any).status === 'number') {
+      summary.status = (leaf as any).status;
+    } else if (typeof (source as any).status === 'number') {
+      summary.status = (source as any).status;
+    }
+
+    if (typeof (leaf as any).retryable === 'boolean') {
+      summary.retryable = (leaf as any).retryable;
+    } else if (typeof (source as any).retryable === 'boolean') {
+      summary.retryable = (source as any).retryable;
+    }
+
+    if (!summary.message && typeof payload === 'string') {
+      summary.message = payload;
+    }
+
+    if (!summary.message) {
+      summary.message = 'Unknown Realtime error';
+    }
+
+    return summary;
+  }
+
+  private sanitizeErrorPayload(payload: any) {
+    try {
+      return JSON.parse(JSON.stringify(payload));
+    } catch {
+      return undefined;
+    }
   }
 
   private enforceRateLimit(context: SessionContext) {
@@ -437,6 +566,19 @@ export class SessionHost {
       const handler = (...args: any[]) => {
         const payload = args.length > 1 ? args : args[0];
         this.broadcast(context.id, event, payload);
+        if (event === 'error') {
+          const summary = this.normalizeRealtimeError(payload);
+          const rawPayload = this.sanitizeErrorPayload(payload);
+          this.logger.error('Realtime session error', {
+            sessionId: context.id,
+            ...summary,
+            raw: rawPayload,
+          });
+          this.metrics.increment('bff.session.realtime_errors_total', 1, {
+            code: summary.code ?? 'unknown',
+          });
+          this.broadcast(context.id, 'session_error', summary);
+        }
       };
       context.manager.on(event, handler as any);
       context.emitter.once('cleanup', () => context.manager.off(event, handler as any));
@@ -448,7 +590,10 @@ export class SessionHost {
       this.broadcast(context.id, 'heartbeat', { ts: Date.now() });
       const now = this.now();
       if (now - context.lastCommandAt > SESSION_TTL_MS) {
-        this.destroySession(context.id).catch((error) =>
+        this.destroySession(context.id, {
+          reason: 'heartbeat_timeout',
+          initiatedBy: 'system',
+        }).catch((error) =>
           this.logger.error('Failed to cleanup inactive session', { sessionId: context.id, error }),
         );
       }
@@ -508,3 +653,49 @@ export function getSessionHost(): SessionHost {
 }
 
 export const sessionHost = getSessionHost();
+
+const AUDIO_REQUIREMENT_KEYS = [
+  'OPENAI_REALTIME_MODEL',
+  'OPENAI_REALTIME_TRANSCRIPTION_MODEL',
+  'OPENAI_REALTIME_VOICE',
+] as const;
+
+const PLACEHOLDER_KEY_PATTERN = /^sk[-_]?your/i;
+
+export function inspectRealtimeEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+): RealtimeEnvironmentSnapshot {
+  const warnings: string[] = [];
+
+  const apiKey =
+    env.OPENAI_API_KEY ?? env.OPENAI_REALTIME_API_KEY ?? env.OPENAI_API_KEY_VOICE ?? '';
+  if (!apiKey) {
+    warnings.push('Realtime API key is not configured (OPENAI_API_KEY / OPENAI_REALTIME_API_KEY).');
+  } else if (PLACEHOLDER_KEY_PATTERN.test(apiKey)) {
+    warnings.push('Realtime API key is using a placeholder value.');
+  }
+
+  const audioExplicitlyDisabled =
+    (env.OPENAI_REALTIME_AUDIO_DISABLED ?? '').toLowerCase() === 'true';
+  const missingAudioKeys = AUDIO_REQUIREMENT_KEYS.filter((key) => !env[key]);
+  let audioEnabled = !audioExplicitlyDisabled && missingAudioKeys.length === 0;
+  let audioReason: string | undefined;
+
+  if (audioExplicitlyDisabled) {
+    audioReason = 'Audio capability explicitly disabled via OPENAI_REALTIME_AUDIO_DISABLED.';
+  } else if (missingAudioKeys.length > 0) {
+    audioReason = `Audio output disabled: missing ${missingAudioKeys.join(', ')}`;
+  }
+
+  if (audioReason) {
+    warnings.push(audioReason);
+  }
+
+  return {
+    warnings,
+    audio: {
+      enabled: audioEnabled,
+      reason: audioReason,
+    },
+  };
+}

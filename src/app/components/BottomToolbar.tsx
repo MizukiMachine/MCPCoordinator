@@ -50,7 +50,8 @@ function BottomToolbar({
   }
 
   function getConnectionButtonClasses() {
-    const baseClasses = "text-white text-base p-2 w-36 rounded-md h-full";
+    const baseClasses =
+      "text-white text-base p-2 w-36 rounded-md h-full disabled:opacity-60 disabled:cursor-not-allowed";
     const cursorClass = isConnecting ? "cursor-progress" : "cursor-pointer";
 
     if (isConnected) {
@@ -66,6 +67,9 @@ function BottomToolbar({
       <button
         onClick={onToggleConnection}
         className={getConnectionButtonClasses()}
+        disabled={isConnecting}
+        aria-busy={isConnecting}
+        aria-live="polite"
       >
         {getConnectionButtonLabel()}
       </button>

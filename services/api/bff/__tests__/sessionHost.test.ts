@@ -9,7 +9,12 @@ import type {
   SessionManagerHooks,
 } from '../../../realtime/types';
 import type { RealtimeAgent } from '@openai/agents/realtime';
-import { SessionHost, SessionHostError } from '../sessionHost';
+import {
+  SessionHost,
+  SessionHostError,
+  type RealtimeEnvironmentSnapshot,
+  type SessionStreamMessage,
+} from '../sessionHost';
 
 type HookedManager = ISessionManager<RealtimeAgent> & {
   hooks: SessionManagerHooks;
@@ -72,9 +77,14 @@ describe('SessionHost', () => {
 
   let host: SessionHost;
   let managers: FakeSessionManager[];
+  let envSnapshot: RealtimeEnvironmentSnapshot;
 
   beforeEach(() => {
     managers = [];
+    envSnapshot = {
+      warnings: [],
+      audio: { enabled: true },
+    };
     host = new SessionHost({
       scenarioMap,
       sessionManagerFactory: (hooks) => {
@@ -83,6 +93,7 @@ describe('SessionHost', () => {
         return mgr;
       },
       now: () => Date.now(),
+      envInspector: () => envSnapshot,
     });
   });
 
@@ -126,6 +137,78 @@ describe('SessionHost', () => {
     await host.handleCommand(sessionId, { kind: 'event', event: { type: 'pong' } });
     expect(messages.some((m) => m.event === 'status')).toBe(true);
     expect(messages.some((m) => m.event === 'transport_event')).toBe(true);
+    unsubscribe();
+  });
+
+  it('falls back to text-only output when audio capability is disabled', async () => {
+    envSnapshot = {
+      warnings: ['Audio disabled for test'],
+      audio: {
+        enabled: false,
+        reason: 'Missing OPENAI_REALTIME_VOICE',
+      },
+    };
+
+    host = new SessionHost({
+      scenarioMap,
+      sessionManagerFactory: (hooks) => {
+        const mgr = new FakeSessionManager(hooks);
+        managers.push(mgr);
+        return mgr;
+      },
+      envInspector: () => envSnapshot,
+    });
+
+    const result = await host.createSession({
+      agentSetKey: 'demo',
+      clientCapabilities: { audio: true },
+    });
+
+    expect(result.allowedModalities).toEqual(['text']);
+    expect(result.capabilityWarnings).toContain('Audio disabled for test');
+  });
+
+  it('emits session_error events with sanitized payloads', async () => {
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    host = new SessionHost({
+      scenarioMap,
+      sessionManagerFactory: (hooks) => {
+        const mgr = new FakeSessionManager(hooks);
+        managers.push(mgr);
+        return mgr;
+      },
+      logger,
+      envInspector: () => ({ warnings: [], audio: { enabled: true } }),
+    });
+
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const received: SessionStreamMessage[] = [];
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'listener',
+      send: (msg) => received.push(msg),
+    });
+
+    managers[0]!.emit('error', {
+      error: { code: 'access_denied', message: 'Audio output disabled', type: 'invalid_permission' },
+    });
+
+    const sessionError = received.find((msg) => msg.event === 'session_error');
+    expect(sessionError?.data).toMatchObject({
+      code: 'access_denied',
+      message: 'Audio output disabled',
+      type: 'invalid_permission',
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'Realtime session error',
+      expect.objectContaining({ sessionId, code: 'access_denied' }),
+    );
+
     unsubscribe();
   });
 });

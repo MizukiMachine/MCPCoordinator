@@ -429,8 +429,7 @@ function App() {
     }
 
     if (sessionStatus === "CONNECTING") {
-      console.info("[App] Cancelling in-flight connection attempt");
-      disconnectFromRealtime();
+      console.info("[App] Connect request ignored because a connection is already in progress");
       return;
     }
 
