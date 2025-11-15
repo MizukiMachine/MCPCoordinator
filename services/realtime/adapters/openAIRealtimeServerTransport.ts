@@ -10,9 +10,13 @@ export interface OpenAIRealtimeServerTransportOptions {
   model?: string;
   defaultOutputModalities?: Array<'audio' | 'text'>;
   baseUrl?: string;
+  transcriptionModel?: string;
+  voice?: string;
 }
 
 const DEFAULT_REALTIME_MODEL = 'gpt-realtime';
+const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-transcribe';
+const DEFAULT_VOICE = 'alloy';
 
 function createAbortError(): Error {
   if (typeof DOMException !== 'undefined') {
@@ -70,12 +74,19 @@ export class OpenAIRealtimeServerTransport
   private readonly model: string;
   private readonly defaultOutputModalities: Array<'audio' | 'text'>;
   private readonly baseUrl?: string;
+  private readonly transcriptionModel: string | undefined;
+  private readonly defaultVoice: string | undefined;
 
   constructor(options: OpenAIRealtimeServerTransportOptions = {}) {
     this.model =
       options.model ?? process.env.OPENAI_REALTIME_MODEL ?? DEFAULT_REALTIME_MODEL;
     this.defaultOutputModalities = options.defaultOutputModalities ?? ['audio'];
     this.baseUrl = options.baseUrl;
+    this.transcriptionModel =
+      options.transcriptionModel ??
+      process.env.OPENAI_REALTIME_TRANSCRIPTION_MODEL ??
+      DEFAULT_TRANSCRIPTION_MODEL;
+    this.defaultVoice = options.voice ?? process.env.OPENAI_REALTIME_VOICE ?? DEFAULT_VOICE;
   }
 
   async createSession(
@@ -84,14 +95,36 @@ export class OpenAIRealtimeServerTransport
     const { agentSet, extraContext, outputModalities, signal } = request;
     const rootAgent = agentSet.primaryAgent.handle;
 
+    const resolvedModalities = outputModalities ?? this.defaultOutputModalities;
+    const wantsAudio = resolvedModalities.includes('audio');
+    const resolvedVoice = rootAgent.voice ?? this.defaultVoice;
+
+    const audioConfig = wantsAudio
+      ? {
+          input: this.transcriptionModel
+            ? {
+                transcription: {
+                  model: this.transcriptionModel,
+                },
+              }
+            : undefined,
+          output: resolvedVoice
+            ? {
+                voice: resolvedVoice,
+              }
+            : undefined,
+        }
+      : undefined;
+
     const session = new RealtimeSession(rootAgent, {
       transport: 'websocket',
       model: this.model,
       context: extraContext ?? {},
       outputGuardrails: request.outputGuardrails ?? [],
-      historyStoreAudio: true,
+      historyStoreAudio: wantsAudio,
       config: {
-        outputModalities: outputModalities ?? this.defaultOutputModalities,
+        outputModalities: resolvedModalities,
+        ...(audioConfig ? { audio: audioConfig } : {}),
       },
     });
 

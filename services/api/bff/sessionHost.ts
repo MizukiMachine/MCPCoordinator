@@ -99,6 +99,7 @@ interface SessionErrorSummary {
   type?: string;
   status?: number;
   retryable?: boolean;
+  eventId?: string;
 }
 
 export class SessionHostError extends Error {
@@ -464,24 +465,33 @@ export class SessionHost {
     }
 
     const source = typeof payload.error === 'object' && payload.error ? payload.error : payload;
-    const nestedError = Array.isArray((source as any).errors)
+    const nestedErrorCandidate = Array.isArray((source as any).errors)
       ? (source as any).errors[0]
       : undefined;
+    const leaf =
+      typeof (source as any).error === 'object' && (source as any).error
+        ? (source as any).error
+        : nestedErrorCandidate ?? source;
 
     const summary: SessionErrorSummary = {
-      code: pickString((source as any).code) ?? pickString(nestedError?.code),
+      code: pickString((leaf as any).code) ?? pickString((source as any).code),
       message:
+        pickString((leaf as any).message) ??
         pickString((source as any).message) ??
-        pickString(nestedError?.message) ??
         pickString((payload as any).message),
-      type: pickString((source as any).type) ?? pickString(nestedError?.type),
+      type: pickString((leaf as any).type) ?? pickString((source as any).type),
+      eventId: pickString((source as any).event_id ?? (source as any).eventId),
     };
 
-    if (typeof (source as any).status === 'number') {
+    if (typeof (leaf as any).status === 'number') {
+      summary.status = (leaf as any).status;
+    } else if (typeof (source as any).status === 'number') {
       summary.status = (source as any).status;
     }
 
-    if (typeof (source as any).retryable === 'boolean') {
+    if (typeof (leaf as any).retryable === 'boolean') {
+      summary.retryable = (leaf as any).retryable;
+    } else if (typeof (source as any).retryable === 'boolean') {
       summary.retryable = (source as any).retryable;
     }
 
@@ -494,6 +504,14 @@ export class SessionHost {
     }
 
     return summary;
+  }
+
+  private sanitizeErrorPayload(payload: any) {
+    try {
+      return JSON.parse(JSON.stringify(payload));
+    } catch {
+      return undefined;
+    }
   }
 
   private enforceRateLimit(context: SessionContext) {
@@ -525,9 +543,11 @@ export class SessionHost {
         this.broadcast(context.id, event, payload);
         if (event === 'error') {
           const summary = this.normalizeRealtimeError(payload);
+          const rawPayload = this.sanitizeErrorPayload(payload);
           this.logger.error('Realtime session error', {
             sessionId: context.id,
             ...summary,
+            raw: rawPayload,
           });
           this.metrics.increment('bff.session.realtime_errors_total', 1, {
             code: summary.code ?? 'unknown',
