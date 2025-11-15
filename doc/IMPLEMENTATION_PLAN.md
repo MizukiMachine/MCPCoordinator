@@ -35,7 +35,19 @@
   - `src/app/hooks/useRealtimeSession.ts` のロジックを `services/realtime/sessionManager.ts` に移植  
   - `SessionManager` は `ISessionTransport`/`IAgentSetResolver` などのインターフェイスで構成し、SDKなしでもモックできる状態にする  
   - ロギング/メトリクス/ガードレール呼び出しをフック化
-  - 2025-11-15: SessionManager向けの構造化ログ/メトリクス送信フックを `framework/logging` / `framework/metrics` で整備し、イベントTTLクリーンアップを含むクライアント観測性を実装済み。  
+  - 2025-11-15: SessionManager向けの構造化ログ/メトリクス送信フックを `framework/logging` / `framework/metrics` に仮実装し、イベントTTLクリーンアップのみ完了。観測値送信・DI連携は未配線。  
+  - **TODO / Pending（2025-11-15時点）**  
+    - [ ] DI: Next.js APIルート・テスト双方から `ServiceManager` を差し替えられるよう、`framework/di/runtimeEnvironment.ts` で `ISessionTransport`/`IAgentSetResolver` を公開バインドする  
+    - [ ] ロギング: `SessionManagerHooks.logger` に `framework/logging/structuredLogger` を与え、セッションID / agentSet / input payload をサニタイズした上で必ず1イベント1行に落とす  
+    - [ ] メトリクス: `framework/metrics/metricEmitter` へメーター名（connect.latency / event.forwarded / guardrail.trip）を定義し、`SessionManagerHooks.metrics` から送信  
+  - **進捗トラッカー（Section 1-2 サービスレイヤー）**  
+  
+    | インターフェイス/フック | 状態 | Pending作業 | 
+    | --- | --- | --- |
+    | `ISessionTransport` | スタブ定義済み（`services/realtime/types.ts`） | `app/api/session/*` からのDI・モック差し替え試験 |
+    | `IAgentSetResolver` | 仕様ドラフトのみ | ServiceManager経由での登録と `agentConfigs` のResolver実装 |
+    | `SessionManagerHooks.logger` | `framework/logging` にルーター作成済み | エージェント文脈情報のサニタイズ/構造化フォーマット決定 |
+    | `SessionManagerHooks.metrics` | MetricEmitterスタブ有り | カウンタ/ヒストグラム種別とExporter接続、CIでのSmoke Test |
 - [ ] **Next.js API Route追加**  
   - App Router の `app/api/session/route.ts` などでBFFハンドラを実装し、zodでバリデーション、共通エラーラッパを適用  
   - **プロトタイプなので**簡易APIキー認証のみ（環境変数で1種類）とし、詳細なレートリミット/監査ログは未実装でOK
@@ -49,6 +61,8 @@
 - [ ] **ドキュメント更新**  
   - README / ARCHITECTURE に BFF 化の目的、エンドポイント、Playgroundでの叩き方（curl/Postman）を追加  
   - **将来の本番化タスク**をTODO欄に残し、今回のプロトタイプ範囲を明記
+
+> **依存関係メモ（2025-11-15暫定）**: Section 2（画像入力API拡張）と Section 3（MCP対応）、Section 4（E2E検証）は、上記サービスレイヤー抽出でのDI・ロギング・メトリクス整備を前提とする。優先度は Section 1-2 を P1/BLOCKER とし、完了前に後続へ進まない。
 
 ## 2. 画像入力対応（UI ↔ API ↔ Realtime）
 - [ ] **要件定義 & UXモック**  
