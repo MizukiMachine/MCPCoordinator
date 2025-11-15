@@ -1,7 +1,11 @@
 import type { ExpertContestRequest, ExpertContestResponse } from '@/app/agentConfigs/types';
 
 export type BreadcrumbFn = (title: string, data?: any) => void;
-export type LogFn = (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
+export type LogFn = (
+  eventObj: Record<string, any>,
+  eventNameSuffix?: string,
+  metadata?: { requestId?: string; sessionId?: string | null },
+) => void;
 
 const safeJson = async (response: Response) => {
   try {

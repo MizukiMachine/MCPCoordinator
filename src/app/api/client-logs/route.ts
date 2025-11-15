@@ -6,6 +6,9 @@ type ClientLogPayload = {
   eventName?: string;
   eventData?: Record<string, any>;
   timestamp?: string;
+  requestId?: string;
+  sessionId?: string | null;
+  createdAtMs?: number;
 };
 
 export async function POST(request: Request) {
@@ -13,7 +16,12 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ClientLogPayload;
     const direction = body?.direction ?? "client";
     const eventName = body?.eventName ?? "client.log";
-    console.log(`CLIENT LOG [${direction}] ${eventName}`, body?.eventData ?? body);
+    console.log(`CLIENT LOG [${direction}] ${eventName}`, {
+      requestId: body?.requestId,
+      sessionId: body?.sessionId,
+      eventData: body?.eventData ?? body,
+      createdAtMs: body?.createdAtMs,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Failed to mirror client log", error);

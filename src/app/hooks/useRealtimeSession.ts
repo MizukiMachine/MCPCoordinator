@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   RealtimeAgent,
   RealtimeOutputGuardrail,
@@ -10,6 +10,8 @@ import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
 import type { ISessionManager, SessionManagerHooks } from '../../../services/realtime/types';
 import { getSessionManager } from '@/app/lib/realtime/sessionManagerLocator';
+import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmitter';
+import { createStructuredLogger } from '../../../framework/logging/structuredLogger';
 
 const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 type TranscriptEventStage = 'completed' | 'delta';
@@ -79,9 +81,44 @@ export function useRealtimeSession(
 ) {
   const sessionManagerRef = useRef<ISessionManager<RealtimeAgent> | null>(null);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
+  const sessionMetadataRef = useRef<{ sessionId: string | null }>({ sessionId: null });
+  const metricEmitterRef = useRef(createConsoleMetricEmitter('client.session_manager'));
   const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
-  const { logClientEvent, logServerEvent } = useEvent();
+  const { logClientEvent, logServerEvent, setSessionMetadata, generateRequestId } = useEvent();
   const historyHandlers = useHandleSessionHistory().current;
+
+  const assignSessionId = useCallback(() => {
+    const nextSessionId = generateRequestId();
+    sessionMetadataRef.current.sessionId = nextSessionId;
+    setSessionMetadata({ sessionId: nextSessionId });
+    return nextSessionId;
+  }, [generateRequestId, setSessionMetadata]);
+
+  const clearSessionId = useCallback(() => {
+    sessionMetadataRef.current.sessionId = null;
+    setSessionMetadata({ sessionId: null });
+  }, [setSessionMetadata]);
+
+  const structuredLogger = useMemo(
+    () =>
+      createStructuredLogger({
+        component: 'session_manager',
+        sink: (level, message, context) => {
+          const sessionId = sessionMetadataRef.current.sessionId;
+          logClientEvent(
+            {
+              type: 'session.log',
+              level,
+              message,
+              context,
+            },
+            `session.${level}`,
+            { sessionId },
+          );
+        },
+      }),
+    [logClientEvent],
+  );
 
   const updateStatus = useCallback(
     (s: SessionStatus) => {
@@ -210,25 +247,59 @@ export function useRealtimeSession(
   useEffect(() => {
     const manager = sessionManagerRef.current;
     if (!manager) return;
+    const metricRecorder = {
+      increment: (name: string, value?: number, tags?: Record<string, string>) => {
+        const sessionId = sessionMetadataRef.current.sessionId;
+        metricEmitterRef.current.increment(name, value ?? 1, {
+          ...(tags ?? {}),
+          sessionId: sessionId ?? 'unassigned',
+        });
+        logClientEvent(
+          {
+            type: 'metric.increment',
+            metric: name,
+            value: value ?? 1,
+            tags: {
+              ...(tags ?? {}),
+              sessionId,
+            },
+          },
+          'metric.increment',
+          { sessionId },
+        );
+      },
+      observe: (name: string, value: number, tags?: Record<string, string>) => {
+        const sessionId = sessionMetadataRef.current.sessionId;
+        metricEmitterRef.current.observe(name, value, {
+          ...(tags ?? {}),
+          sessionId: sessionId ?? 'unassigned',
+        });
+        logClientEvent(
+          {
+            type: 'metric.observe',
+            metric: name,
+            value,
+            tags: {
+              ...(tags ?? {}),
+              sessionId,
+            },
+          },
+          'metric.observe',
+          { sessionId },
+        );
+      },
+    };
+
     manager.updateHooks({
       onStatusChange: updateStatus,
-      logger: {
-        info: (message, context) => logClientEvent(context ?? {}, message),
-        error: (message, context) =>
-          logClientEvent({ ...(context ?? {}), level: 'error' }, message),
-        debug: (message, context) =>
-          logClientEvent({ ...(context ?? {}), level: 'debug' }, message),
-      },
-      metrics: {
-        increment: (name, value, tags) =>
-          logClientEvent({ metric: name, value, tags }, 'metric'),
-      },
+      logger: structuredLogger,
+      metrics: metricRecorder,
       onServerEvent: (_event, payload) => logServerEvent(payload),
       guardrail: {
         onGuardrailTripped: historyHandlers.handleGuardrailTripped,
       },
     });
-  }, [historyHandlers, logClientEvent, logServerEvent, updateStatus]);
+  }, [historyHandlers, logClientEvent, logServerEvent, structuredLogger, updateStatus]);
 
   const connect = useCallback(
     async ({
@@ -244,6 +315,7 @@ export function useRealtimeSession(
         throw new Error('SessionManager is not initialized');
       }
 
+      assignSessionId();
       try {
         await manager.connect({
           getEphemeralKey,
@@ -260,16 +332,18 @@ export function useRealtimeSession(
         registerSessionListeners();
       } catch (error) {
         detachSessionListeners();
+        clearSessionId();
         throw error;
       }
     },
-    [applyCodec, detachSessionListeners, registerSessionListeners],
+    [applyCodec, assignSessionId, clearSessionId, detachSessionListeners, registerSessionListeners],
   );
 
   const disconnect = useCallback(() => {
     sessionManagerRef.current?.disconnect();
     detachSessionListeners();
-  }, [detachSessionListeners]);
+    clearSessionId();
+  }, [clearSessionId, detachSessionListeners]);
 
   const sendUserText = useCallback(
     (text: string) => {

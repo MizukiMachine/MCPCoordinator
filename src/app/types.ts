@@ -130,12 +130,15 @@ export interface ServerEvent {
 }
 
 export interface LoggedEvent {
-  id: number;
+  id: string;
   direction: "client" | "server";
   expanded: boolean;
   timestamp: string;
   eventName: string;
   eventData: Record<string, any>; // can have arbitrary objects logged
+  sessionId?: string | null;
+  requestId?: string | null;
+  createdAtMs: number;
 }
 
 // Update the GuardrailOutputZod schema to use the shared ModerationCategoryZod

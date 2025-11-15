@@ -1,3 +1,6 @@
+import type { MetricEmitter } from '../../framework/metrics/metricEmitter';
+import type { StructuredLogger } from '../../framework/logging/structuredLogger';
+
 export type SessionLifecycleStatus =
   | 'DISCONNECTED'
   | 'CONNECTING'
@@ -5,25 +8,9 @@ export type SessionLifecycleStatus =
 
 export type SessionEventHandler = (payload: any) => void;
 
-export interface SessionLogger {
-  debug?: (message: string, context?: Record<string, any>) => void;
-  info?: (message: string, context?: Record<string, any>) => void;
-  warn?: (message: string, context?: Record<string, any>) => void;
-  error?: (message: string, context?: Record<string, any>) => void;
-}
+export type SessionLogger = StructuredLogger;
 
-export interface SessionMetricRecorder {
-  increment?: (
-    name: string,
-    value?: number,
-    tags?: Record<string, string>,
-  ) => void;
-  observe?: (
-    name: string,
-    value: number,
-    tags?: Record<string, string>,
-  ) => void;
-}
+export type SessionMetricRecorder = MetricEmitter;
 
 export interface GuardrailHooks {
   onGuardrailTripped?: (payload: any) => void | Promise<void>;

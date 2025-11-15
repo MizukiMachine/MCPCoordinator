@@ -35,6 +35,7 @@
   - `src/app/hooks/useRealtimeSession.ts` のロジックを `services/realtime/sessionManager.ts` に移植  
   - `SessionManager` は `ISessionTransport`/`IAgentSetResolver` などのインターフェイスで構成し、SDKなしでもモックできる状態にする  
   - ロギング/メトリクス/ガードレール呼び出しをフック化
+  - 2025-11-15: SessionManager向けの構造化ログ/メトリクス送信フックを `framework/logging` / `framework/metrics` で整備し、イベントTTLクリーンアップを含むクライアント観測性を実装済み。  
 - [ ] **Next.js API Route追加**  
   - App Router の `app/api/session/route.ts` などでBFFハンドラを実装し、zodでバリデーション、共通エラーラッパを適用  
   - **プロトタイプなので**簡易APIキー認証のみ（環境変数で1種類）とし、詳細なレートリミット/監査ログは未実装でOK
