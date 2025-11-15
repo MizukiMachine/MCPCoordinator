@@ -67,7 +67,7 @@ function App() {
     addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
-  const { logClientEvent, logServerEvent } = useEvent();
+  const { logClientEvent, logServerEvent, generateRequestId } = useEvent();
 
   const [agentSetKey, setAgentSetKey] = useState<string>(defaultAgentSetKey);
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
@@ -142,9 +142,10 @@ function App() {
     useAudioDownload();
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
+    const requestId = generateRequestId();
     try {
       sendEvent(eventObj);
-      logClientEvent(eventObj, eventNameSuffix);
+      logClientEvent(eventObj, eventNameSuffix, { requestId });
     } catch (err) {
       console.error('Failed to send via SDK', err);
     }

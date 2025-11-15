@@ -20,6 +20,11 @@ function Events({ isExpanded }: EventsProps) {
 
   const { loggedEvents, toggleExpand } = useEvent();
 
+  const shortenId = (value?: string | null) => {
+    if (!value) return null;
+    return value.length > 10 ? `${value.slice(0, 10)}…` : value;
+  };
+
   const getDirectionArrow = (direction: string) => {
     if (direction === "client") return { symbol: "▲", color: "#7f5af0" };
     if (direction === "server") return { symbol: "▼", color: "#2cb67d" };
@@ -87,6 +92,14 @@ function Events({ isExpanded }: EventsProps) {
                     <div className="text-gray-500 ml-1 text-xs whitespace-nowrap">
                       {log.timestamp}
                     </div>
+                    {(log.sessionId || log.requestId) && (
+                      <div className="ml-3 text-[10px] text-gray-400 flex flex-col items-end">
+                        {log.sessionId && (
+                          <span>session:{shortenId(log.sessionId)}</span>
+                        )}
+                        {log.requestId && <span>req:{shortenId(log.requestId)}</span>}
+                      </div>
+                    )}
                   </div>
 
                   {contestEvent && (

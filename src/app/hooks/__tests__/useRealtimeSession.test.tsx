@@ -72,6 +72,8 @@ beforeAll(async () => {
       useEvent: () => ({
         logClientEvent: noop,
         logServerEvent: noop,
+        setSessionMetadata: noop,
+        generateRequestId: () => 'req-mock',
       }),
     };
   });

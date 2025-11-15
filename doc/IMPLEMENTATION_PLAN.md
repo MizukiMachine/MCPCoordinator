@@ -35,6 +35,7 @@
   - `src/app/hooks/useRealtimeSession.ts` のロジックを `services/realtime/sessionManager.ts` に移植  
   - `SessionManager` は `ISessionTransport`/`IAgentSetResolver` などのインターフェイスで構成し、SDKなしでもモックできる状態にする  
   - ロギング/メトリクス/ガードレール呼び出しをフック化
+  - 2025-11-15: SessionManager向けの構造化ログ/メトリクス送信フックを `framework/logging` / `framework/metrics` で整備し、イベントTTLクリーンアップを含むクライアント観測性を実装済み。  
 - [ ] **Next.js API Route追加**  
   - App Router の `app/api/session/route.ts` などでBFFハンドラを実装し、zodでバリデーション、共通エラーラッパを適用  
   - **プロトタイプなので**簡易APIキー認証のみ（環境変数で1種類）とし、詳細なレートリミット/監査ログは未実装でOK
@@ -82,6 +83,7 @@
   - `doc/GCP_FILE_SEARCH_SETUP.md` の手順に沿って API 有効化、`file-search-admin` サービスアカウント作成、鍵の発行、`logging sinks` 設定を完了する  
   - Drive 側の対象フォルダとアクセス権を確定し、`doc/rag-playbook.md` で定義した分類ルールを実データへ適用（`rag-editors@` 等グループの権限付与）  
   - File Search ストアの容量・ラベル命名規約・監査ログ確認手順を `doc/baseline/gcp-setup-<date>.log` として記録し、Feature Flag (`USE_GEMINI_FILE_SEARCH`) のデフォルト値（`false`→`true`切替条件）を明示
+  - 2025-11-15: 依存機能（SessionManager 観測性など）の整備が進んだため、BLOCKER解除条件を `doc/GCP_FILE_SEARCH_SETUP.md` に逐次追記し、解除後ただちに CI でのモック統合テストを追加する。  
 - [x] **ServiceManager基盤**  
   - `framework/mcp/ServiceManager.ts` を作成し、`register(name, factory)` / `get(name)` / `shutdownAll()` を提供  
   - DI対応のため、ServiceManager自体をシングルトン化せず、API層・テストで差し替えできるようにする  
