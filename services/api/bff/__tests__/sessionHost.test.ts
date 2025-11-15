@@ -102,6 +102,7 @@ describe('SessionHost', () => {
     expect(result.sessionId).toMatch(/^sess_/);
     expect(result.streamUrl).toContain(result.sessionId);
     expect(result.allowedModalities).toEqual(['audio', 'text']);
+    expect(result.textOutputEnabled).toBe(true);
 
     const manager = managers[0]!;
     const status = await host.handleCommand(result.sessionId, {
@@ -121,6 +122,7 @@ describe('SessionHost', () => {
     });
 
     expect(result.allowedModalities).toEqual(['audio']);
+    expect(result.textOutputEnabled).toBe(false);
   });
 
   it('enforces rate limiting', async () => {
@@ -175,6 +177,7 @@ describe('SessionHost', () => {
     });
 
     expect(result.allowedModalities).toEqual(['text']);
+    expect(result.textOutputEnabled).toBe(true);
     expect(result.capabilityWarnings).toContain('Audio disabled for test');
   });
 

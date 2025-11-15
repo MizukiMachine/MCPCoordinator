@@ -374,8 +374,11 @@ export function useRealtimeSession(
         ? data.allowedModalities
         : [];
       const hasAudio = allowedModalities.includes('audio');
-      const hasText = allowedModalities.length === 0 ? true : allowedModalities.includes('text');
-      serverTextOutputEnabledRef.current = hasText;
+      const serverTextOutputEnabled =
+        typeof data.textOutputEnabled === 'boolean'
+          ? Boolean(data.textOutputEnabled)
+          : resolvedCapabilities.outputText;
+      serverTextOutputEnabledRef.current = serverTextOutputEnabled;
 
       if (allowedModalities.length > 0 && !hasAudio) {
         logClientEvent(
@@ -386,7 +389,7 @@ export function useRealtimeSession(
           'session_warning',
         );
       }
-      if (resolvedCapabilities.outputText && allowedModalities.length > 0 && !hasText) {
+      if (resolvedCapabilities.outputText && !serverTextOutputEnabled) {
         logClientEvent(
           {
             type: 'session_warning',

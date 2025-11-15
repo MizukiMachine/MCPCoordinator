@@ -74,6 +74,7 @@ export interface CreateSessionResult {
   expiresAt: string;
   heartbeatIntervalMs: number;
   allowedModalities: Array<'text' | 'audio'>;
+  textOutputEnabled: boolean;
   agentSet: {
     key: string;
     primary: string;
@@ -143,6 +144,7 @@ interface SessionContext {
   rateLimiter: SessionRateLimiter;
   lastCommandAt: number;
   allowedModalities: Array<'text' | 'audio'>;
+  textOutputEnabled: boolean;
 }
 
 interface DestroySessionOptions {
@@ -220,7 +222,9 @@ export class SessionHost {
     const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
     const guardrail = createModerationGuardrail(companyName);
     const envSnapshot = this.inspectEnvironment();
-    const resolvedModalities = this.resolveModalities(options, envSnapshot);
+    const textOutputEnabled = options.clientCapabilities?.outputText !== false;
+    const resolvedModalities = this.resolveRuntimeModalities(options, envSnapshot, textOutputEnabled);
+    const reportedModalities = this.buildReportedModalities(options, envSnapshot, textOutputEnabled);
 
     const manager = this.sessionManagerFactory(hooks);
     const now = this.now();
@@ -253,7 +257,8 @@ export class SessionHost {
       },
       rateLimiter: { hits: [] },
       lastCommandAt: now,
-      allowedModalities: resolvedModalities,
+      allowedModalities: reportedModalities,
+      textOutputEnabled,
     };
     contextRef = context;
 
@@ -296,7 +301,8 @@ export class SessionHost {
       streamUrl: `/api/session/${sessionId}/stream`,
       expiresAt: new Date(context.expiresAt).toISOString(),
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
-      allowedModalities: resolvedModalities,
+      allowedModalities: reportedModalities,
+      textOutputEnabled,
       capabilityWarnings: envSnapshot.warnings,
       agentSet: {
         key: options.agentSetKey,
@@ -470,14 +476,15 @@ export class SessionHost {
     }
   }
 
-  private resolveModalities(
+  private resolveRuntimeModalities(
     options: CreateSessionOptions,
     snapshot: RealtimeEnvironmentSnapshot,
+    textOutputEnabled: boolean,
   ): Array<'text' | 'audio'> {
     const audioRequested = options.clientCapabilities?.audio !== false;
-    const textRequested = options.clientCapabilities?.outputText !== false;
+    const audioAvailable = audioRequested && snapshot.audio.enabled;
 
-    if (!audioRequested && !textRequested) {
+    if (!audioRequested && !textOutputEnabled) {
       throw new SessionHostError(
         'Client must enable audio or text output when creating a session',
         'invalid_client_capabilities',
@@ -485,28 +492,38 @@ export class SessionHost {
       );
     }
 
-    const modalities: Array<'text' | 'audio'> = [];
-    const audioAvailable = audioRequested && snapshot.audio.enabled;
-
     if (audioAvailable) {
-      modalities.push('audio');
+      return ['audio'];
     }
 
-    if (textRequested) {
-      modalities.push('text');
-    }
-
-    if (modalities.length === 0) {
-      if (audioRequested && !snapshot.audio.enabled) {
-        throw new SessionHostError(
-          'Audio output unavailable in current environment and text output disabled by client',
-          'invalid_client_capabilities',
-          400,
-        );
-      }
+    if (textOutputEnabled) {
       return ['text'];
     }
 
+    throw new SessionHostError(
+      'Audio output unavailable in current environment and text output disabled by client',
+      'invalid_client_capabilities',
+      400,
+    );
+  }
+
+  private buildReportedModalities(
+    options: CreateSessionOptions,
+    snapshot: RealtimeEnvironmentSnapshot,
+    textOutputEnabled: boolean,
+  ): Array<'text' | 'audio'> {
+    const modalities: Array<'text' | 'audio'> = [];
+    const audioRequested = options.clientCapabilities?.audio !== false;
+    if (audioRequested && snapshot.audio.enabled) {
+      modalities.push('audio');
+    }
+    if (textOutputEnabled) {
+      modalities.push('text');
+    }
+    if (modalities.length === 0) {
+      // fallback for text-only environments
+      modalities.push('text');
+    }
     return modalities;
   }
 
@@ -634,11 +651,7 @@ export class SessionHost {
   private broadcast(sessionId: string, event: string, data: Record<string, any> | string | null) {
     const context = this.sessions.get(sessionId);
     if (!context) return;
-    if (
-      event === 'transport_event' &&
-      !context.allowedModalities.includes('text') &&
-      isRealtimeTranscriptionEventPayload(data)
-    ) {
+    if (event === 'transport_event' && !context.textOutputEnabled && isRealtimeTranscriptionEventPayload(data)) {
       return;
     }
     const message: SessionStreamMessage = {
