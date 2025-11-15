@@ -493,4 +493,18 @@ export class SessionHost {
   }
 }
 
-export const sessionHost = new SessionHost();
+const SESSION_HOST_SYMBOL = Symbol.for('mcpc.sessionHost.singleton');
+
+export function getSessionHost(): SessionHost {
+  const globalScope = globalThis as typeof globalThis & {
+    [SESSION_HOST_SYMBOL]?: SessionHost;
+  };
+
+  if (!globalScope[SESSION_HOST_SYMBOL]) {
+    globalScope[SESSION_HOST_SYMBOL] = new SessionHost();
+  }
+
+  return globalScope[SESSION_HOST_SYMBOL]!;
+}
+
+export const sessionHost = getSessionHost();

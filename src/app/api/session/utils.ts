@@ -8,7 +8,15 @@ export function requireBffSecret(request: Request): void {
   if (!expected) {
     return;
   }
-  const provided = request.headers.get('x-bff-key') ?? '';
+  let provided = request.headers.get('x-bff-key') ?? '';
+  if (!provided) {
+    try {
+      const url = new URL(request.url);
+      provided = url.searchParams.get('bffKey') ?? '';
+    } catch {
+      provided = '';
+    }
+  }
   if (provided !== expected) {
     throw new SessionHostError('Unauthorized', 'unauthorized', 401);
   }

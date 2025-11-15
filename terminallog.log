@@ -1,0 +1,222 @@
+   ▲ Next.js 15.5.2
+   - Local:        http://localhost:3000
+   - Network:      http://10.255.255.254:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1402ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.2s (1601 modules)
+[envSetup] Loaded environment from .env (OPENAI_API_KEY=sk-p…dscA)
+ GET / 200 in 2932ms
+ ✓ Compiled in 521ms (647 modules)
+ GET / 200 in 44ms
+ ○ Compiling /api/client-logs ...
+ ✓ Compiled /api/client-logs in 666ms (1607 modules)
+CLIENT LOG [client] session_warning session_warning {
+  requestId: '54758e09-2a0a-4900-ad8f-f6b150a3b5e6',
+  sessionId: null,
+  eventData: {
+    type: 'session_warning',
+    message: 'Command ignored because session is not connected',
+    sessionId: null,
+    requestId: '54758e09-2a0a-4900-ad8f-f6b150a3b5e6'
+  },
+  createdAtMs: 1763203091514
+}
+ POST /api/client-logs 200 in 780ms
+CLIENT LOG [client] session_status session_status {
+  requestId: 'd0d8f309-a758-4ba1-82ba-92fab7ac918d',
+  sessionId: 'f9db1d1a-a02c-41cc-83c6-4773d86e439a',
+  eventData: {
+    type: 'session_status',
+    status: 'CONNECTING',
+    sessionId: 'f9db1d1a-a02c-41cc-83c6-4773d86e439a',
+    requestId: 'd0d8f309-a758-4ba1-82ba-92fab7ac918d'
+  },
+  createdAtMs: 1763203101415
+}
+ POST /api/client-logs 200 in 22ms
+ ○ Compiling /api/session ...
+ ✓ Compiled /api/session in 834ms (2007 modules)
+[structured-log] {
+  level: 'info',
+  message: 'Session connected',
+  sessionId: 'sess_eec5336eef8c',
+  agentSetKey: 'chatSupervisor',
+  preferredAgent: 'chatAgent',
+  component: 'bff.session'
+}
+[metric] {
+  namespace: 'bff.session.sess_eec5336eef8c',
+  type: 'counter',
+  name: 'session_connect_success_total',
+  value: 1,
+  tags: {},
+  timestamp: '2025-11-15T10:38:22.399Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.created_total',
+  value: 1,
+  tags: {},
+  timestamp: '2025-11-15T10:38:22.400Z'
+}
+ POST /api/session 200 in 1599ms
+[metric] {
+  namespace: 'bff.session.sess_eec5336eef8c',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-15T10:38:22.404Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_eec5336eef8c',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-15T10:38:22.641Z'
+}
+[structured-log] {
+  level: 'error',
+  message: 'Realtime session error',
+  sessionId: 'sess_eec5336eef8c',
+  payload: {
+    type: 'error',
+    error: {
+      type: 'error',
+      event_id: 'event_Cc7xgmpuk1q2a2Ys2ctue',
+      error: [Object]
+    }
+  },
+  component: 'bff.session'
+}
+[metric] {
+  namespace: 'bff.session.sess_eec5336eef8c',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'error' },
+  timestamp: '2025-11-15T10:38:22.642Z'
+}
+ ✓ Compiled /api/session/[sessionId]/stream in 304ms (2009 modules)
+[metric] {
+  namespace: 'bff.session.sess_eec5336eef8c',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-15T10:38:23.331Z'
+}
+ GET /api/session/sess_eec5336eef8c/stream?bffKey=dev-secret 200 in 1017ms
+CLIENT LOG [client] session_status session_status {
+  requestId: '275f0048-5d84-4072-a46b-6a149b962a29',
+  sessionId: 'f9db1d1a-a02c-41cc-83c6-4773d86e439a',
+  eventData: {
+    type: 'session_status',
+    status: 'CONNECTED',
+    sessionId: 'f9db1d1a-a02c-41cc-83c6-4773d86e439a',
+    requestId: '275f0048-5d84-4072-a46b-6a149b962a29'
+  },
+  createdAtMs: 1763203104169
+}
+ POST /api/client-logs 200 in 33ms
+CLIENT LOG [server] ready ready {
+  requestId: '5a54d6e1-d1cf-4dc7-96ee-fda594f6c731',
+  sessionId: 'f9db1d1a-a02c-41cc-83c6-4773d86e439a',
+  eventData: {
+    type: 'ready',
+    payload: { sessionId: 'sess_eec5336eef8c' },
+    sessionId: 'f9db1d1a-a02c-41cc-83c6-4773d86e439a',
+    requestId: '5a54d6e1-d1cf-4dc7-96ee-fda594f6c731'
+  },
+  createdAtMs: 1763203104170
+}
+ POST /api/client-logs 200 in 35ms
+CLIENT LOG [client] session_status session_status {
+  requestId: '601c4f5f-ff71-46f1-8747-a002b7de4fff',
+  sessionId: null,
+  eventData: {
+    type: 'session_status',
+    status: 'DISCONNECTED',
+    sessionId: null,
+    requestId: '601c4f5f-ff71-46f1-8747-a002b7de4fff'
+  },
+  createdAtMs: 1763203104175
+}
+CLIENT LOG [client] session_warning session_warning {
+  requestId: '6cb30e03-d953-4e46-bf52-99c0272076ff',
+  sessionId: null,
+  eventData: {
+    type: 'session_warning',
+    message: 'Command ignored because session is not connected',
+    sessionId: null,
+    requestId: '6cb30e03-d953-4e46-bf52-99c0272076ff'
+  },
+  createdAtMs: 1763203104177
+}
+CLIENT LOG [client] session_warning session_warning {
+  requestId: '5fa8cec8-1531-4741-b070-392959dcc2cc',
+  sessionId: null,
+  eventData: {
+    type: 'session_warning',
+    message: 'Command ignored because session is not connected',
+    sessionId: null,
+    requestId: '5fa8cec8-1531-4741-b070-392959dcc2cc'
+  },
+  createdAtMs: 1763203104178
+}
+ POST /api/client-logs 200 in 96ms
+ POST /api/client-logs 200 in 83ms
+ POST /api/client-logs 200 in 80ms
+ ○ Compiling /api/session/[sessionId] ...
+ ✓ Compiled /api/session/[sessionId] in 845ms (2011 modules)
+CLIENT LOG [client] response.create initial response trigger {
+  requestId: '21762fab-5ead-4157-b23a-fa0238863c88',
+  sessionId: null,
+  eventData: {
+    type: 'response.create',
+    sessionId: null,
+    requestId: '21762fab-5ead-4157-b23a-fa0238863c88'
+  },
+  createdAtMs: 1763203104178
+}
+ POST /api/client-logs 200 in 937ms
+CLIENT LOG [client] session_warning session_warning {
+  requestId: '35ac9709-7135-4278-9210-30135f9c9d2c',
+  sessionId: null,
+  eventData: {
+    type: 'session_warning',
+    message: 'Command ignored because session is not connected',
+    sessionId: null,
+    requestId: '35ac9709-7135-4278-9210-30135f9c9d2c'
+  },
+  createdAtMs: 1763203104178
+}
+ POST /api/client-logs 200 in 719ms
+[structured-log] {
+  level: 'info',
+  message: 'Session disconnected',
+  sessionId: 'sess_eec5336eef8c',
+  component: 'bff.session'
+}
+[metric] {
+  namespace: 'bff.session.sess_eec5336eef8c',
+  type: 'counter',
+  name: 'session_disconnect_total',
+  value: 1,
+  tags: { stage: 'connected' },
+  timestamp: '2025-11-15T10:38:25.018Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.closed_total',
+  value: 1,
+  tags: {},
+  timestamp: '2025-11-15T10:38:25.018Z'
+}
+ DELETE /api/session/sess_eec5336eef8c 200 in 1566ms

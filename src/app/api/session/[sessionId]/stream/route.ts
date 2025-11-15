@@ -4,16 +4,15 @@ import { sessionHost, type SessionStreamMessage } from '../../../../../../servic
 import { handleRouteError, requireBffSecret } from '../../utils';
 
 interface RouteParams {
-  params: {
-    sessionId: string;
-  };
+  params: Promise<{ sessionId: string }>;
 }
 
 export const runtime = 'nodejs';
 
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(request: Request, context: RouteParams) {
   try {
     requireBffSecret(request);
+    const { sessionId } = await context.params;
     const encoder = new TextEncoder();
     let cleanup: (() => void) | undefined;
 
@@ -25,12 +24,12 @@ export async function GET(request: Request, { params }: RouteParams) {
             controller.enqueue(encoder.encode(formatSse(message)));
           },
         };
-        cleanup = sessionHost.subscribe(params.sessionId, subscriber);
+        cleanup = sessionHost.subscribe(sessionId, subscriber);
         controller.enqueue(
           encoder.encode(
             formatSse({
               event: 'ready',
-              data: { sessionId: params.sessionId },
+              data: { sessionId },
               timestamp: new Date().toISOString(),
             }),
           ),

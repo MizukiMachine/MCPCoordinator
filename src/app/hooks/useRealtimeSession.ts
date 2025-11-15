@@ -287,10 +287,11 @@ export function useRealtimeSession(
       }
 
       const data = await response.json();
-      const eventSource = createEventSource(data.streamUrl);
+      const streamUrl = appendBffKeyToUrl(data.streamUrl);
+      const eventSource = createEventSource(streamUrl);
       sessionStateRef.current = {
         sessionId: data.sessionId,
-        streamUrl: data.streamUrl,
+        streamUrl,
         eventSource,
       };
       registerStreamListeners(eventSource);
@@ -394,4 +395,18 @@ function buildHeaders() {
         'x-bff-key': BFF_API_KEY,
       }
     : {};
+}
+
+function appendBffKeyToUrl(streamUrl: string): string {
+  if (!BFF_API_KEY) {
+    return streamUrl;
+  }
+  try {
+    const base = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const parsed = new URL(streamUrl, base);
+    parsed.searchParams.set('bffKey', BFF_API_KEY);
+    return parsed.toString();
+  } catch {
+    return streamUrl;
+  }
 }
