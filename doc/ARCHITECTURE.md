@@ -44,3 +44,16 @@
    - デフォルト: 勝者テキストをそのまま採用し、MoAの選抜効果を計測する。
    - マージON条件（例）: 平均差 < 0.5 かつ Runner-up 平均 ≥ 8点。条件を満たすと「マージエージェント」が勝者テキストを骨格に Runner-up の独自価値を1行だけ追加する。
    - マージON/OFFと勝者原文は両方ログに残し、品質向上への寄与を解析できるようにする。
+
+## BFF / API レイヤー構成
+
+- `services/api/bff/sessionHost.ts` がセッションライフサイクルを統括し、`SessionManager` + WebSocketトランスポート（`OpenAIRealtimeServerTransport`）で OpenAI Realtime API へ接続する。
+- `SessionHost` は in-memory ストアで TTL (10分) / 最大30分の寿命を管理し、SSE購読者が0になったら60秒後に自動クリーンアップする。
+- Next.js API ルート
+  - `POST /api/session` : セッション作成・BFFキー認証。レスポンスに `streamUrl` を含める。
+  - `POST /api/session/{id}/event` : `kind` 指定のコマンド（`input_text`/`input_audio`/`input_image`/`control`/`event`）を受け取り、SessionHostが `SessionManager` に転送。
+  - `GET /api/session/{id}/stream` : SSE (`text/event-stream`) で status/history/transport_event/heartbeat を push。UIの EventSource が購読する。
+  - `DELETE /api/session/{id}` : 明示的な終了リクエスト。
+- UI 側の `useRealtimeSession` Hook は EventSource + REST クライアントに置き換え、PCMチャンクを `AudioContext` (24kHz) で再生する。`mute` は BFF制御(`control` コマンド)とローカル `PcmAudioPlayer` のゲインの両方で同期する。
+- BFFキーは `.env` の `BFF_SERVICE_SHARED_SECRET`（サーバー）と `NEXT_PUBLIC_BFF_KEY`（ブラウザ）を一致させる。将来的には OAuth / session cookie に置換予定。
+- メトリクス: `bff.session.*` カウンタを `framework/metrics/metricEmitter` で標準出力へ吐き、ログは `structuredLogger` が component=`bff.session` で整形。

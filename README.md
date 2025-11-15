@@ -43,6 +43,13 @@ OpenAI Realtime API + Agents SDK デモです。
 4. ブラウザで [http://localhost:3000](http://localhost:3000) 
 - 右上の「シナリオ」「エージェント」プルダウンで構成を切り替え可能 (`?agentConfig=` クエリにも対応)
 
+## BFF Session API
+- `/api/session` でセッションを作成し、レスポンスに含まれる `streamUrl` を `EventSource` で購読すると、RealtimeイベントをSSEで受信できます。
+- クライアントは `x-bff-key` ヘッダ（`NEXT_PUBLIC_BFF_KEY`）を付与して各APIを呼び出します。サーバー側は `BFF_SERVICE_SHARED_SECRET` と突き合わせます。
+- `/api/session/{id}/event` は `kind` ベースの汎用コマンド（`input_text` / `input_audio` / `input_image` / `control` など）でRealtimeにイベントを転送します。
+- `/api/session/{id}/stream` は 25 秒ごとの `heartbeat` とセッション状態イベント（history/guardrail/agent_handoff等）を SSE で配信します。
+- 詳細なパラメータとエラールールは `doc/api-spec.md` を参照してください。`curl -H "x-bff-key: $NEXT_PUBLIC_BFF_KEY" -X POST http://localhost:3000/api/session -d '{"agentSetKey":"chatSupervisor"}'` でローカル動作確認できます。
+
 
 ## 言語・仕様しているモデルの説明
 - すべてのエージェントは、日本語で挨拶・案内・フィラーを行うようプロンプトを統一しています。ユーザーが他言語を希望した場合のみ一時的に切り替わります。
