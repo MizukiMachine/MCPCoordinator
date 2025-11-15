@@ -83,6 +83,7 @@
   - `doc/GCP_FILE_SEARCH_SETUP.md` の手順に沿って API 有効化、`file-search-admin` サービスアカウント作成、鍵の発行、`logging sinks` 設定を完了する  
   - Drive 側の対象フォルダとアクセス権を確定し、`doc/rag-playbook.md` で定義した分類ルールを実データへ適用（`rag-editors@` 等グループの権限付与）  
   - File Search ストアの容量・ラベル命名規約・監査ログ確認手順を `doc/baseline/gcp-setup-<date>.log` として記録し、Feature Flag (`USE_GEMINI_FILE_SEARCH`) のデフォルト値（`false`→`true`切替条件）を明示
+  - 2025-11-15: 依存機能（SessionManager 観測性など）の整備が進んだため、BLOCKER解除条件を `doc/GCP_FILE_SEARCH_SETUP.md` に逐次追記し、解除後ただちに CI でのモック統合テストを追加する。  
 - [x] **ServiceManager基盤**  
   - `framework/mcp/ServiceManager.ts` を作成し、`register(name, factory)` / `get(name)` / `shutdownAll()` を提供  
   - DI対応のため、ServiceManager自体をシングルトン化せず、API層・テストで差し替えできるようにする  

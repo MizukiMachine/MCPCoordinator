@@ -21,12 +21,20 @@ export interface StructuredLoggerOptions {
   defaultContext?: StructuredLogContext;
 }
 
+function resolveConsoleMethod(level: LogLevel) {
+  if (typeof console === 'undefined') {
+    return () => {};
+  }
+  const method = (console as Record<string, unknown>)[level];
+  if (typeof method === 'function') {
+    return (method as (...args: unknown[]) => void).bind(console);
+  }
+  return console.log.bind(console);
+}
+
 const consoleSink: StructuredLogSink = (level, message, context) => {
-  const target =
-    typeof console !== 'undefined' && typeof (console as any)[level] === 'function'
-      ? (console as any)[level]
-      : console.log;
-  target.call(console, '[structured-log]', { level, message, ...(context ?? {}) });
+  const target = resolveConsoleMethod(level);
+  target('[structured-log]', { level, message, ...(context ?? {}) });
 };
 
 const noop: StructuredLogger = {
@@ -76,17 +84,14 @@ export function createConsoleLogger(component?: string): StructuredLogger {
   return createStructuredLogger({
     component,
     sink: (level, message, context) => {
-      const target =
-        typeof console !== 'undefined' && typeof (console as any)[level] === 'function'
-          ? (console as any)[level]
-          : console.log;
+      const target = resolveConsoleMethod(level);
       const payload = {
         timestamp: new Date().toISOString(),
         level,
         message,
         ...(context ?? {}),
       };
-      target.call(console, '[structured-log]', payload);
+      target('[structured-log]', payload);
     },
   });
 }

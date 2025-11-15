@@ -33,6 +33,14 @@ const TRANSCRIPTION_EVENT_KIND: Record<string, TranscriptEventStage> = {
   'output_text.delta': 'delta',
 } as const;
 
+function getDefaultCodecPreference(): string {
+  if (typeof window === 'undefined') {
+    return 'opus';
+  }
+  const search = new URLSearchParams(window.location.search);
+  return (search.get('codec') ?? 'opus').toLowerCase();
+}
+
 function addFallbackItemId(event: any) {
   if (!event || typeof event !== 'object') return event;
   const fallbackId =
@@ -165,12 +173,7 @@ export function useRealtimeSession(
     [historyHandlers],
   );
 
-  const codecParamRef = useRef<string>(
-    (typeof window !== 'undefined'
-      ? (new URLSearchParams(window.location.search).get('codec') ?? 'opus')
-      : 'opus'
-    ).toLowerCase(),
-  );
+  const codecParamRef = useRef<string>(getDefaultCodecPreference());
 
   const applyCodec = useCallback(
     (pc: RTCPeerConnection) => applyCodecPreferences(pc, codecParamRef.current),

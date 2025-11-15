@@ -11,6 +11,7 @@ const safeJson = async (response: Response) => {
   try {
     return await response.json();
   } catch {
+    console.warn('Failed to parse contest API response body');
     return null;
   }
 };

@@ -17,6 +17,8 @@ import { createConsoleMetricEmitter } from "../../../framework/metrics/metricEmi
 const CLIENT_LOG_ENDPOINT = process.env.NEXT_PUBLIC_CLIENT_LOG_ENDPOINT ?? "/api/client-logs";
 const MIRROR_LOGS_TO_SERVER =
   (process.env.NEXT_PUBLIC_CLIENT_LOG_MIRROR ?? "true").toLowerCase() !== "false";
+const MIRROR_RETRY_LIMIT = 3;
+const MIRROR_RETRY_INTERVAL_MS = 3_000;
 
 const DEFAULT_EVENT_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_SWEEP_MS = 10 * 1000;
@@ -36,7 +38,22 @@ export const EVENT_LOG_SWEEP_INTERVAL_MS = parseDuration(
   DEFAULT_SWEEP_MS,
 );
 
-function mirrorLogToServer(payload: LoggedEvent) {
+function resolveClientLogEndpoint(): string {
+  if (CLIENT_LOG_ENDPOINT.startsWith('http')) {
+    return CLIENT_LOG_ENDPOINT;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}${CLIENT_LOG_ENDPOINT}`;
+  }
+  return CLIENT_LOG_ENDPOINT;
+}
+
+function scheduleMirrorRetry(payload: LoggedEvent, attempt: number) {
+  const timer = (typeof window !== 'undefined' ? window : globalThis).setTimeout;
+  timer(() => mirrorLogToServer(payload, attempt), MIRROR_RETRY_INTERVAL_MS);
+}
+
+function mirrorLogToServer(payload: LoggedEvent, attempt = 0) {
   if (!MIRROR_LOGS_TO_SERVER) return;
   const body = JSON.stringify(payload);
   try {
@@ -45,16 +62,25 @@ function mirrorLogToServer(payload: LoggedEvent) {
       const success = navigator.sendBeacon(CLIENT_LOG_ENDPOINT, blob);
       if (success) return;
     }
-    fetch(CLIENT_LOG_ENDPOINT, {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    fetch(resolveClientLogEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
       keepalive: true,
     }).catch((err) => {
       console.warn("Failed to mirror client log via fetch", err);
+      if (attempt < MIRROR_RETRY_LIMIT) {
+        scheduleMirrorRetry(payload, attempt + 1);
+      }
     });
   } catch (error) {
     console.warn("Failed to mirror client log", error);
+    if (attempt < MIRROR_RETRY_LIMIT) {
+      scheduleMirrorRetry(payload, attempt + 1);
+    }
   }
 }
 

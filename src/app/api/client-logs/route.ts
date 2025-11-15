@@ -11,6 +11,8 @@ type ClientLogPayload = {
   createdAtMs?: number;
 };
 
+// NOTE: This endpoint only mirrors payloads to stdout for the prototype phase.
+// 本番運用時は永続化や認証を追加すること。
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ClientLogPayload;
