@@ -232,13 +232,13 @@ class NoopSessionManager implements ISessionManager<RealtimeAgent> {
     this.setStatus('DISCONNECTED');
   }
 
-  sendUserText(_text: string): void {}
+  sendUserText(): void {}
 
-  sendEvent(_event: Record<string, any>): void {}
+  sendEvent(): void {}
 
   interrupt(): void {}
 
-  mute(_muted: boolean): void {}
+  mute(): void {}
 
   pushToTalkStart(): void {}
 

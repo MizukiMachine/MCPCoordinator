@@ -1,7 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
 
@@ -18,17 +17,12 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
-import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
 import { allAgentSets, agentSetMetadata, defaultAgentSetKey } from "@/app/agentConfigs";
 import { techContestPreset, medContestPreset, createContestRequestFromPreset } from "@/app/agentConfigs/expertContestPresets";
 import { callExpertContestApi, buildContestSummary, recordContestBreadcrumb, logContestEvent, ensureContestId } from "@/app/agentConfigs/tools/expertContestClient";
 
-const companyNameByScenario: Record<string, string> = Object.fromEntries(
-  Object.entries(agentSetMetadata).map(([key, meta]) => [key, meta.companyName]),
-);
-const defaultCompanyName = agentSetMetadata[defaultAgentSetKey]?.companyName ?? 'OpenAI Demo';
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
@@ -64,10 +58,9 @@ function App() {
 
   const {
     transcriptItems,
-    addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
-  const { logClientEvent, logServerEvent, generateRequestId } = useEvent();
+  const { logClientEvent, generateRequestId } = useEvent();
 
   const [agentSetKey, setAgentSetKey] = useState<string>(defaultAgentSetKey);
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
@@ -76,30 +69,12 @@ function App() {
   >(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
   const lastUserMessageRef = useRef<{ itemId: string; text: string } | null>(null);
   const lastAssistantComparisonRef = useRef<string | null>(null);
   const comparisonInFlightRef = useRef(false);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const el = document.createElement('audio');
-    el.autoplay = true;
-    el.style.display = 'none';
-    document.body.appendChild(el);
-    audioElementRef.current = el;
-
-    return () => {
-      if (audioElementRef.current === el) {
-        audioElementRef.current = null;
-      }
-      el.pause();
-      el.srcObject = null;
-      el.remove();
-    };
-  }, []);
 
   const {
     connect,
@@ -138,8 +113,7 @@ function App() {
   }, []);
 
   // Initialize the recording hook.
-  const { startRecording, stopRecording, downloadRecording } =
-    useAudioDownload();
+  const { stopRecording, downloadRecording } = useAudioDownload();
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     const requestId = generateRequestId();
@@ -231,40 +205,6 @@ function App() {
     }
   }, [transcriptItems]);
 
-  const fetchEphemeralKey = async (): Promise<string | null> => {
-    logClientEvent({ url: "/session" }, "fetch_session_token_request");
-    const tokenResponse = await fetch("/api/session");
-    const data = await tokenResponse.json();
-    logServerEvent(data, "fetch_session_token_response");
-
-    if (!tokenResponse.ok) {
-      const baseMessage =
-        typeof data?.error === "string"
-          ? data.error
-          : "Failed to fetch realtime client secret.";
-      const codeSuffix =
-        typeof data?.code === "string" ? ` (${data.code})` : "";
-      const descriptiveMessage = `${baseMessage}${codeSuffix}`;
-      setSessionError(descriptiveMessage);
-      logClientEvent(data, "error.fetch_session_token_failed");
-      console.error("Realtime session bootstrap failed:", descriptiveMessage);
-      setSessionStatus("DISCONNECTED");
-      return null;
-    }
-
-    const clientSecret =
-      data?.value ?? data?.client_secret?.value ?? data?.clientSecret;
-
-    if (!clientSecret) {
-      logClientEvent(data, "error.no_ephemeral_key");
-      console.error("No ephemeral key provided by the server");
-      setSessionStatus("DISCONNECTED");
-      return null;
-    }
-    setSessionError(null);
-
-    return clientSecret;
-  };
 
   const disconnectFromRealtime = () => {
     disconnect();
@@ -349,18 +289,10 @@ function App() {
     }
 
     try {
-      const EPHEMERAL_KEY = await fetchEphemeralKey();
-      if (!EPHEMERAL_KEY) return;
-
-      const companyName = companyNameByScenario[agentSetKey] ?? defaultCompanyName;
-      const guardrail = createModerationGuardrail(companyName);
-
+      setSessionError(null);
       await connect({
-        getEphemeralKey: async () => EPHEMERAL_KEY,
         agentSetKey,
         preferredAgentName: selectedAgentName,
-        audioElement: audioElementRef.current ?? undefined,
-        outputGuardrails: [guardrail],
         extraContext: {
           addTranscriptBreadcrumb,
           requestScenarioChange,
@@ -370,9 +302,10 @@ function App() {
       });
     } catch (err) {
       console.error("Error connecting via SDK:", err);
+      setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
       setSessionStatus("DISCONNECTED");
     }
-  }, [addTranscriptBreadcrumb, agentSetKey, connect, createModerationGuardrail, defaultCompanyName, fetchEphemeralKey, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+  }, [addTranscriptBreadcrumb, agentSetKey, connect, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
   useEffect(() => {
     if (
@@ -384,22 +317,6 @@ function App() {
       connectToRealtime('auto');
     }
   }, [connectToRealtime, selectedAgentName, sessionStatus]);
-
-  const sendSimulatedUserMessage = (text: string) => {
-    const id = uuidv4().slice(0, 32);
-    addTranscriptMessage(id, "user", text, true);
-
-    sendClientEvent({
-      type: 'conversation.item.create',
-      item: {
-        id,
-        type: 'message',
-        role: 'user',
-        content: [{ type: 'input_text', text }],
-      },
-    });
-    sendClientEvent({ type: 'response.create' }, '(simulated user text message)');
-  };
 
   const triggerParallelComparison = useCallback(
     async (scenarioKey: string, userPrompt: string, baselineAnswer: string) => {
@@ -614,52 +531,22 @@ function App() {
   }, [isAudioPlaybackEnabled]);
 
   useEffect(() => {
-    if (audioElementRef.current) {
-      if (isAudioPlaybackEnabled) {
-        audioElementRef.current.muted = false;
-        audioElementRef.current.play().catch((err) => {
-          console.warn("Autoplay may be blocked by browser:", err);
-        });
-      } else {
-        // Mute and pause to avoid brief audio blips before pause takes effect.
-        audioElementRef.current.muted = true;
-        audioElementRef.current.pause();
-      }
-    }
-
-    // Toggle server-side audio stream mute so bandwidth is saved when the
-    // user disables playback. 
-    try {
-      mute(!isAudioPlaybackEnabled);
-    } catch (err) {
-      console.warn('Failed to toggle SDK mute', err);
-    }
-  }, [isAudioPlaybackEnabled]);
+    mute(!isAudioPlaybackEnabled);
+  }, [isAudioPlaybackEnabled, mute]);
 
   // Ensure mute state is propagated to transport right after we connect or
   // whenever the SDK client reference becomes available.
   useEffect(() => {
     if (sessionStatus === 'CONNECTED') {
-      try {
-        mute(!isAudioPlaybackEnabled);
-      } catch (err) {
-        console.warn('mute sync after connect failed', err);
-      }
+      mute(!isAudioPlaybackEnabled);
     }
-  }, [sessionStatus, isAudioPlaybackEnabled]);
+  }, [sessionStatus, isAudioPlaybackEnabled, mute]);
 
   useEffect(() => {
-    if (sessionStatus === "CONNECTED" && audioElementRef.current?.srcObject) {
-      // The remote audio stream from the audio element.
-      const remoteStream = audioElementRef.current.srcObject as MediaStream;
-      startRecording(remoteStream);
-    }
-
-    // Clean up on unmount or when sessionStatus is updated.
     return () => {
       stopRecording();
     };
-  }, [sessionStatus]);
+  }, [stopRecording]);
 
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">

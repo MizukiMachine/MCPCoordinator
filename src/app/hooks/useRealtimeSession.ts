@@ -1,19 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type {
-  RealtimeAgent,
-  RealtimeOutputGuardrail,
-} from '@openai/agents/realtime';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { applyCodecPreferences } from '../lib/codecUtils';
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
-import type { ISessionManager, SessionManagerHooks } from '../../../services/realtime/types';
-import { getSessionManager } from '@/app/lib/realtime/sessionManagerLocator';
+import { PcmAudioPlayer } from '../lib/audio/pcmPlayer';
 import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmitter';
-import { createStructuredLogger } from '../../../framework/logging/structuredLogger';
+import type { SessionCommand } from '../../../services/api/bff/sessionHost';
 
-const OUTPUT_MODALITIES: Array<'text' | 'audio'> = ['audio'];
 type TranscriptEventStage = 'completed' | 'delta';
 const TRANSCRIPTION_EVENT_KIND: Record<string, TranscriptEventStage> = {
   'conversation.item.input_audio_transcription.completed': 'completed',
@@ -33,13 +26,7 @@ const TRANSCRIPTION_EVENT_KIND: Record<string, TranscriptEventStage> = {
   'output_text.delta': 'delta',
 } as const;
 
-function getDefaultCodecPreference(): string {
-  if (typeof window === 'undefined') {
-    return 'opus';
-  }
-  const search = new URLSearchParams(window.location.search);
-  return (search.get('codec') ?? 'opus').toLowerCase();
-}
+const BFF_API_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
 
 function addFallbackItemId(event: any) {
   if (!event || typeof event !== 'object') return event;
@@ -64,34 +51,52 @@ function transcriptTextFromEvent(event: any, field: 'transcript' | 'delta') {
   return typeof value === 'string' ? value : '';
 }
 
+function safeJsonParse<T = any>(input: string): T {
+  try {
+    return JSON.parse(input) as T;
+  } catch {
+    return input as any;
+  }
+}
+
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
   onAgentHandoff?: (agentName: string) => void;
 }
 
 export interface ConnectOptions {
-  getEphemeralKey: () => Promise<string>;
   agentSetKey: string;
   preferredAgentName?: string;
-  audioElement?: HTMLAudioElement | null;
   extraContext?: Record<string, any>;
-  outputGuardrails?: RealtimeOutputGuardrail[];
 }
 
 export interface RealtimeSessionHookOverrides {
-  createSessionManager?: () => ISessionManager<RealtimeAgent>;
-  initialSessionHooks?: SessionManagerHooks;
+  fetchImpl?: typeof fetch;
+  createEventSource?: (url: string) => EventSource;
+}
+
+interface ActiveSessionState {
+  sessionId: string;
+  streamUrl: string;
+  eventSource: EventSource;
 }
 
 export function useRealtimeSession(
   callbacks: RealtimeSessionCallbacks = {},
   overrides: RealtimeSessionHookOverrides = {},
 ) {
-  const sessionManagerRef = useRef<ISessionManager<RealtimeAgent> | null>(null);
+  const fetchImpl = overrides.fetchImpl ?? fetch;
+  const createEventSource =
+    overrides.createEventSource ?? ((url: string) => new EventSource(url));
+
+  const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
+  const sessionStateRef = useRef<ActiveSessionState | null>(null);
   const listenerCleanupRef = useRef<(() => void) | null>(null);
   const sessionMetadataRef = useRef<{ sessionId: string | null }>({ sessionId: null });
   const metricEmitterRef = useRef(createConsoleMetricEmitter('client.session_manager'));
-  const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
+  const audioPlayerRef = useRef<PcmAudioPlayer | null>(null);
+  const audioMutedRef = useRef(false);
+
   const { logClientEvent, logServerEvent, setSessionMetadata, generateRequestId } = useEvent();
   const historyHandlers = useHandleSessionHistory().current;
 
@@ -107,27 +112,6 @@ export function useRealtimeSession(
     setSessionMetadata({ sessionId: null });
   }, [setSessionMetadata]);
 
-  const structuredLogger = useMemo(
-    () =>
-      createStructuredLogger({
-        component: 'session_manager',
-        sink: (level, message, context) => {
-          const sessionId = sessionMetadataRef.current.sessionId;
-          logClientEvent(
-            {
-              type: 'session.log',
-              level,
-              message,
-              context,
-            },
-            `session.${level}`,
-            { sessionId },
-          );
-        },
-      }),
-    [logClientEvent],
-  );
-
   const updateStatus = useCallback(
     (s: SessionStatus) => {
       setStatus(s);
@@ -137,22 +121,22 @@ export function useRealtimeSession(
     [callbacks, logClientEvent],
   );
 
-  if (!sessionManagerRef.current) {
-    const createManager =
-      overrides.createSessionManager ??
-      (() =>
-        getSessionManager({
-          hooks: overrides.initialSessionHooks,
-          transport: {
-            defaultOutputModalities: OUTPUT_MODALITIES,
-          },
-        }));
-    sessionManagerRef.current = createManager();
-  }
+  const ensureAudioPlayer = useCallback(() => {
+    if (!audioPlayerRef.current) {
+      audioPlayerRef.current = new PcmAudioPlayer();
+    }
+    return audioPlayerRef.current;
+  }, []);
 
   const handleTransportEvent = useCallback(
     (event: any) => {
       const eventType = event?.type;
+      if (eventType === 'response.output_audio.delta' && typeof event?.delta === 'string') {
+        if (!audioMutedRef.current) {
+          void ensureAudioPlayer().enqueue(event.delta);
+        }
+      }
+
       const stage = eventType ? TRANSCRIPTION_EVENT_KIND[eventType] : undefined;
       if (!stage) {
         return;
@@ -170,228 +154,227 @@ export function useRealtimeSession(
         historyHandlers.handleTranscriptionDelta(normalized);
       }
     },
-    [historyHandlers],
+    [ensureAudioPlayer, historyHandlers],
   );
 
-  const codecParamRef = useRef<string>(getDefaultCodecPreference());
-
-  const applyCodec = useCallback(
-    (pc: RTCPeerConnection) => applyCodecPreferences(pc, codecParamRef.current),
-    [],
-  );
-
-  const handleAgentHandoff = useCallback(
-    (item: any) => {
-      const history = Array.isArray(item?.context?.history)
-        ? item.context.history
-        : [];
-      const lastMessage = history[history.length - 1];
-      const handoffName =
-        typeof lastMessage?.name === 'string'
-          ? lastMessage.name.split('transfer_to_')[1] ?? lastMessage.name
-          : null;
-
-      if (handoffName) {
-        callbacks.onAgentHandoff?.(handoffName);
-      } else {
-        logServerEvent({
-          type: 'agent_handoff_warning',
-          message: 'Received agent_handoff event without a parsable target',
-          payload: item,
-        });
-      }
-    },
-    [callbacks, logServerEvent],
-  );
-
-  const detachSessionListeners = useCallback(() => {
+  const detachStreamListeners = useCallback(() => {
     listenerCleanupRef.current?.();
     listenerCleanupRef.current = null;
   }, []);
 
-  const registerSessionListeners = useCallback(() => {
-    const manager = sessionManagerRef.current;
-    if (!manager) return;
-    detachSessionListeners();
-    const disposers: Array<() => void> = [];
+  const registerStreamListeners = useCallback(
+    (source: EventSource) => {
+      detachStreamListeners();
+      const disposers: Array<() => void> = [];
 
-    const addListener = (event: string, handler: (...args: any[]) => void) => {
-      manager.on(event, handler);
-      disposers.push(() => manager.off(event, handler));
-    };
+      const addListener = (
+        event: string,
+        handler: (payload: any) => void,
+      ) => {
+        const wrapped = (evt: MessageEvent<string>) => {
+          handler(safeJsonParse(evt.data));
+        };
+        source.addEventListener(event, wrapped as any);
+        disposers.push(() => source.removeEventListener(event, wrapped as any));
+      };
 
-    addListener('error', (message: unknown) => {
-      logServerEvent({
-        type: 'error',
-        message,
+      addListener('agent_handoff', (payload) => {
+        const handoffName = payload?.target ?? payload?.handoff?.name;
+        if (typeof handoffName === 'string') {
+          callbacks.onAgentHandoff?.(handoffName);
+        }
       });
-    });
-    addListener('agent_handoff', handleAgentHandoff);
-    addListener('agent_tool_start', historyHandlers.handleAgentToolStart);
-    addListener('agent_tool_end', historyHandlers.handleAgentToolEnd);
-    addListener('history_updated', historyHandlers.handleHistoryUpdated);
-    addListener('history_added', historyHandlers.handleHistoryAdded);
-    addListener('transport_event', handleTransportEvent);
+      addListener('agent_tool_start', (payload) => {
+        if (Array.isArray(payload)) {
+          historyHandlers.handleAgentToolStart(...payload);
+        } else {
+          historyHandlers.handleAgentToolStart(payload);
+        }
+      });
+      addListener('agent_tool_end', (payload) => {
+        if (Array.isArray(payload)) {
+          historyHandlers.handleAgentToolEnd(...payload);
+        } else {
+          historyHandlers.handleAgentToolEnd(payload);
+        }
+      });
+      addListener('history_updated', historyHandlers.handleHistoryUpdated);
+      addListener('history_added', historyHandlers.handleHistoryAdded);
+      addListener('guardrail_tripped', (payload) => {
+        if (Array.isArray(payload)) {
+          historyHandlers.handleGuardrailTripped(...payload);
+        } else {
+          historyHandlers.handleGuardrailTripped(payload);
+        }
+      });
+      addListener('transport_event', handleTransportEvent);
+      addListener('status', (payload) => {
+        if (payload?.status) {
+          updateStatus(payload.status as SessionStatus);
+        }
+      });
+      addListener('heartbeat', (payload) => {
+        logServerEvent({ type: 'heartbeat', payload }, 'heartbeat');
+      });
+      addListener('ready', (payload) => {
+        logServerEvent({ type: 'ready', payload }, 'ready');
+      });
 
-    listenerCleanupRef.current = () => {
-      disposers.forEach((dispose) => dispose());
-    };
-  }, [
-    detachSessionListeners,
-    handleAgentHandoff,
-    handleTransportEvent,
-    historyHandlers.handleAgentToolEnd,
-    historyHandlers.handleAgentToolStart,
-    historyHandlers.handleHistoryAdded,
-    historyHandlers.handleHistoryUpdated,
-    logServerEvent,
-  ]);
+      source.onerror = (event) => {
+        console.error('SSE error from BFF session stream', event);
+        updateStatus('DISCONNECTED');
+      };
 
-  useEffect(() => {
-    const manager = sessionManagerRef.current;
-    if (!manager) return;
-    const metricRecorder = {
-      increment: (name: string, value?: number, tags?: Record<string, string>) => {
-        const sessionId = sessionMetadataRef.current.sessionId;
-        metricEmitterRef.current.increment(name, value ?? 1, {
-          ...(tags ?? {}),
-          sessionId: sessionId ?? 'unassigned',
-        });
-        logClientEvent(
-          {
-            type: 'metric.increment',
-            metric: name,
-            value: value ?? 1,
-            tags: {
-              ...(tags ?? {}),
-              sessionId,
-            },
-          },
-          'metric.increment',
-          { sessionId },
-        );
-      },
-      observe: (name: string, value: number, tags?: Record<string, string>) => {
-        const sessionId = sessionMetadataRef.current.sessionId;
-        metricEmitterRef.current.observe(name, value, {
-          ...(tags ?? {}),
-          sessionId: sessionId ?? 'unassigned',
-        });
-        logClientEvent(
-          {
-            type: 'metric.observe',
-            metric: name,
-            value,
-            tags: {
-              ...(tags ?? {}),
-              sessionId,
-            },
-          },
-          'metric.observe',
-          { sessionId },
-        );
-      },
-    };
-
-    manager.updateHooks({
-      onStatusChange: updateStatus,
-      logger: structuredLogger,
-      metrics: metricRecorder,
-      onServerEvent: (_event, payload) => logServerEvent(payload),
-      guardrail: {
-        onGuardrailTripped: historyHandlers.handleGuardrailTripped,
-      },
-    });
-  }, [historyHandlers, logClientEvent, logServerEvent, structuredLogger, updateStatus]);
-
-  const connect = useCallback(
-    async ({
-      getEphemeralKey,
-      agentSetKey,
-      preferredAgentName,
-      audioElement,
-      extraContext,
-      outputGuardrails,
-    }: ConnectOptions) => {
-      const manager = sessionManagerRef.current;
-      if (!manager) {
-        throw new Error('SessionManager is not initialized');
-      }
-
-      assignSessionId();
-      try {
-        await manager.connect({
-          getEphemeralKey,
-          agentSetKey,
-          preferredAgentName,
-          audioElement,
-          extraContext,
-          outputGuardrails,
-          outputModalities: OUTPUT_MODALITIES,
-          transportOverrides: {
-            changePeerConnection: applyCodec,
-          },
-        });
-        registerSessionListeners();
-      } catch (error) {
-        detachSessionListeners();
-        clearSessionId();
-        throw error;
-      }
+      listenerCleanupRef.current = () => {
+        disposers.forEach((dispose) => dispose());
+        source.close();
+      };
     },
-    [applyCodec, assignSessionId, clearSessionId, detachSessionListeners, registerSessionListeners],
+    [callbacks, detachStreamListeners, handleTransportEvent, historyHandlers, logServerEvent, updateStatus],
   );
 
-  const disconnect = useCallback(() => {
-    sessionManagerRef.current?.disconnect();
-    detachSessionListeners();
-    clearSessionId();
-  }, [clearSessionId, detachSessionListeners]);
+  const disconnect = useCallback(async () => {
+    const active = sessionStateRef.current;
+    if (!active) return;
 
-  const sendUserText = useCallback(
-    (text: string) => {
-      const manager = sessionManagerRef.current;
-      if (!manager || manager.getStatus() === 'DISCONNECTED') {
-        logClientEvent(
-          {
-            type: 'session_warning',
-            message: 'sendUserText ignored because realtime session is disconnected',
-          },
-          'session_warning',
-        );
+    detachStreamListeners();
+    active.eventSource.close();
+    sessionStateRef.current = null;
+    audioPlayerRef.current?.close();
+    audioPlayerRef.current = null;
+    clearSessionId();
+    updateStatus('DISCONNECTED');
+
+    try {
+      await fetchImpl(`/api/session/${active.sessionId}`, {
+        method: 'DELETE',
+        headers: buildHeaders(),
+      });
+    } catch (error) {
+      console.warn('Failed to delete session', error);
+    }
+  }, [clearSessionId, detachStreamListeners, fetchImpl, updateStatus]);
+
+  const connect = useCallback(
+    async ({ agentSetKey, preferredAgentName, extraContext }: ConnectOptions) => {
+      if (sessionStateRef.current) {
+        console.info('Session already active, ignoring connect request');
         return;
       }
 
-      manager.sendUserText(text);
+      assignSessionId();
+      updateStatus('CONNECTING');
+
+      const response = await fetchImpl('/api/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...buildHeaders(),
+        },
+        body: JSON.stringify({
+          agentSetKey,
+          preferredAgentName,
+          metadata: extraContext ?? {},
+          clientCapabilities: { audio: true },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        logClientEvent(errorPayload, 'error.session_create_failed');
+        updateStatus('DISCONNECTED');
+        throw new Error('Failed to create session');
+      }
+
+      const data = await response.json();
+      const streamUrl = appendBffKeyToUrl(data.streamUrl);
+      const eventSource = createEventSource(streamUrl);
+      sessionStateRef.current = {
+        sessionId: data.sessionId,
+        streamUrl,
+        eventSource,
+      };
+      registerStreamListeners(eventSource);
     },
-    [logClientEvent],
+    [assignSessionId, createEventSource, fetchImpl, logClientEvent, registerStreamListeners, updateStatus],
+  );
+
+  useEffect(() => {
+    return () => {
+      void disconnect();
+    };
+  }, [disconnect]);
+
+  const postSessionCommand = useCallback(
+    async (command: SessionCommand) => {
+      const active = sessionStateRef.current;
+      if (!active) {
+        logClientEvent(
+          {
+            type: 'session_warning',
+            message: 'Command ignored because session is not connected',
+          },
+          'session_warning',
+        );
+        throw new Error('Session is not connected');
+      }
+
+      const response = await fetchImpl(`/api/session/${active.sessionId}/event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...buildHeaders(),
+        },
+        body: JSON.stringify(command),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        logClientEvent(payload, 'error.forward_event_failed');
+        throw new Error('Failed to forward event to BFF');
+      }
+
+      metricEmitterRef.current.increment('session_events_total', 1, {
+        kind: command.kind,
+      });
+    },
+    [fetchImpl, logClientEvent],
+  );
+
+  const sendUserText = useCallback(
+    (text: string) => {
+      void postSessionCommand({ kind: 'input_text', text });
+    },
+    [postSessionCommand],
   );
 
   const sendEvent = useCallback(
     (ev: any) => {
-      sessionManagerRef.current?.sendEvent(ev);
+      void postSessionCommand({ kind: 'event', event: ev });
     },
-    [],
+    [postSessionCommand],
   );
 
   const mute = useCallback(
-    (m: boolean) => {
-      sessionManagerRef.current?.mute(m);
+    (muted: boolean) => {
+      audioMutedRef.current = muted;
+      audioPlayerRef.current?.setMuted(muted);
+      void postSessionCommand({ kind: 'control', action: 'mute', value: muted }).catch(() => {});
     },
-    [],
+    [postSessionCommand],
   );
 
   const interrupt = useCallback(() => {
-    sessionManagerRef.current?.interrupt();
-  }, []);
+    void postSessionCommand({ kind: 'control', action: 'interrupt' });
+  }, [postSessionCommand]);
 
   const pushToTalkStart = useCallback(() => {
-    sessionManagerRef.current?.pushToTalkStart();
-  }, []);
+    void postSessionCommand({ kind: 'control', action: 'push_to_talk_start' });
+  }, [postSessionCommand]);
 
   const pushToTalkStop = useCallback(() => {
-    sessionManagerRef.current?.pushToTalkStop();
-  }, []);
+    void postSessionCommand({ kind: 'control', action: 'push_to_talk_stop' });
+  }, [postSessionCommand]);
 
   return {
     status,
@@ -404,4 +387,26 @@ export function useRealtimeSession(
     pushToTalkStop,
     interrupt,
   } as const;
+}
+
+function buildHeaders() {
+  return BFF_API_KEY
+    ? {
+        'x-bff-key': BFF_API_KEY,
+      }
+    : {};
+}
+
+function appendBffKeyToUrl(streamUrl: string): string {
+  if (!BFF_API_KEY) {
+    return streamUrl;
+  }
+  try {
+    const base = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const parsed = new URL(streamUrl, base);
+    parsed.searchParams.set('bffKey', BFF_API_KEY);
+    return parsed.toString();
+  } catch {
+    return streamUrl;
+  }
 }

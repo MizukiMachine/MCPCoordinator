@@ -1,0 +1,510 @@
+import { randomUUID } from 'node:crypto';
+import EventEmitter from 'node:events';
+
+import type { RealtimeAgent } from '@openai/agents/realtime';
+
+import { createStructuredLogger } from '../../../framework/logging/structuredLogger';
+import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmitter';
+import type { MetricEmitter } from '../../../framework/metrics/metricEmitter';
+import type { StructuredLogger } from '../../../framework/logging/structuredLogger';
+import { createModerationGuardrail } from '../../../src/app/agentConfigs/guardrails';
+import { agentSetMetadata, allAgentSets } from '../../../src/app/agentConfigs';
+import type {
+  ISessionManager,
+  SessionEventName,
+  SessionManagerHooks,
+  SessionLifecycleStatus,
+} from '../../realtime/types';
+import { createOpenAIServerSessionManager } from '../../realtime/adapters/createOpenAIServerSessionManager';
+
+const SESSION_TTL_MS = 10 * 60 * 1000;
+const SESSION_MAX_LIFETIME_MS = 30 * 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 25_000;
+const STREAM_IDLE_CLEANUP_MS = 60_000;
+const RATE_LIMIT_WINDOW_MS = 1000;
+const RATE_LIMIT_MAX_EVENTS = 10;
+
+export type SessionCommand =
+  | {
+      kind: 'input_text';
+      text: string;
+      triggerResponse?: boolean;
+      metadata?: Record<string, any>;
+    }
+  | {
+      kind: 'input_audio';
+      audio: string;
+      commit?: boolean;
+      response?: boolean;
+    }
+  | {
+      kind: 'input_image';
+      data: string;
+      mimeType: string;
+      encoding?: 'base64';
+      text?: string;
+      triggerResponse?: boolean;
+    }
+  | {
+      kind: 'event';
+      event: Record<string, any>;
+    }
+  | {
+      kind: 'control';
+      action: 'interrupt' | 'mute' | 'push_to_talk_start' | 'push_to_talk_stop';
+      value?: boolean;
+    };
+
+export interface CreateSessionOptions {
+  agentSetKey: string;
+  preferredAgentName?: string;
+  sessionLabel?: string;
+  clientCapabilities?: {
+    audio?: boolean;
+    images?: boolean;
+  };
+  metadata?: Record<string, any>;
+}
+
+export interface CreateSessionResult {
+  sessionId: string;
+  streamUrl: string;
+  expiresAt: string;
+  heartbeatIntervalMs: number;
+  allowedModalities: Array<'text' | 'audio'>;
+  agentSet: {
+    key: string;
+    primary: string;
+  };
+}
+
+export interface SessionStreamMessage {
+  event: string;
+  data: Record<string, any> | string | null;
+  timestamp: string;
+}
+
+export class SessionHostError extends Error {
+  public readonly code: string;
+  public readonly status: number;
+
+  constructor(message: string, code: string, status = 400) {
+    super(message);
+    this.name = 'SessionHostError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+interface SessionSubscriber {
+  id: string;
+  send: (message: SessionStreamMessage) => void;
+}
+
+interface SessionRateLimiter {
+  hits: number[];
+}
+
+interface SessionContext {
+  id: string;
+  createdAt: number;
+  expiresAt: number;
+  maxLifetimeAt: number;
+  status: SessionLifecycleStatus;
+  agentSetKey: string;
+  preferredAgentName?: string;
+  manager: ISessionManager<RealtimeAgent>;
+  subscribers: Map<string, SessionSubscriber>;
+  emitter: EventEmitter;
+  destroy: () => Promise<void>;
+  heartbeatTimer?: ReturnType<typeof setInterval>;
+  streamIdleTimer?: ReturnType<typeof setTimeout>;
+  rateLimiter: SessionRateLimiter;
+  lastCommandAt: number;
+}
+
+interface SessionHostDeps {
+  logger?: StructuredLogger;
+  metrics?: MetricEmitter;
+  now?: () => number;
+  sessionManagerFactory?: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
+  scenarioMap?: Record<string, RealtimeAgent[]>;
+}
+
+export class SessionHost {
+  private readonly sessions = new Map<string, SessionContext>();
+  private readonly logger: StructuredLogger;
+  private readonly metrics: MetricEmitter;
+  private readonly now: () => number;
+  private readonly sessionManagerFactory: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
+  private readonly scenarioMap: Record<string, RealtimeAgent[]>;
+
+  constructor(deps: SessionHostDeps = {}) {
+    this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
+    this.metrics = deps.metrics ?? createConsoleMetricEmitter('bff.session');
+    this.now = deps.now ?? (() => Date.now());
+    this.scenarioMap = deps.scenarioMap ?? allAgentSets;
+    this.sessionManagerFactory =
+      deps.sessionManagerFactory ??
+      ((hooks) =>
+        createOpenAIServerSessionManager({
+          scenarioMap: this.scenarioMap,
+          hooks,
+        }));
+  }
+
+  async createSession(options: CreateSessionOptions): Promise<CreateSessionResult> {
+    const agentSet = this.scenarioMap[options.agentSetKey];
+    if (!agentSet) {
+      throw new SessionHostError('Unknown agentSetKey', 'invalid_agent_set', 400);
+    }
+
+    const sessionId = this.generateSessionId();
+    const sessionLogger = createStructuredLogger({
+      component: 'bff.session',
+      defaultContext: { sessionId },
+    });
+
+    const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
+
+    const hooks: SessionManagerHooks = {
+      logger: sessionLogger,
+      metrics: sessionMetrics,
+      onStatusChange: (status) => this.broadcast(sessionId, 'status', { status }),
+      onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
+      guardrail: {
+        onGuardrailTripped: (payload) =>
+          this.broadcast(sessionId, 'guardrail_tripped', payload ?? {}),
+      },
+    };
+
+    const manager = this.sessionManagerFactory(hooks);
+    const now = this.now();
+    const context: SessionContext = {
+      id: sessionId,
+      createdAt: now,
+      expiresAt: now + SESSION_TTL_MS,
+      maxLifetimeAt: now + SESSION_MAX_LIFETIME_MS,
+      status: 'DISCONNECTED',
+      agentSetKey: options.agentSetKey,
+      preferredAgentName: options.preferredAgentName,
+      manager,
+      subscribers: new Map(),
+      emitter: new EventEmitter(),
+      destroy: async () => {
+        this.clearTimers(context);
+        this.sessions.delete(sessionId);
+        try {
+          manager.disconnect();
+        } catch (error) {
+          this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
+        }
+        this.metrics.increment('bff.session.closed_total');
+      },
+      rateLimiter: { hits: [] },
+      lastCommandAt: now,
+    };
+
+    this.sessions.set(sessionId, context);
+
+    const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
+    const guardrail = createModerationGuardrail(companyName);
+
+    await manager.connect({
+      agentSetKey: options.agentSetKey,
+      preferredAgentName: options.preferredAgentName,
+      getEphemeralKey: async () => this.getRealtimeApiKey(),
+      extraContext: {
+        sessionLabel: options.sessionLabel,
+        metadata: options.metadata ?? {},
+        clientCapabilities: options.clientCapabilities ?? {},
+      },
+      outputGuardrails: [guardrail],
+      outputModalities: this.resolveModalities(options),
+    });
+
+    this.attachManagerListeners(context);
+    this.startHeartbeat(context);
+    this.broadcast(sessionId, 'status', { status: 'CONNECTED' });
+    this.metrics.increment('bff.session.created_total');
+
+    return {
+      sessionId,
+      streamUrl: `/api/session/${sessionId}/stream`,
+      expiresAt: new Date(context.expiresAt).toISOString(),
+      heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
+      allowedModalities: this.resolveModalities(options),
+      agentSet: {
+        key: options.agentSetKey,
+        primary: agentSet[0]?.name ?? 'agent',
+      },
+    };
+  }
+
+  async destroySession(sessionId: string): Promise<boolean> {
+    const context = this.sessions.get(sessionId);
+    if (!context) {
+      return false;
+    }
+    await context.destroy();
+    return true;
+  }
+
+  ensureSession(sessionId: string): SessionContext {
+    const context = this.sessions.get(sessionId);
+    if (!context) {
+      throw new SessionHostError('Session not found', 'session_not_found', 404);
+    }
+
+    const now = this.now();
+    if (now > context.maxLifetimeAt) {
+      void context.destroy();
+      throw new SessionHostError('Session lifetime exceeded', 'session_expired', 410);
+    }
+
+    if (now > context.expiresAt) {
+      void context.destroy();
+      throw new SessionHostError('Session expired', 'session_expired', 410);
+    }
+
+    return context;
+  }
+
+  async handleCommand(sessionId: string, command: SessionCommand): Promise<SessionLifecycleStatus> {
+    const context = this.ensureSession(sessionId);
+    this.enforceRateLimit(context);
+    context.expiresAt = this.now() + SESSION_TTL_MS;
+    context.lastCommandAt = this.now();
+
+    switch (command.kind) {
+      case 'input_text':
+        context.manager.sendEvent({
+          type: 'conversation.item.create',
+          item: {
+            type: 'message',
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: command.text,
+              },
+            ],
+          },
+        });
+        if (command.triggerResponse !== false) {
+          context.manager.sendEvent({
+            type: 'response.create',
+            response: { metadata: command.metadata ?? {} },
+          });
+        }
+        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+        break;
+      case 'input_audio':
+        context.manager.sendEvent({
+          type: 'input_audio_buffer.append',
+          audio: command.audio,
+        });
+        if (command.commit !== false) {
+          context.manager.sendEvent({ type: 'input_audio_buffer.commit' });
+        }
+        if (command.response !== false) {
+          context.manager.sendEvent({ type: 'response.create' });
+        }
+        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
+        break;
+      case 'input_image':
+        context.manager.sendEvent({
+          type: 'conversation.item.create',
+          item: {
+            type: 'message',
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: command.text ?? '[Image uploaded]',
+              },
+              {
+                type: 'input_image',
+                mime_type: command.mimeType,
+                image: command.data,
+              },
+            ],
+          },
+        });
+        if (command.triggerResponse !== false) {
+          context.manager.sendEvent({ type: 'response.create' });
+        }
+        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_image' });
+        break;
+      case 'event':
+        context.manager.sendEvent(command.event);
+        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'raw_event' });
+        break;
+      case 'control':
+        this.handleControlCommand(context, command);
+        break;
+      default:
+        throw new SessionHostError('Unsupported command', 'invalid_event_payload', 400);
+    }
+
+    return context.manager.getStatus();
+  }
+
+  subscribe(sessionId: string, subscriber: SessionSubscriber): () => void {
+    const context = this.ensureSession(sessionId);
+    context.subscribers.set(subscriber.id, subscriber);
+    context.emitter.on('message', subscriber.send);
+
+    if (context.streamIdleTimer) {
+      clearTimeout(context.streamIdleTimer);
+      context.streamIdleTimer = undefined;
+    }
+
+    // 直近の状態を即時送信
+    subscriber.send({
+      event: 'status',
+      data: { status: context.manager.getStatus() },
+      timestamp: new Date(this.now()).toISOString(),
+    });
+
+    return () => {
+      context.subscribers.delete(subscriber.id);
+      context.emitter.off('message', subscriber.send);
+      if (context.subscribers.size === 0) {
+        context.streamIdleTimer = setTimeout(() => {
+          this.destroySession(sessionId).catch((error) =>
+            this.logger.error('Failed to cleanup idle session', { sessionId, error }),
+          );
+        }, STREAM_IDLE_CLEANUP_MS);
+      }
+    };
+  }
+
+  listSessions(): string[] {
+    return Array.from(this.sessions.keys());
+  }
+
+  private handleControlCommand(context: SessionContext, command: Extract<SessionCommand, { kind: 'control' }>) {
+    switch (command.action) {
+      case 'interrupt':
+        context.manager.interrupt();
+        break;
+      case 'mute':
+        context.manager.mute(Boolean(command.value));
+        break;
+      case 'push_to_talk_start':
+        context.manager.pushToTalkStart();
+        break;
+      case 'push_to_talk_stop':
+        context.manager.pushToTalkStop();
+        break;
+      default:
+        throw new SessionHostError('Unknown control action', 'invalid_event_payload', 400);
+    }
+  }
+
+  private resolveModalities(options: CreateSessionOptions): Array<'text' | 'audio'> {
+    if (options.clientCapabilities?.audio === false) {
+      return ['text'];
+    }
+    return ['audio', 'text'];
+  }
+
+  private enforceRateLimit(context: SessionContext) {
+    const now = this.now();
+    context.rateLimiter.hits = context.rateLimiter.hits.filter(
+      (ts) => now - ts < RATE_LIMIT_WINDOW_MS,
+    );
+    if (context.rateLimiter.hits.length >= RATE_LIMIT_MAX_EVENTS) {
+      throw new SessionHostError('Too many events', 'rate_limit_exceeded', 429);
+    }
+    context.rateLimiter.hits.push(now);
+  }
+
+  private attachManagerListeners(context: SessionContext) {
+    const forwardableEvents: SessionEventName[] = [
+      'agent_handoff',
+      'agent_tool_start',
+      'agent_tool_end',
+      'history_updated',
+      'history_added',
+      'guardrail_tripped',
+      'transport_event',
+      'error',
+    ];
+
+    forwardableEvents.forEach((event) => {
+      const handler = (...args: any[]) => {
+        const payload = args.length > 1 ? args : args[0];
+        this.broadcast(context.id, event, payload);
+      };
+      context.manager.on(event, handler as any);
+      context.emitter.once('cleanup', () => context.manager.off(event, handler as any));
+    });
+  }
+
+  private startHeartbeat(context: SessionContext) {
+    context.heartbeatTimer = setInterval(() => {
+      this.broadcast(context.id, 'heartbeat', { ts: Date.now() });
+      const now = this.now();
+      if (now - context.lastCommandAt > SESSION_TTL_MS) {
+        this.destroySession(context.id).catch((error) =>
+          this.logger.error('Failed to cleanup inactive session', { sessionId: context.id, error }),
+        );
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  private broadcast(sessionId: string, event: string, data: Record<string, any> | string | null) {
+    const context = this.sessions.get(sessionId);
+    if (!context) return;
+    const message: SessionStreamMessage = {
+      event,
+      data,
+      timestamp: new Date(this.now()).toISOString(),
+    };
+    context.emitter.emit('message', message);
+  }
+
+  private clearTimers(context: SessionContext) {
+    if (context.heartbeatTimer) {
+      clearInterval(context.heartbeatTimer);
+      context.heartbeatTimer = undefined;
+    }
+    if (context.streamIdleTimer) {
+      clearTimeout(context.streamIdleTimer);
+      context.streamIdleTimer = undefined;
+    }
+    context.emitter.emit('cleanup');
+    context.emitter.removeAllListeners();
+  }
+
+  private generateSessionId(): string {
+    return `sess_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  }
+
+  private getRealtimeApiKey(): string {
+    const apiKey =
+      process.env.OPENAI_API_KEY ?? process.env.OPENAI_REALTIME_API_KEY ?? process.env.OPENAI_API_KEY_VOICE;
+    if (!apiKey) {
+      throw new SessionHostError('Realtime API key is not configured', 'missing_api_key', 500);
+    }
+    return apiKey;
+  }
+}
+
+const SESSION_HOST_SYMBOL = Symbol.for('mcpc.sessionHost.singleton');
+
+export function getSessionHost(): SessionHost {
+  const globalScope = globalThis as typeof globalThis & {
+    [SESSION_HOST_SYMBOL]?: SessionHost;
+  };
+
+  if (!globalScope[SESSION_HOST_SYMBOL]) {
+    globalScope[SESSION_HOST_SYMBOL] = new SessionHost();
+  }
+
+  return globalScope[SESSION_HOST_SYMBOL]!;
+}
+
+export const sessionHost = getSessionHost();

@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
 import type { RealtimeAgent } from '@openai/agents/realtime';

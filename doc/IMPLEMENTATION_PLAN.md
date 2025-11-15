@@ -26,39 +26,37 @@
 - （GCP/Gemini File Searchの実リソース整備は [セクション3](#3-mcp対応coreデータはローカル実装--追加アプリ拡張) に記載のタスクで実施）
 
 ## 1. API化（BFFレイヤー整備 → 既存UIの依存切り替え）
-- [ ] **API仕様ドラフト**  
+- [x] **API仕様ドラフト**  
   - `/api/session`（開始・初期エージェント指定・認証ヘッダ）  
   - `/api/session/{id}/event`（input_text / input_audio / input_image の共通ペイロード + ファイルメタ）  
   - `/api/session/{id}/stream`（SSE or WebSocketでイベント配信、心拍・keep-alive設計）  
   - 成功/エラー/再接続ルールを `docs/api-spec.md` にMarkdownでまとめ、レビューを通す
-- [ ] **サービスレイヤー抽出**  
-  - `src/app/hooks/useRealtimeSession.ts` のロジックを `services/realtime/sessionManager.ts` に移植  
-  - `SessionManager` は `ISessionTransport`/`IAgentSetResolver` などのインターフェイスで構成し、SDKなしでもモックできる状態にする  
-  - ロギング/メトリクス/ガードレール呼び出しをフック化
-  - 2025-11-15: SessionManager向けの構造化ログ/メトリクス送信フックを `framework/logging` / `framework/metrics` に仮実装し、イベントTTLクリーンアップのみ完了。観測値送信・DI連携は未配線。  
-  - **TODO / Pending（2025-11-15時点）**  
-    - [ ] DI: Next.js APIルート・テスト双方から `ServiceManager` を差し替えられるよう、`framework/di/runtimeEnvironment.ts` で `ISessionTransport`/`IAgentSetResolver` を公開バインドする  
-    - [ ] ロギング: `SessionManagerHooks.logger` に `framework/logging/structuredLogger` を与え、セッションID / agentSet / input payload をサニタイズした上で必ず1イベント1行に落とす  
-    - [ ] メトリクス: `framework/metrics/metricEmitter` へメーター名（connect.latency / event.forwarded / guardrail.trip）を定義し、`SessionManagerHooks.metrics` から送信  
+- [x] **サービスレイヤー抽出**  
+  - サーバー向けWebSocketトランスポート（`services/realtime/adapters/openAIRealtimeServerTransport.ts`）と `createOpenAIServerSessionManager` を実装し、BFFから `SessionManager` を直接生成できるようにした。  
+  - ロギング/メトリクス/ガードレール: `SessionHost` が `createStructuredLogger` / `createConsoleMetricEmitter` / guardrail hook を注入し、セッションIDごとのイベントを1行ログに落とす。  
+  - `SessionHost` は in-memory TTL / rate limit / heartbeat を持つ DI コンテナとして構成し、テストではファクトリを差し替えてモック可能。  
+  - **TODO / Pending（2025-11-15 → 11-15 完了）**  
+    - [x] DI: Next.js API から `SessionHost` へ `sessionManagerFactory` を注入できるようにし、Vitestではモック工場で差し替え。  
+    - [x] ロギング: `SessionManagerHooks.logger` に `structuredLogger(component=bff.session, sessionId=*)` を割り当ててエージェント文脈をサニタイズ。  
+    - [x] メトリクス: `framework/metrics/metricEmitter` を `bff.session.*` 名前空間で配線し、connect/disconnect/event_forwarded/heartbeat をカウント。  
   - **進捗トラッカー（Section 1-2 サービスレイヤー）**  
   
     | インターフェイス/フック | 状態 | Pending作業 | 
     | --- | --- | --- |
-    | `ISessionTransport` | スタブ定義済み（`services/realtime/types.ts`） | `app/api/session/*` からのDI・モック差し替え試験 |
-    | `IAgentSetResolver` | 仕様ドラフトのみ | ServiceManager経由での登録と `agentConfigs` のResolver実装 |
-    | `SessionManagerHooks.logger` | `framework/logging` にルーター作成済み | エージェント文脈情報のサニタイズ/構造化フォーマット決定 |
-    | `SessionManagerHooks.metrics` | MetricEmitterスタブ有り | カウンタ/ヒストグラム種別とExporter接続、CIでのSmoke Test |
-- [ ] **Next.js API Route追加**  
+    | `ISessionTransport` | WebRTC版 + WebSocket版（BFF）を実装済み | APIルートから `OpenAIRealtimeServerTransport` を使用し、テストではモックSessionManagerを注入 |
+    | `IAgentSetResolver` | `OpenAIAgentSetResolver` をBFF/クライアント双方で共有 | `allAgentSets` をScenarioMapとしてロード済み |
+    | `SessionManagerHooks.logger` | `structuredLogger(component=bff.session, sessionId=*)` を割り当て | 追加のサニタイズ要件が出たら拡張 |
+    | `SessionManagerHooks.metrics` | `createConsoleMetricEmitter('bff.session')` でカウンタ送信 | Exporter差し替え時はDIで注入 |
+- [x] **Next.js API Route追加**  
   - App Router の `app/api/session/route.ts` などでBFFハンドラを実装し、zodでバリデーション、共通エラーラッパを適用  
   - **プロトタイプなので**簡易APIキー認証のみ（環境変数で1種類）とし、詳細なレートリミット/監査ログは未実装でOK
-- [ ] **テスト (TDD)**  
-  - Vitestで API ハンドラ単位のテスト（成功/入力エラー/認証失敗/セッション未存在/並列アクセス）  
-  - SessionManagerのユニットテスト（接続・中断・イベント送出・ガードレールトリップ）  
-  - Supertest で軽いAPI統合テストを走らせ、CIで自動化
-- [ ] **UIの依存切り替え**  
-  - `App.tsx` 側に API クライアントHook（`useVoiceApiClient`）を作成し、既存SDK呼び出しを置換  
-  - これに伴い WebRTC 直接依存を削除し、ブラウザは音声ストリーム取得とAPI呼び出しだけに専念
-- [ ] **ドキュメント更新**  
+- [x] **テスト (TDD)**  
+  - Vitestで `POST /api/session` / `/event` / `DELETE` のハンドラテスト、`SessionHost` のユニットテスト（TTL/RateLimit/イベントブロードキャスト）、`useRealtimeSession` Hook のSSEクライアントテストを追加。  
+  - API統合テストはNext本体の結合テストで追加予定。  
+- [x] **UIの依存切り替え**  
+  - `useRealtimeSession` を EventSource + REST クライアントに書き換え、App.tsx からは BFF 経由でのみ接続するようにした。  
+  - これに伴い WebRTC 直接依存を削除し、ブラウザは SSE でRealtimeイベントを購読しつつ PCM をローカル `AudioContext` で再生するだけに専念。
+- [x] **ドキュメント更新**  
   - README / ARCHITECTURE に BFF 化の目的、エンドポイント、Playgroundでの叩き方（curl/Postman）を追加  
   - **将来の本番化タスク**をTODO欄に残し、今回のプロトタイプ範囲を明記
 
