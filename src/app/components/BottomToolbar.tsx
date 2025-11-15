@@ -14,6 +14,8 @@ interface BottomToolbarProps {
   setIsEventsPaneExpanded: (val: boolean) => void;
   isAudioPlaybackEnabled: boolean;
   setIsAudioPlaybackEnabled: (val: boolean) => void;
+  isTextOutputEnabled: boolean;
+  onTextOutputToggle: (val: boolean) => void;
   codec: string;
   onCodecChange: (newCodec: string) => void;
 }
@@ -30,6 +32,8 @@ function BottomToolbar({
   setIsEventsPaneExpanded,
   isAudioPlaybackEnabled,
   setIsAudioPlaybackEnabled,
+  isTextOutputEnabled,
+  onTextOutputToggle,
   codec,
   onCodecChange,
 }: BottomToolbarProps) {
@@ -121,6 +125,20 @@ function BottomToolbar({
           className="flex items-center cursor-pointer"
         >
           {uiText.toolbar.audioPlaybackLabel}
+        </label>
+      </div>
+
+      <div className="flex flex-row items-center gap-1">
+        <input
+          id="text-output"
+          type="checkbox"
+          checked={isTextOutputEnabled}
+          onChange={(e) => onTextOutputToggle(e.target.checked)}
+          disabled={!isConnected}
+          className="w-4 h-4"
+        />
+        <label htmlFor="text-output" className="flex items-center cursor-pointer">
+          {uiText.toolbar.textOutputLabel}
         </label>
       </div>
 

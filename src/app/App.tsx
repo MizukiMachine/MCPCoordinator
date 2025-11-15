@@ -107,6 +107,11 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
+  const [isTextOutputEnabled, setIsTextOutputEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('textOutputEnabled');
+    return stored ? stored === 'true' : true;
+  });
 
   const schedulePostToolAction = useCallback((action: () => void) => {
     setTimeout(action, 0);
@@ -211,6 +216,17 @@ function App() {
     setIsPTTUserSpeaking(false);
   };
 
+  const handleTextOutputPreferenceChange = useCallback(
+    (enabled: boolean) => {
+      setIsTextOutputEnabled(enabled);
+      if (sessionStatus === 'CONNECTED') {
+        pendingVoiceReconnectRef.current = true;
+        disconnectFromRealtime();
+      }
+    },
+    [disconnectFromRealtime, sessionStatus],
+  );
+
   const requestScenarioChange = useCallback(async (scenarioKey: string) => {
     addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
     if (!allAgentSets[scenarioKey]) {
@@ -299,13 +315,14 @@ function App() {
           requestAgentChange,
           logClientEvent,
         },
+        clientCapabilities: { outputText: isTextOutputEnabled },
       });
     } catch (err) {
       console.error("Error connecting via SDK:", err);
       setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
       setSessionStatus("DISCONNECTED");
     }
-  }, [addTranscriptBreadcrumb, agentSetKey, connect, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+  }, [addTranscriptBreadcrumb, agentSetKey, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
   useEffect(() => {
     if (
@@ -512,6 +529,10 @@ function App() {
     if (storedAudioPlaybackEnabled) {
       setIsAudioPlaybackEnabled(storedAudioPlaybackEnabled === "true");
     }
+    const storedTextOutputEnabled = localStorage.getItem('textOutputEnabled');
+    if (storedTextOutputEnabled) {
+      setIsTextOutputEnabled(storedTextOutputEnabled === 'true');
+    }
   }, []);
 
   useEffect(() => {
@@ -528,6 +549,10 @@ function App() {
       isAudioPlaybackEnabled.toString()
     );
   }, [isAudioPlaybackEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('textOutputEnabled', isTextOutputEnabled.toString());
+  }, [isTextOutputEnabled]);
 
   useEffect(() => {
     mute(!isAudioPlaybackEnabled);
@@ -664,6 +689,8 @@ function App() {
         setIsEventsPaneExpanded={setIsEventsPaneExpanded}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+        isTextOutputEnabled={isTextOutputEnabled}
+        onTextOutputToggle={handleTextOutputPreferenceChange}
         codec={urlCodec}
         onCodecChange={handleCodecChange}
       />
