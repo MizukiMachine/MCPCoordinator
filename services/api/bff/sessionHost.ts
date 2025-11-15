@@ -76,12 +76,29 @@ export interface CreateSessionResult {
     key: string;
     primary: string;
   };
+  capabilityWarnings: string[];
 }
 
 export interface SessionStreamMessage {
   event: string;
   data: Record<string, any> | string | null;
   timestamp: string;
+}
+
+export interface RealtimeEnvironmentSnapshot {
+  warnings: string[];
+  audio: {
+    enabled: boolean;
+    reason?: string;
+  };
+}
+
+interface SessionErrorSummary {
+  code?: string;
+  message?: string;
+  type?: string;
+  status?: number;
+  retryable?: boolean;
 }
 
 export class SessionHostError extends Error {
@@ -129,6 +146,7 @@ interface SessionHostDeps {
   now?: () => number;
   sessionManagerFactory?: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   scenarioMap?: Record<string, RealtimeAgent[]>;
+  envInspector?: () => RealtimeEnvironmentSnapshot;
 }
 
 export class SessionHost {
@@ -138,12 +156,14 @@ export class SessionHost {
   private readonly now: () => number;
   private readonly sessionManagerFactory: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   private readonly scenarioMap: Record<string, RealtimeAgent[]>;
+  private readonly inspectEnvironment: () => RealtimeEnvironmentSnapshot;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
     this.metrics = deps.metrics ?? createConsoleMetricEmitter('bff.session');
     this.now = deps.now ?? (() => Date.now());
     this.scenarioMap = deps.scenarioMap ?? allAgentSets;
+    this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
     this.sessionManagerFactory =
       deps.sessionManagerFactory ??
       ((hooks) =>
@@ -209,6 +229,22 @@ export class SessionHost {
 
     const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
     const guardrail = createModerationGuardrail(companyName);
+    const envSnapshot = this.inspectEnvironment();
+    const resolvedModalities = this.resolveModalities(options, envSnapshot);
+
+    if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
+      this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
+        sessionId,
+        reason: envSnapshot.audio.reason,
+      });
+    }
+
+    if (envSnapshot.warnings.length > 0) {
+      this.logger.warn('Realtime environment warnings detected', {
+        sessionId,
+        warnings: envSnapshot.warnings,
+      });
+    }
 
     await manager.connect({
       agentSetKey: options.agentSetKey,
@@ -220,7 +256,7 @@ export class SessionHost {
         clientCapabilities: options.clientCapabilities ?? {},
       },
       outputGuardrails: [guardrail],
-      outputModalities: this.resolveModalities(options),
+      outputModalities: resolvedModalities,
     });
 
     this.attachManagerListeners(context);
@@ -233,7 +269,8 @@ export class SessionHost {
       streamUrl: `/api/session/${sessionId}/stream`,
       expiresAt: new Date(context.expiresAt).toISOString(),
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
-      allowedModalities: this.resolveModalities(options),
+      allowedModalities: resolvedModalities,
+      capabilityWarnings: envSnapshot.warnings,
       agentSet: {
         key: options.agentSetKey,
         primary: agentSet[0]?.name ?? 'agent',
@@ -403,11 +440,60 @@ export class SessionHost {
     }
   }
 
-  private resolveModalities(options: CreateSessionOptions): Array<'text' | 'audio'> {
+  private resolveModalities(
+    options: CreateSessionOptions,
+    snapshot: RealtimeEnvironmentSnapshot,
+  ): Array<'text' | 'audio'> {
     if (options.clientCapabilities?.audio === false) {
       return ['text'];
     }
+    if (!snapshot.audio.enabled) {
+      return ['text'];
+    }
     return ['audio', 'text'];
+  }
+
+  private normalizeRealtimeError(payload: any): SessionErrorSummary {
+    const pickString = (value: unknown) =>
+      typeof value === 'string' && value.length > 0 ? value : undefined;
+
+    if (!payload || typeof payload !== 'object') {
+      return {
+        message: pickString(payload as string) ?? 'Unknown Realtime error',
+      };
+    }
+
+    const source = typeof payload.error === 'object' && payload.error ? payload.error : payload;
+    const nestedError = Array.isArray((source as any).errors)
+      ? (source as any).errors[0]
+      : undefined;
+
+    const summary: SessionErrorSummary = {
+      code: pickString((source as any).code) ?? pickString(nestedError?.code),
+      message:
+        pickString((source as any).message) ??
+        pickString(nestedError?.message) ??
+        pickString((payload as any).message),
+      type: pickString((source as any).type) ?? pickString(nestedError?.type),
+    };
+
+    if (typeof (source as any).status === 'number') {
+      summary.status = (source as any).status;
+    }
+
+    if (typeof (source as any).retryable === 'boolean') {
+      summary.retryable = (source as any).retryable;
+    }
+
+    if (!summary.message && typeof payload === 'string') {
+      summary.message = payload;
+    }
+
+    if (!summary.message) {
+      summary.message = 'Unknown Realtime error';
+    }
+
+    return summary;
   }
 
   private enforceRateLimit(context: SessionContext) {
@@ -437,6 +523,17 @@ export class SessionHost {
       const handler = (...args: any[]) => {
         const payload = args.length > 1 ? args : args[0];
         this.broadcast(context.id, event, payload);
+        if (event === 'error') {
+          const summary = this.normalizeRealtimeError(payload);
+          this.logger.error('Realtime session error', {
+            sessionId: context.id,
+            ...summary,
+          });
+          this.metrics.increment('bff.session.realtime_errors_total', 1, {
+            code: summary.code ?? 'unknown',
+          });
+          this.broadcast(context.id, 'session_error', summary);
+        }
       };
       context.manager.on(event, handler as any);
       context.emitter.once('cleanup', () => context.manager.off(event, handler as any));
@@ -508,3 +605,49 @@ export function getSessionHost(): SessionHost {
 }
 
 export const sessionHost = getSessionHost();
+
+const AUDIO_REQUIREMENT_KEYS = [
+  'OPENAI_REALTIME_MODEL',
+  'OPENAI_REALTIME_TRANSCRIPTION_MODEL',
+  'OPENAI_REALTIME_VOICE',
+] as const;
+
+const PLACEHOLDER_KEY_PATTERN = /^sk[-_]?your/i;
+
+export function inspectRealtimeEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+): RealtimeEnvironmentSnapshot {
+  const warnings: string[] = [];
+
+  const apiKey =
+    env.OPENAI_API_KEY ?? env.OPENAI_REALTIME_API_KEY ?? env.OPENAI_API_KEY_VOICE ?? '';
+  if (!apiKey) {
+    warnings.push('Realtime API key is not configured (OPENAI_API_KEY / OPENAI_REALTIME_API_KEY).');
+  } else if (PLACEHOLDER_KEY_PATTERN.test(apiKey)) {
+    warnings.push('Realtime API key is using a placeholder value.');
+  }
+
+  const audioExplicitlyDisabled =
+    (env.OPENAI_REALTIME_AUDIO_DISABLED ?? '').toLowerCase() === 'true';
+  const missingAudioKeys = AUDIO_REQUIREMENT_KEYS.filter((key) => !env[key]);
+  let audioEnabled = !audioExplicitlyDisabled && missingAudioKeys.length === 0;
+  let audioReason: string | undefined;
+
+  if (audioExplicitlyDisabled) {
+    audioReason = 'Audio capability explicitly disabled via OPENAI_REALTIME_AUDIO_DISABLED.';
+  } else if (missingAudioKeys.length > 0) {
+    audioReason = `Audio output disabled: missing ${missingAudioKeys.join(', ')}`;
+  }
+
+  if (audioReason) {
+    warnings.push(audioReason);
+  }
+
+  return {
+    warnings,
+    audio: {
+      enabled: audioEnabled,
+      reason: audioReason,
+    },
+  };
+}

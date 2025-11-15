@@ -4,16 +4,22 @@ import { POST as createSession } from '../route';
 import { POST as forwardEvent } from '../[sessionId]/event/route';
 import { DELETE as deleteSession } from '../[sessionId]/route';
 
-const sessionHostMock = {
+const sessionHostMock = vi.hoisted(() => ({
   createSession: vi.fn(),
   handleCommand: vi.fn(),
   destroySession: vi.fn(),
   subscribe: vi.fn(),
-};
-
-vi.mock('../../../../../services/api/bff/sessionHost', () => ({
-  sessionHost: sessionHostMock,
 }));
+
+vi.mock('../../../../../services/api/bff/sessionHost', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../../../services/api/bff/sessionHost')
+  >('../../../../../services/api/bff/sessionHost');
+  return {
+    ...actual,
+    sessionHost: sessionHostMock,
+  };
+});
 
 describe('session API routes', () => {
   beforeEach(() => {
@@ -22,7 +28,15 @@ describe('session API routes', () => {
   });
 
   it('creates a session via POST /api/session', async () => {
-    sessionHostMock.createSession.mockResolvedValue({ sessionId: 'sess_test' });
+    sessionHostMock.createSession.mockResolvedValue({
+      sessionId: 'sess_test',
+      streamUrl: '/api/session/sess_test/stream',
+      expiresAt: new Date().toISOString(),
+      heartbeatIntervalMs: 25000,
+      allowedModalities: ['text'],
+      capabilityWarnings: [],
+      agentSet: { key: 'demo', primary: 'demo-agent' },
+    });
 
     const request = new Request('http://localhost/api/session', {
       method: 'POST',
@@ -34,7 +48,7 @@ describe('session API routes', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ sessionId: 'sess_test' });
+    expect(payload.sessionId).toBe('sess_test');
     expect(sessionHostMock.createSession).toHaveBeenCalledWith({ agentSetKey: 'demo' });
   });
 

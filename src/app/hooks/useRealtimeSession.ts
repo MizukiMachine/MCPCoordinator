@@ -219,6 +219,19 @@ export function useRealtimeSession(
       addListener('ready', (payload) => {
         logServerEvent({ type: 'ready', payload }, 'ready');
       });
+      addListener('session_error', (payload) => {
+        logServerEvent({ type: 'session_error', payload }, 'session_error');
+        logClientEvent(
+          {
+            type: 'session_error',
+            code: payload?.code,
+            message: payload?.message ?? 'Realtime session error',
+            status: payload?.status,
+          },
+          'session_error',
+        );
+        updateStatus('DISCONNECTED');
+      });
 
       source.onerror = (event) => {
         console.error('SSE error from BFF session stream', event);
@@ -230,7 +243,15 @@ export function useRealtimeSession(
         source.close();
       };
     },
-    [callbacks, detachStreamListeners, handleTransportEvent, historyHandlers, logServerEvent, updateStatus],
+    [
+      callbacks,
+      detachStreamListeners,
+      handleTransportEvent,
+      historyHandlers,
+      logClientEvent,
+      logServerEvent,
+      updateStatus,
+    ],
   );
 
   const disconnect = useCallback(async () => {
@@ -287,6 +308,30 @@ export function useRealtimeSession(
       }
 
       const data = await response.json();
+
+      if (Array.isArray(data.capabilityWarnings) && data.capabilityWarnings.length > 0) {
+        logClientEvent(
+          {
+            type: 'session_warning',
+            warnings: data.capabilityWarnings,
+          },
+          'session_warning',
+        );
+      }
+
+      if (
+        Array.isArray(data.allowedModalities) &&
+        data.allowedModalities.length > 0 &&
+        !data.allowedModalities.includes('audio')
+      ) {
+        logClientEvent(
+          {
+            type: 'session_warning',
+            message: 'Audio output disabled by server capabilities.',
+          },
+          'session_warning',
+        );
+      }
       const streamUrl = appendBffKeyToUrl(data.streamUrl);
       const eventSource = createEventSource(streamUrl);
       sessionStateRef.current = {
