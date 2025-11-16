@@ -266,6 +266,9 @@ export class SessionManager<TAgentHandle = unknown>
         if (event === 'guardrail_tripped') {
           this.hooks.guardrail?.onGuardrailTripped?.(payload);
         }
+        if (event === 'error') {
+          this.handleRealtimeError(handle, payload);
+        }
         this.emit(event, payload);
         if (event === 'transport_event') {
           this.hooks.onServerEvent?.(event, payload);
@@ -287,6 +290,59 @@ export class SessionManager<TAgentHandle = unknown>
       handle.off(event, handler);
     });
     this.boundHandlers.clear();
+  }
+
+  private extractErrorDetails(payload: any): { code?: string; message?: string } {
+    const candidates = [
+      payload,
+      (payload as any)?.error,
+      (payload as any)?.error?.error,
+      Array.isArray((payload as any)?.error?.errors)
+        ? (payload as any).error.errors[0]
+        : undefined,
+    ].filter(Boolean);
+
+    let code: string | undefined;
+    let message: string | undefined;
+
+    for (const candidate of candidates) {
+      if (!code && typeof (candidate as any)?.code === 'string') {
+        code = (candidate as any).code;
+      }
+      if (!message && typeof (candidate as any)?.message === 'string') {
+        message = (candidate as any).message;
+      }
+      if (code && message) break;
+    }
+
+    return { code, message };
+  }
+
+  private handleRealtimeError(handle: ISessionHandle, payload: any) {
+    const { code, message } = this.extractErrorDetails(payload);
+    const isShortAudioError =
+      code === 'invalid_value' &&
+      typeof message === 'string' &&
+      message.includes('Audio content of') &&
+      message.includes('shorter than');
+
+    if (isShortAudioError) {
+      // Realtime sometimes rejects a commit/turn-detection pass when the audio buffer
+      // is shorter than the requested slice. Clear the buffer to keep the session alive.
+      try {
+        handle.sendEvent({ type: 'input_audio_buffer.clear' });
+        this.hooks.logger?.warn?.('Recovered from short-audio invalid_value by clearing buffer', {
+          message,
+          code,
+        });
+      } catch (error) {
+        this.hooks.logger?.error?.('Failed to clear audio buffer after invalid_value', {
+          error,
+          code,
+          message,
+        });
+      }
+    }
   }
 
   private requestPendingConnectAbort(reason: string) {

@@ -80,6 +80,7 @@ describe('SessionManager', () => {
       logger: {
         info: vi.fn(),
         error: vi.fn(),
+        warn: vi.fn(),
       },
       metrics: {
         increment: vi.fn(),
@@ -213,6 +214,27 @@ describe('SessionManager', () => {
     expect(hooks.logger?.error).toHaveBeenCalledWith(
       'Session listener threw error',
       expect.objectContaining({ event: 'history_updated', error: listenerError }),
+    );
+  });
+
+  it('clears audio buffer when realtime returns short-audio invalid_value', async () => {
+    const manager = createManager();
+    await manager.connect(connectOptions);
+
+    handle.emit('error', {
+      error: {
+        code: 'invalid_value',
+        message: 'Audio content of 11750ms is already shorter than 16450ms',
+      },
+    });
+
+    expect(handle.sendEvent).toHaveBeenCalledWith({ type: 'input_audio_buffer.clear' });
+    expect(hooks.logger?.warn).toHaveBeenCalledWith(
+      'Recovered from short-audio invalid_value by clearing buffer',
+      expect.objectContaining({
+        code: 'invalid_value',
+        message: expect.stringContaining('Audio content of 11750ms'),
+      }),
     );
   });
 });
