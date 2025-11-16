@@ -27,7 +27,7 @@
   command: npx
   args:
     - -y
-    - @cocal/google-calendar-mcp
+    - "@cocal/google-calendar-mcp"
   name: Google Calendar (OSS)
   cacheToolsList: true
   timeoutMs: 15000
