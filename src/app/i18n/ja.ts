@@ -82,4 +82,16 @@ export const jaText: UiText = {
     alreadyWithAgent: "すでにエージェント『{{agentName}}』と接続しています。",
     switchingAgent: "エージェント『{{agentName}}』に切り替えます。",
   },
+  upload: {
+    title: "画像アップロード",
+    dropHint: "画像をドラッグ＆ドロップ（JPEG/PNG/WebP/PDF, 最大8MB）",
+    selectLabel: "ファイル選択",
+    sendLabel: "画像を送信",
+    captionPlaceholder: "画像に添えるメモ（任意）",
+    sizeNote: "対応形式: JPEG/PNG/WebP/PDF, 最大 {{maxSizeMb}} MB",
+    statusReady: "準備OK",
+    statusUploading: "送信中...",
+    statusDone: "送信完了",
+    errorPrefix: "アップロードエラー: {{reason}}",
+  },
 };

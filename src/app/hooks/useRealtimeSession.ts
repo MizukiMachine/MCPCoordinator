@@ -60,6 +60,11 @@ export interface SendAudioChunkOptions {
   response?: boolean;
 }
 
+export interface SendImageOptions {
+  text?: string;
+  triggerResponse?: boolean;
+}
+
 export interface ConnectOptions {
   agentSetKey: string;
   preferredAgentName?: string;
@@ -503,6 +508,46 @@ export function useRealtimeSession(
     [postSessionCommand],
   );
 
+  const sendImage = useCallback(
+    async (file: File, options: SendImageOptions = {}) => {
+      const active = sessionStateRef.current;
+      if (!active) {
+        logClientEvent(
+          { type: 'session_warning', message: 'Image ignored because session is not connected' },
+          'session_warning',
+        );
+        throw new Error('Session is not connected');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (options.text) {
+        formData.append('text', options.text);
+      }
+      if (options.triggerResponse === false) {
+        formData.append('triggerResponse', 'false');
+      }
+
+      const response = await fetchImpl(`/api/session/${active.sessionId}/event`, {
+        method: 'POST',
+        headers: {
+          ...buildHeaders(),
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        logClientEvent(payload, 'error.forward_event_failed');
+        throw new Error('Failed to forward image event to BFF');
+      }
+
+      metricEmitterRef.current.increment('session_events_total', 1, { kind: 'input_image' });
+      return response.json().catch(() => ({}));
+    },
+    [fetchImpl, logClientEvent],
+  );
+
   const mute = useCallback(
     (muted: boolean) => {
       audioMutedRef.current = muted;
@@ -536,6 +581,7 @@ export function useRealtimeSession(
     pushToTalkStop,
     interrupt,
     sendAudioChunk,
+    sendImage,
   } as const;
 }
 

@@ -8,7 +8,7 @@ import React, {
   PropsWithChildren,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { TranscriptItem } from "@/app/types";
+import { TranscriptAttachment, TranscriptItem } from "@/app/types";
 
 type TranscriptContextValue = {
   transcriptItems: TranscriptItem[];
@@ -17,6 +17,7 @@ type TranscriptContextValue = {
     role: "user" | "assistant",
     text: string,
     isHidden?: boolean,
+    attachments?: TranscriptAttachment[],
   ) => void;
   updateTranscriptMessage: (itemId: string, text: string, isDelta: boolean) => void;
   addTranscriptBreadcrumb: (title: string, data?: Record<string, any>) => void;
@@ -41,7 +42,7 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
     return `${time}.${ms}`;
   }
 
-  const addTranscriptMessage: TranscriptContextValue["addTranscriptMessage"] = (itemId, role, text = "", isHidden = false) => {
+  const addTranscriptMessage: TranscriptContextValue["addTranscriptMessage"] = (itemId, role, text = "", isHidden = false, attachments = []) => {
     setTranscriptItems((prev) => {
       if (prev.some((log) => log.itemId === itemId && log.type === "MESSAGE")) {
         console.warn(`[addTranscriptMessage] skipping; message already exists for itemId=${itemId}, role=${role}, text=${text}`);
@@ -58,6 +59,7 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
         createdAtMs: Date.now(),
         status: "IN_PROGRESS",
         isHidden,
+        attachments,
       };
 
       return [...prev, newItem];

@@ -65,6 +65,14 @@ export interface GuardrailResultType {
   rationale?: string;
 }
 
+export interface TranscriptAttachment {
+  type: "image";
+  url: string;
+  mimeType: string;
+  name?: string;
+  size?: number;
+}
+
 export interface TranscriptItem {
   itemId: string;
   type: "MESSAGE" | "BREADCRUMB";
@@ -77,6 +85,7 @@ export interface TranscriptItem {
   status: "IN_PROGRESS" | "DONE";
   isHidden: boolean;
   guardrailResult?: GuardrailResultType;
+  attachments?: TranscriptAttachment[];
 }
 
 export interface Log {

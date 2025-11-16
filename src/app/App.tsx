@@ -8,6 +8,7 @@ import Image from "next/image";
 import Transcript from "./components/Transcript";
 import Events from "./components/Events";
 import BottomToolbar from "./components/BottomToolbar";
+import { ImageUploadPanel } from "./components/ImageUploadPanel";
 
 // Types
 import { SessionStatus } from "@/app/types";
@@ -304,14 +305,19 @@ function App() {
     interrupt,
     mute,
     sendAudioChunk,
-  } = useRealtimeSession({
-    onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
-    onAgentHandoff: (agentName: string) => {
-      handoffTriggeredRef.current = true;
-      setSelectedAgentName(agentName);
+    sendImage,
+  } = useRealtimeSession(
+    {
+      onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
+      onAgentHandoff: (agentName: string) => {
+        handoffTriggeredRef.current = true;
+        setSelectedAgentName(agentName);
+      },
+      onVoiceControlDirective: handleVoiceControlDirective,
     },
-    onVoiceControlDirective: handleVoiceControlDirective,
-  });
+    {},
+    { defaultCapabilities: { images: true } },
+  );
 
   const connectToRealtime = useCallback(async (source: "auto" | "manual" = "manual") => {
     if (!allAgentSets[agentSetKey]) {
@@ -463,6 +469,28 @@ function App() {
 
     setUserText("");
   };
+
+  const handleSendImage = useCallback(
+    async (file: File, caption?: string) => {
+      if (sessionStatus !== 'CONNECTED') {
+        setSessionError('画像を送信するには先に接続してください');
+        return;
+      }
+      addTranscriptBreadcrumb('Image upload', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        caption: caption ?? '',
+      });
+      try {
+        await sendImage(file, caption ? { text: caption } : {});
+      } catch (error) {
+        console.error('Failed to send image', error);
+        setSessionError('画像の送信に失敗しました。ログを確認してください。');
+      }
+    },
+    [addTranscriptBreadcrumb, sendImage, sessionStatus],
+  );
 
   const handleTalkButtonDown = () => {
     if (sessionStatus !== 'CONNECTED') return;
@@ -708,15 +736,21 @@ function App() {
       )}
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
-        <Transcript
-          userText={userText}
-          setUserText={setUserText}
-          onSendMessage={handleSendTextMessage}
-          downloadRecording={downloadRecording}
-          canSend={
-            sessionStatus === "CONNECTED"
-          }
-        />
+        <div className="flex flex-col flex-1 gap-2">
+          <ImageUploadPanel
+            onSend={handleSendImage}
+            disabled={sessionStatus !== "CONNECTED"}
+          />
+          <Transcript
+            userText={userText}
+            setUserText={setUserText}
+            onSendMessage={handleSendTextMessage}
+            downloadRecording={downloadRecording}
+            canSend={
+              sessionStatus === "CONNECTED"
+            }
+          />
+        </div>
 
         <Events isExpanded={isEventsPaneExpanded} />
       </div>

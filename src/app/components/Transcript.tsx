@@ -221,6 +221,7 @@ function Transcript({
                 title = "",
                 isHidden,
                 guardrailResult,
+                attachments = [],
               } = item;
 
             if (isHidden) {
@@ -243,6 +244,7 @@ function Transcript({
               const displayTitle = isBracketedMessage
                 ? title.slice(1, -1)
                 : title;
+              const attachmentsToShow = Array.isArray(attachments) ? attachments : [];
 
               return (
                 <div key={itemId} className={containerClasses}>
@@ -263,6 +265,34 @@ function Transcript({
                         <ReactMarkdown>{displayTitle}</ReactMarkdown>
                       </div>
                     </div>
+                    {attachmentsToShow.length > 0 && (
+                      <div className="mt-2 flex gap-2 flex-wrap">
+                        {attachmentsToShow.map((att, idx) => (
+                          <div
+                            key={`${itemId}-att-${idx}`}
+                            className="border border-gray-200 rounded-md p-1 bg-white shadow-sm"
+                          >
+                            {att.mimeType === "application/pdf" ? (
+                              <div className="text-xs text-gray-700 px-2 py-4 min-w-24 text-center">
+                                PDF
+                              </div>
+                            ) : (
+                              <Image
+                                src={att.url}
+                                alt={att.name ?? `attachment-${idx + 1}`}
+                                width={160}
+                                height={160}
+                                className="max-h-32 rounded object-contain"
+                                unoptimized
+                              />
+                            )}
+                            <div className="text-[10px] text-gray-500 mt-1 px-1">
+                              {att.name ?? att.mimeType}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {guardrailResult && (
                       <div className="bg-gray-200 px-3 py-2 rounded-b-xl">
                         <GuardrailChip guardrailResult={guardrailResult} />

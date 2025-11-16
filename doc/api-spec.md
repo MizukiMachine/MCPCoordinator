@@ -93,6 +93,14 @@
   "triggerResponse": true
 }
 ```
+**推奨: multipart/form-data での送信**
+```bash
+curl -X POST "http://localhost:3000/api/session/$SESSION_ID/event" \
+  -H "x-bff-key: $BFF_SERVICE_SHARED_SECRET" \
+  -F "file=@./sample.png" \
+  -F "text=画像の内容を説明して" \
+  -F "triggerResponse=true"
+```
 ```jsonc
 {
   "kind": "event",
@@ -106,7 +114,8 @@
   "value": true
 }
 ```
-- **レスポンス**: `{ "accepted": true, "sessionStatus": "CONNECTED" }`
+ - **レスポンス**: `{ "accepted": true, "sessionStatus": "CONNECTED" }`  
+   画像アップロード時は `imageMetadata`（mimeType/size/storagePath）が付与される。
 - **エラー**: 400 / 401 / 404 / 409 (セッション未接続) / 410 (期限切れ)
 
 ### 3.4 GET /api/session/{id}/stream
