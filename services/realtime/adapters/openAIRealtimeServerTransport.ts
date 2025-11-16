@@ -14,9 +14,7 @@ export interface OpenAIRealtimeServerTransportOptions {
   voice?: string;
 }
 
-// Latest Realtime public model (2024-12-17). Older "gpt-realtime" can return
-// "No existing trace found" on some accounts, so default to the current preview.
-const DEFAULT_REALTIME_MODEL = 'gpt-4o-realtime-preview-2024-12-17';
+const DEFAULT_REALTIME_MODEL = 'gpt-realtime';
 const DEFAULT_TRANSCRIPTION_MODEL = 'gpt-4o-transcribe';
 const DEFAULT_VOICE = 'alloy';
 
