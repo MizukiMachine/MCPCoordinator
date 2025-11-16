@@ -343,6 +343,13 @@ function App() {
     }
   }, [connectToRealtime, selectedAgentName, sessionStatus]);
 
+  // セッション切断時は常にデフォルトシナリオへリセットする
+  useEffect(() => {
+    if (sessionStatus === 'DISCONNECTED') {
+      setAgentSetKey(defaultAgentSetKey);
+    }
+  }, [sessionStatus]);
+
   const updateSession = (shouldTriggerResponse: boolean = false) => {
     if (sessionStatus !== 'CONNECTED') {
       return;
