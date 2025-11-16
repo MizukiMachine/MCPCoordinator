@@ -114,22 +114,15 @@ function App() {
 
   useEffect(() => {
     const requested = searchParams.get("agentConfig");
-    const resolved =
-      requested && allAgentSets[requested] ? requested : defaultAgentSetKey;
+    if (!requested) return;
+    if (!allAgentSets[requested]) return;
 
-    setAgentSetKey((prev) => (prev === resolved ? prev : resolved));
+    setAgentSetKey((prev) => (prev === requested ? prev : requested));
 
-    const shouldUpdateUrl = requested !== resolved;
-    if (shouldUpdateUrl) {
-      const next = new URLSearchParams(searchParams.toString());
-      if (resolved === defaultAgentSetKey) {
-        next.delete("agentConfig");
-      } else {
-        next.set("agentConfig", resolved);
-      }
-      const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    }
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("agentConfig");
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
   useEffect(() => {
@@ -216,15 +209,6 @@ function App() {
     }
 
     schedulePostToolAction(() => {
-      const next = new URLSearchParams(searchParams.toString());
-      if (scenarioKey === defaultAgentSetKey) {
-        next.delete('agentConfig');
-      } else {
-        next.set('agentConfig', scenarioKey);
-      }
-      const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-
       setAgentSetKey(scenarioKey);
       pendingVoiceReconnectRef.current = true;
       disconnectFromRealtime();
@@ -234,7 +218,7 @@ function App() {
       success: true,
       message: formatUiText(uiText.voiceControl.switchingScenario, { scenarioKey }),
     };
-  }, [addTranscriptBreadcrumb, agentSetKey, defaultAgentSetKey, disconnectFromRealtime, pathname, router, schedulePostToolAction, searchParams]);
+  }, [addTranscriptBreadcrumb, agentSetKey, disconnectFromRealtime, schedulePostToolAction]);
 
   const requestAgentChange = useCallback(async (agentName: string) => {
     addTranscriptBreadcrumb('Voice agent switch request', { agentName });
@@ -464,15 +448,7 @@ function App() {
     if (!allAgentSets[newAgentConfig]) return;
 
     disconnectFromRealtime();
-
-    const next = new URLSearchParams(searchParams.toString());
-    if (newAgentConfig === defaultAgentSetKey) {
-      next.delete("agentConfig");
-    } else {
-      next.set("agentConfig", newAgentConfig);
-    }
-    const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    setAgentSetKey(newAgentConfig);
   };
 
   const handleSelectedAgentChange = (

@@ -6,7 +6,7 @@ import {
   defaultAgentSetKey,
 } from '@/app/agentConfigs';
 
-const EXPECTED_SCENARIOS = ['basicAssistant', 'simpleHandoff', 'customerServiceRetail', 'chatSupervisor'];
+const EXPECTED_SCENARIOS = ['basicAssistant', 'simpleHandoff', 'customerServiceRetail', 'chatSupervisor', 'scheduleCoordinator'];
 
 describe('agentConfigs', () => {
   it('公開シナリオをMed/Tech抜きの許可リストに限定する', () => {
