@@ -255,27 +255,24 @@ export function useRealtimeSession(
         }
       });
       addListener('agent_tool_start', (payload) => {
-        if (Array.isArray(payload)) {
-          historyHandlers.handleAgentToolStart(...payload);
-        } else {
-          historyHandlers.handleAgentToolStart(payload);
-        }
+        const args = Array.isArray(payload)
+          ? payload
+          : [payload, undefined, undefined];
+        historyHandlers.handleAgentToolStart(...(args as [any, any, any]));
       });
       addListener('agent_tool_end', (payload) => {
-        if (Array.isArray(payload)) {
-          historyHandlers.handleAgentToolEnd(...payload);
-        } else {
-          historyHandlers.handleAgentToolEnd(payload);
-        }
+        const args = Array.isArray(payload)
+          ? payload
+          : [payload, undefined, undefined, undefined];
+        historyHandlers.handleAgentToolEnd(...(args as [any, any, any, any]));
       });
       addListener('history_updated', historyHandlers.handleHistoryUpdated);
       addListener('history_added', historyHandlers.handleHistoryAdded);
       addListener('guardrail_tripped', (payload) => {
-        if (Array.isArray(payload)) {
-          historyHandlers.handleGuardrailTripped(...payload);
-        } else {
-          historyHandlers.handleGuardrailTripped(payload);
-        }
+        const args = Array.isArray(payload)
+          ? payload
+          : [payload, undefined, undefined];
+        historyHandlers.handleGuardrailTripped(...(args as [any, any, any]));
       });
       addListener('transport_event', transportEventHandler);
       addListener('status', (payload) => {
@@ -606,12 +603,11 @@ export function useRealtimeSession(
   } as const;
 }
 
-function buildHeaders() {
-  return BFF_API_KEY
-    ? {
-        'x-bff-key': BFF_API_KEY,
-      }
-    : {};
+function buildHeaders(): Record<string, string> {
+  if (BFF_API_KEY) {
+    return { 'x-bff-key': BFF_API_KEY };
+  }
+  return {};
 }
 
 function appendBffKeyToUrl(streamUrl: string): string {

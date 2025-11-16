@@ -57,6 +57,10 @@ OpenAI Realtime API + Agents SDK デモです。
 4. ブラウザで [http://localhost:3000](http://localhost:3000) 
 - 右上の「シナリオ」「エージェント」プルダウンで構成を切り替え可能 (`?agentConfig=` クエリにも対応)
 
+## Cloud Run デプロイ
+- BFF/API とフロントを同一の Next.js コンテナとして Cloud Run にホストできます。
+- 手順と必要な環境変数は `doc/deploy-cloud-run.md` を参照してください。`scripts/deploy-cloud-run.sh` 実行で、`gcr.io/ai-conversation-engine` へビルド→Cloud Run（例: `asia-northeast1`）へデプロイできます。
+
 ## BFF Session API
 - `/api/session` でセッションを作成し、レスポンスに含まれる `streamUrl` を `EventSource` で購読すると、RealtimeイベントをSSEで受信できます。
 - クライアントは `x-bff-key` ヘッダ（`NEXT_PUBLIC_BFF_KEY`）を付与して各APIを呼び出します。サーバー側は `BFF_SERVICE_SHARED_SECRET` と突き合わせます。

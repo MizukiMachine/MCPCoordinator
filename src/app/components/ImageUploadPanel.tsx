@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { uiText } from "@/app/i18n";
 
@@ -15,6 +15,12 @@ type UploadState = "idle" | "uploading" | "done" | "error";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
 const DEFAULT_MAX_BYTES = 8 * 1024 * 1024;
+
+const takeFirstFile = (list: FileList | File[] | null | undefined) => {
+  if (!list) return null;
+  const byItem = typeof (list as FileList).item === "function" ? (list as FileList).item(0) : null;
+  return byItem ?? (list as File[])[0] ?? null;
+};
 
 export function ImageUploadPanel({ disabled = false, maxSizeBytes, onSend }: Props) {
   const [file, setFile] = useState<File | null>(null);
@@ -56,13 +62,11 @@ export function ImageUploadPanel({ disabled = false, maxSizeBytes, onSend }: Pro
 
   const handleDrop: React.DragEventHandler<HTMLDivElement> = (event) => {
     event.preventDefault();
-    const picked = event.dataTransfer?.files?.item(0);
-    handleFiles(picked);
+    handleFiles(takeFirstFile(event.dataTransfer?.files ?? null));
   };
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-    const picked = event.target.files?.item(0) ?? null;
-    handleFiles(picked);
+    handleFiles(takeFirstFile(event.target.files));
   };
 
   const handleSend = async () => {

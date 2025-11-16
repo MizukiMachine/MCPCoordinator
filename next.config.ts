@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Cloud Run では Next.js のスタンドアロン出力で最小ランタイムを作る
+  output: "standalone",
 };
 
 export default nextConfig;

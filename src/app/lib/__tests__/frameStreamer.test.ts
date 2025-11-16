@@ -1,4 +1,3 @@
-import { File } from "undici";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FrameStreamer } from "../frameStreamer";
@@ -53,14 +52,14 @@ describe("FrameStreamer", () => {
     const sendImage = vi.fn().mockReturnValue(sendPromise);
     const streamer = new FrameStreamer({ fps: 5 }, { captureFrame: capture, sendImage });
 
-    await streamer.start();
-    vi.advanceTimersByTime(500); // several ticks may occur but should be dropped
-    await Promise.resolve();
+    const startPromise = streamer.start();
+    await Promise.resolve(); // allow first frame to be captured/sent
     expect(sendImage).toHaveBeenCalledTimes(1);
 
     resolveSend?.();
     await sendPromise;
-    vi.advanceTimersByTime(300);
+    await startPromise;
+    vi.advanceTimersByTime(500); // pending frames during the first send should be dropped
     await Promise.resolve();
     expect(sendImage).toHaveBeenCalledTimes(2);
   });

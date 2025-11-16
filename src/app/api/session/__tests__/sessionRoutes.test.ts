@@ -1,6 +1,4 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { File } from 'undici';
-
 import { POST as createSession } from '../route';
 import { POST as forwardEvent } from '../[sessionId]/event/route';
 import { DELETE as deleteSession } from '../[sessionId]/route';

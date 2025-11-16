@@ -25,7 +25,7 @@ function resolveConsoleMethod(level: LogLevel) {
   if (typeof console === 'undefined') {
     return () => {};
   }
-  const method = (console as Record<string, unknown>)[level];
+  const method = (console as unknown as Record<LogLevel, unknown>)[level];
   if (typeof method === 'function') {
     return (method as (...args: unknown[]) => void).bind(console);
   }
