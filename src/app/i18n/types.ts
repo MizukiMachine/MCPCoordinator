@@ -92,4 +92,23 @@ export interface UiText {
     statusDone: string;
     errorPrefix: string;
   };
+  camera: {
+    title: string;
+    startCamera: string;
+    stopCamera: string;
+    permissionHint: string;
+    captureOnce: string;
+    startStreaming: string;
+    stopStreaming: string;
+    fpsLabel: string;
+    resolutionLabel: string;
+    qualityLabel: string;
+    respondEveryFrame: string;
+    respondNextFrame: string;
+    statusReady: string;
+    statusStreaming: string;
+    statusError: string;
+    errorNoStream: string;
+    errorMaxSize: string;
+  };
 }

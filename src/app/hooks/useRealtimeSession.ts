@@ -538,8 +538,9 @@ export function useRealtimeSession(
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
+        const reason = payload?.message || payload?.error || 'Failed to forward image event to BFF';
         logClientEvent(payload, 'error.forward_event_failed');
-        throw new Error('Failed to forward image event to BFF');
+        throw new Error(reason);
       }
 
       metricEmitterRef.current.increment('session_events_total', 1, { kind: 'input_image' });

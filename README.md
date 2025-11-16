@@ -51,7 +51,11 @@ OpenAI Realtime API + Agents SDK デモです。
 - 詳細なパラメータとエラールールは `doc/api-spec.md` を参照してください。`curl -H "x-bff-key: $NEXT_PUBLIC_BFF_KEY" -X POST http://localhost:3000/api/session -d '{"agentSetKey":"chatSupervisor"}'` でローカル動作確認できます。
 
 ## 画像入力（UI / API）
-- UI: 左ペイン上部の「画像アップロード」パネルで JPEG/PNG/WebP/PDF（最大8MB、`.env.sample`で変更可）をドラッグ&ドロップまたはファイル選択し、任意のキャプションを付けて送信します。送信後はTranscriptにサムネイルを表示し、PDFはラベル表示します。
+- UI: 左ペイン上部の「カメラ連携」と「画像アップロード」を選べます。
+  - **カメラ連携**: カメラ権限を許可するとプレビューが表示されます。`解像度`（例: 640x360）、`fps`（0.5–5）、`JPEG品質` を選び、
+    - 「1枚撮影して送信」: その場で1枚を送信し LLM 応答を1回返します。
+    - 「低fps連投を開始」: 1–2fpsなど低レートで連投します。デフォルトでは **初回のみ応答** を返し、以降はサイレントで送信します（レート/コスト抑制のため）。必要なら「毎フレーム応答」チェックか「次のフレームだけ応答」ボタンで一時的に応答を有効化できます。
+  - **画像アップロード**: JPEG/PNG/WebP/PDF（最大8MB、`.env.sample`で変更可）をドラッグ&ドロップまたはファイル選択し、任意のキャプションを付けて送信できます。送信後はTranscriptにサムネイルを表示し、PDFはラベル表示します。
 - API: `/api/session/{id}/event` に `multipart/form-data` で `file` と任意の `text`/`triggerResponse` を送信します。レスポンスに `imageMetadata`（mimeType/size/storagePath）が返ります。JSONで `input_image` を送る既存形式も継続対応。
 - 環境変数: `IMAGE_UPLOAD_DIR`（保存先ディレクトリ）、`IMAGE_UPLOAD_MAX_BYTES`（最大バイト数）、`IMAGE_UPLOAD_ALLOWED_MIME_TYPES`（許可MIME、カンマ区切り）。プロトタイプではローカル保存のみで、後続タスクでS3/GCSアダプタに差し替え予定。
 - セーフガード: MIME/サイズバリデーションのみ実施。高度モデレーション/ウイルススキャンは後続タスクで差し込み可能な構造にしてあります。
