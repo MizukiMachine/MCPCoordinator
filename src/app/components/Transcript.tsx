@@ -9,113 +9,6 @@ import { DownloadIcon, ClipboardCopyIcon } from "@radix-ui/react-icons";
 import { GuardrailChip } from "./GuardrailChip";
 import { formatUiText, uiText } from "../i18n";
 
-interface ScoreSnapshot {
-  expertId: string;
-  totalScore?: number;
-  confidence?: number;
-  latencyMs?: number;
-}
-
-interface ExpertContestBreadcrumbData {
-  type: "expertContestResult";
-  contestId: string;
-  scenario: string;
-  totalLatencyMs: number;
-  tieBreaker?: string;
-  judgeSummary: string;
-  winner?: ScoreSnapshot;
-  runnerUp?: ScoreSnapshot;
-  topScores?: ScoreSnapshot[];
-  baselineAnswer?: string;
-  preset?: string;
-}
-
-const formatScore = (value?: number) =>
-  typeof value === "number" ? value.toFixed(1) : "—";
-const formatConfidence = (value?: number) =>
-  typeof value === "number" ? value.toFixed(2) : "—";
-const formatLatency = (value?: number) =>
-  typeof value === "number" ? `${value} ms` : "—";
-
-const ExpertContestSummaryCard = ({ data }: { data: ExpertContestBreadcrumbData }) => {
-  const contestText = uiText.transcript.expertContest;
-  const topScores = Array.isArray(data.topScores) ? data.topScores.slice(0, 4) : [];
-
-  return (
-    <div className="mt-2 w-full rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-gray-900">
-      <div className="font-semibold text-indigo-900 mb-1">{contestText.title}</div>
-      {data.preset && (
-        <div className="text-xs text-gray-600 mb-1">Preset: {data.preset}</div>
-      )}
-      <div className="flex flex-col gap-1 text-xs">
-        <div>
-          <span className="font-semibold">{contestText.winnerLabel}: </span>
-          <span>{data.winner?.expertId ?? "—"}</span>
-          <span className="ml-2 text-gray-600">
-            {formatScore(data.winner?.totalScore)} / {formatConfidence(data.winner?.confidence)} /{" "}
-            {formatLatency(data.winner?.latencyMs)}
-          </span>
-        </div>
-        <div>
-          <span className="font-semibold">{contestText.runnerUpLabel}: </span>
-          <span>{data.runnerUp?.expertId ?? "—"}</span>
-          <span className="ml-2 text-gray-600">
-            {formatScore(data.runnerUp?.totalScore)} / {formatConfidence(data.runnerUp?.confidence)} /{" "}
-            {formatLatency(data.runnerUp?.latencyMs)}
-          </span>
-        </div>
-        <div>
-          <span className="font-semibold">{contestText.totalLatencyLabel}: </span>
-          <span>{formatLatency(data.totalLatencyMs)}</span>
-        </div>
-        {data.tieBreaker && (
-          <div>
-            <span className="font-semibold">{contestText.tieBreakerLabel}: </span>
-            <span>{data.tieBreaker}</span>
-          </div>
-        )}
-        <div className="mt-1">
-          <span className="font-semibold">{contestText.judgeSummaryLabel}: </span>
-          <span>{data.judgeSummary || "—"}</span>
-        </div>
-        {data.baselineAnswer && (
-          <div className="mt-1">
-            <span className="font-semibold">{contestText.baselineLabel}: </span>
-            <span className="whitespace-pre-wrap">{data.baselineAnswer}</span>
-          </div>
-        )}
-      </div>
-      {topScores.length > 0 && (
-        <div className="mt-3">
-          <div className="font-semibold text-xs text-indigo-900">{contestText.scoreboardLabel}</div>
-          <div className="mt-1 overflow-x-auto">
-            <table className="w-full text-xs font-mono text-gray-800">
-              <thead>
-                <tr className="text-left text-gray-500">
-                  <th className="py-1 pr-3">{contestText.expertHeading}</th>
-                  <th className="py-1 pr-3">{contestText.scoreHeading}</th>
-                  <th className="py-1 pr-3">{contestText.confidenceHeading}</th>
-                  <th className="py-1">{contestText.latencyHeading}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topScores.map((score) => (
-                  <tr key={`${data.contestId}-${score.expertId}`} className="border-t border-indigo-100">
-                    <td className="py-1 pr-3">{score.expertId}</td>
-                    <td className="py-1 pr-3">{formatScore(score.totalScore)}</td>
-                    <td className="py-1 pr-3">{formatConfidence(score.confidence)}</td>
-                    <td className="py-1">{formatLatency(score.latencyMs)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export interface TranscriptProps {
   userText: string;
   setUserText: (val: string) => void;
@@ -302,11 +195,6 @@ function Transcript({
                 </div>
               );
             } else if (type === "BREADCRUMB") {
-              const isExpertContest =
-                data && (data as ExpertContestBreadcrumbData).type === "expertContestResult";
-              const expertContestData = isExpertContest
-                ? (data as ExpertContestBreadcrumbData)
-                : undefined;
               return (
                 <div
                   key={itemId}
@@ -330,7 +218,6 @@ function Transcript({
                     )}
                     {title}
                   </div>
-                  {expertContestData && <ExpertContestSummaryCard data={expertContestData} />}
                   {expanded && data && (
                     <div className="text-gray-800 text-left">
                       <pre className="border-l-2 ml-1 border-gray-200 whitespace-pre-wrap break-words font-mono text-xs mb-2 mt-2 pl-2">

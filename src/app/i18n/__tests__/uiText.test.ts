@@ -7,8 +7,6 @@ describe("uiText translations", () => {
     expect(text.header.scenarioLabel).toBe(uiText.header.scenarioLabel);
     expect(text.metadata.lang).toBe("ja");
     expect(text.toolbar.connectLabel).toBe("接続");
-    expect(text.transcript.expertContest.title.length).toBeGreaterThan(0);
-    expect(text.events.expertContestSummary).toContain("勝者");
   });
 
   it("formats template strings with the provided placeholders", () => {
