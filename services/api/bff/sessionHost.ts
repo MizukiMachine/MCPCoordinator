@@ -8,7 +8,12 @@ import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmi
 import type { MetricEmitter } from '../../../framework/metrics/metricEmitter';
 import type { StructuredLogger } from '../../../framework/logging/structuredLogger';
 import { createModerationGuardrail } from '../../../src/app/agentConfigs/guardrails';
-import { agentSetMetadata, allAgentSets, scenarioMcpBindings } from '../../../src/app/agentConfigs';
+import {
+  agentSetMetadata,
+  allAgentSets,
+  scenarioMcpBindings,
+  type ScenarioMcpBinding,
+} from '../../../src/app/agentConfigs';
 import { isRealtimeTranscriptionEventPayload } from '../../../src/shared/realtimeTranscriptionEvents';
 import type { VoiceControlDirective, VoiceControlHandlers } from '../../../src/shared/voiceControl';
 import type {
@@ -166,7 +171,7 @@ interface SessionHostDeps {
   sessionManagerFactory?: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   scenarioMap?: Record<string, RealtimeAgent[]>;
   envInspector?: () => RealtimeEnvironmentSnapshot;
-  scenarioMcpBindings?: Record<string, string[]>;
+  scenarioMcpBindings?: Record<string, ScenarioMcpBinding>;
   mcpRegistry?: McpServerRegistry;
   serviceManager?: ServiceManager;
 }
@@ -178,7 +183,7 @@ export class SessionHost {
   private readonly now: () => number;
   private readonly sessionManagerFactory: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   private readonly scenarioMap: Record<string, RealtimeAgent[]>;
-  private readonly scenarioMcpBindings: Record<string, string[]>;
+  private readonly scenarioMcpBindings: Record<string, ScenarioMcpBinding>;
   private readonly inspectEnvironment: () => RealtimeEnvironmentSnapshot;
   private readonly mcpRegistry?: McpServerRegistry;
   private readonly registryServiceManager?: ServiceManager;
@@ -193,7 +198,7 @@ export class SessionHost {
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
-      (list) => list.length > 0,
+      (binding) => binding.requiredMcpServers?.length > 0,
     );
     if (hasBindings && Object.keys(mcpConfigs).length > 0) {
       this.registryServiceManager = deps.serviceManager ?? new ServiceManager();

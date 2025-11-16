@@ -6,7 +6,8 @@ OpenAI Realtime API + Agents SDK デモです。
 ## TL;DR
 - Realtime API と @openai/agents@0.3.0 を使ったマルチエージェントのPoC実装
 - Next.js 15 + React 19 + TypeScript で構築し、UIは日本語化済み
-- 5つのデモシナリオを試せる（Simple / Retail / Chat Supervisor / Tech Parallel / Med Parallel）
+- 6つのデモシナリオを試せる（Simple / Retail / Chat Supervisor / Tech Parallel / Med Parallel / Schedule Coordinator）
+- Google カレンダー MCP と連携した「Schedule Coordinator」シナリオを追加し、複数人の空き時間比較と予定登録まで実行可能
 
 ## 大型改修サマリ (2025-11)
 ### 目的
@@ -33,10 +34,17 @@ OpenAI Realtime API + Agents SDK デモです。
 ## MCP接続基盤（2025-11追加）
 - 人が読みやすいYAML設定に対応しました。`config/mcp.servers.yaml`（例: `config/mcp.servers.yaml.example` をコピー）にサーバー一覧を記述すると、自動で接続・ライフサイクル管理します。
 - もし別パスを使いたい場合は `MCP_SERVERS_FILE` でファイルパスを指定できます。ファイルが見つからない場合のフォールバックとしてのみ、従来の `.env` `MCP_SERVERS`（JSON配列）を参照します。
-- シナリオ側の要求は `scenarioMcpBindings`（`src/app/agentConfigs/index.ts`）で宣言し、`id` が一致したMCPだけを初期化してエージェントに紐付けます。
+- シナリオ側の要求は `scenarioMcpBindings`（`src/app/agentConfigs/index.ts`）で宣言し、`requiredMcpServers` に列挙した id（config の id と一致）が初期化され、対応するシナリオのエージェントへだけ紐付けられます。
 - `ServiceManager.shutdownAll()` を呼ぶと接続中のMCPサーバーもまとめてクリーンアップされるため、テストやサーバー再起動時の後処理が容易です。
 
 詳細は `doc/IMPLEMENTATION_PLAN.md` を参照してください。
+
+### Google カレンダー MCP（scheduleCoordinator シナリオ）
+- サーバー設定例は `config/mcp.servers.yaml.example` の `google-calendar` エントリを参照。`config/mcp.servers.yaml` にコピーして利用します。
+- シナリオキーは `scheduleCoordinator`。`src/app/agentConfigs/index.ts` の `scenarioMcpBindings` で `requiredMcpServers: ['google-calendar']` を指定済み。
+- MintMCP がホストする https://gcal.mintmcp.com/mcp を標準で参照し、ブラウザのOAuth許可後に予定取得・作成が可能です（自前デプロイする場合は MintMCP README に従ってクライアントID/Secret を設定）。
+- ユーザーが「複数人で空いている時間を教えて」と依頼すると、参加者のメールアドレス/カレンダーIDと期間を確認し、Googleカレンダーの free/busy を突き合わせて候補を提示、同意が得られれば create_event まで実行します。
+- 詳細な手順とトラブルシュートは `doc/google-calendar-mcp.md` を参照してください。
 
 ## プロジェクト概要
 - Web クライアントは `src/app` にあり、Transcript／イベントログ／ツールバーを個別コンポーネントとして分離

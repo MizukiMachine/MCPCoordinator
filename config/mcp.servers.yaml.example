@@ -17,3 +17,12 @@
   transport: streamable_http
   url: https://mcp.example.com/api
   cacheToolsList: true
+
+# Google カレンダー（MintMCPホスト版）
+# - OAuth ログイン後にブラウザで許可すると、MCP 経由で予定参照/作成が可能。
+# - 自前でデプロイする場合は MintMCP の README に従ってクライアントID/Secret を設定してください。
+- id: google-calendar
+  transport: sse
+  url: https://gcal.mintmcp.com/mcp
+  name: Google Calendar (MCP)
+  cacheToolsList: true

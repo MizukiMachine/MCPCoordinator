@@ -1,0 +1,7 @@
+# デフォルトで Google カレンダー MCP（MintMCP ホスト版）に接続します。
+# 必要に応じて自前デプロイ先や認証ヘッダーをここで書き換えてください。
+- id: google-calendar
+  transport: sse
+  url: https://gcal.mintmcp.com/mcp
+  name: Google Calendar (MCP)
+  cacheToolsList: true
