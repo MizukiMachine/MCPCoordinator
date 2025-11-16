@@ -50,6 +50,19 @@ OpenAI Realtime API + Agents SDK デモです。
 - `/api/session/{id}/stream` は 25 秒ごとの `heartbeat` とセッション状態イベント（history/guardrail/agent_handoff等）を SSE で配信します。
 - 詳細なパラメータとエラールールは `doc/api-spec.md` を参照してください。`curl -H "x-bff-key: $NEXT_PUBLIC_BFF_KEY" -X POST http://localhost:3000/api/session -d '{"agentSetKey":"chatSupervisor"}'` でローカル動作確認できます。
 
+## クライアント実装メモ（BFF利用時に必要な対応）
+本BFFサーバーは「どのデバイスからでも Realtime API + Agents SDK を **外部APIとして安定稼働させる**」ことを目的にしています。ただしBFFは「セッション管理・APIキー隠蔽・イベント中継」を担うレイヤーであり、**クライアント側にも下記の実装／工夫が必要**です。READMEを参照しながらAPIリファレンスを書く場合も、以下を前提としてください。
+
+| 目的 | ブラウザ実装サンプル | 他デバイスで必要なこと |
+| --- | --- | --- |
+| 音声入力（Upload） | `useMicrophoneStream` が `MediaDevices.getUserMedia` → `ScriptProcessorNode` で `24kHz mono PCM` を生成し、`sendAudioChunk` で `/api/session/{id}/event` へ `input_audio` を送信 | 端末固有のマイクAPIでPCMを取得し、同じ `input_audio` イベントを組み立てる。Push-to-Talk 切替時は `input_audio_buffer.clear/commit` を忘れずに送る |
+| 割り込み（Barge-in）検知 | `SpeechActivityDetector` + `useMicrophoneStream` でユーザー音声を検知し、`interrupt()` を呼ぶ前に `PcmAudioPlayer.stop()` でローカル再生を停止 | 端末側でも「音声エネルギー検知 → `control: { action: 'interrupt' }` 送信 → ローカル再生停止」の3ステップを用意する |
+| 音声再生（Playback） | `PcmAudioPlayer` が `transport_event` の `response.output_audio.delta` をキューイング。`mute` / `interrupt` 時は `stop()` を呼んで即停止 | デバイス固有のオーディオプレイヤーで同様にキュー管理し、任意タイミングで停止できるよう抽象化する |
+| セッション維持と再接続 | `useRealtimeSession` が SSE (`/api/session/{id}/stream`) を EventSource で購読し、`status` や `heartbeat` を監視。`x-bff-key` もここで付与 | どのクライアントでも SSE/WS を購読し、`DISCONNECTED` 時の再接続ハンドリングと `x-bff-key` 付与を実装する |
+| ログとメトリクス | `useEvent().logClientEvent` から `barge_in_detected` などを送信し、BFFの `terminallog.log` に残す | 同じイベント名でログを送れば、BFF側の監査や運用ツールをそのまま流用できる |
+
+実装そのものはデバイスごとに書き直す必要がありますが、参照すべきAPI・制御フロー・ログ粒度はこの表に沿って共通化できます。
+
 
 ## 言語・仕様しているモデルの説明
 - すべてのエージェントは、日本語で挨拶・案内・フィラーを行うようプロンプトを統一しています。ユーザーが他言語を希望した場合のみ一時的に切り替わります。
