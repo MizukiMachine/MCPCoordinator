@@ -41,10 +41,9 @@ OpenAI Realtime API + Agents SDK デモです。
 
 ### Google カレンダー MCP（scheduleCoordinator シナリオ）
 - サーバー設定例は `config/mcp.servers.yaml.example` の `google-calendar` エントリを参照。`config/mcp.servers.yaml` にコピーして利用します。
-- MintMCPホスト版を使う場合は `.env` に `MINTMCP_BEARER_TOKEN` を設定し、`config/mcp.servers.yaml` の `${MINTMCP_BEARER_TOKEN}` に差し込んでください（未設定だと 401 で接続失敗します）。
+- デフォルトは OSS 版 `nspady/google-calendar-mcp` を `npx @cocal/google-calendar-mcp` で STDIO 起動する構成です。`.env` の `GOOGLE_OAUTH_CREDENTIALS` にデスクトップアプリ用OAuth JSONを、`GOOGLE_OAUTH_TOKEN_PATH` にトークン保存先を指定してください。
 - シナリオキーは `scheduleCoordinator`。`src/app/agentConfigs/index.ts` の `scenarioMcpBindings` で `requiredMcpServers: ['google-calendar']` を指定済み。
-- MintMCP がホストする https://gcal.mintmcp.com/mcp を標準で参照し、ブラウザのOAuth許可後に予定取得・作成が可能です（自前デプロイする場合は MintMCP README に従ってクライアントID/Secret を設定）。
-- ユーザーが「複数人で空いている時間を教えて」と依頼すると、参加者のメールアドレス/カレンダーIDと期間を確認し、Googleカレンダーの free/busy を突き合わせて候補を提示、同意が得られれば create_event まで実行します。
+- ブラウザで初回のみ Google 同意ポップアップを許可するとトークンが保存され、以降は音声主体でも予定取得・作成が可能です。
 - 詳細な手順とトラブルシュートは `doc/google-calendar-mcp.md` を参照してください。
 
 ## プロジェクト概要

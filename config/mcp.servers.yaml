@@ -1,9 +1,12 @@
-# デフォルトで Google カレンダー MCP（MintMCP ホスト版）に接続します。
-# 必要に応じて自前デプロイ先や認証ヘッダーをここで書き換えてください。
+# nspady/google-calendar-mcp (OSS) を npx 経由で STDIO 接続する設定例
+# 事前に Google Cloud で「デスクトップ アプリ」OAuth クレデンシャルを発行し、
+# その JSON のパスを `GOOGLE_OAUTH_CREDENTIALS` に設定してください。
 - id: google-calendar
-  transport: sse
-  url: https://gcal.mintmcp.com/mcp
-  name: Google Calendar (MCP)
+  transport: stdio
+  command: npx
+  args:
+    - -y
+    - @cocal/google-calendar-mcp
   cacheToolsList: true
-  headers:
-    Authorization: "Bearer ${MINTMCP_BEARER_TOKEN}"
+  timeoutMs: 15000
+  name: Google Calendar (OSS)
