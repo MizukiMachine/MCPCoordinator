@@ -39,13 +39,6 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
     return [w || 640, h || 360];
   }, [resolution]);
 
-  useEffect(() => {
-    return () => {
-      stopStreaming();
-      stopCamera();
-    };
-  }, [stopCamera, stopStreaming]);
-
   const startCamera = useCallback(async () => {
     if (disabled) return;
     try {
@@ -129,6 +122,13 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
     frameStreamerRef.current?.stop();
     setStatus((prev) => (prev === "streaming" ? "camera_ready" : prev));
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopStreaming();
+      stopCamera();
+    };
+  }, [stopCamera, stopStreaming]);
 
   const startStreaming = useCallback(async () => {
     if (!streamRef.current) {
