@@ -82,6 +82,86 @@ describe('useRealtimeSession', () => {
     const body = JSON.parse((requestInit!.body ?? '{}') as string);
     expect(body.clientCapabilities).toEqual({ audio: true, outputText: false });
   });
+
+  it('exposes sendAudioChunk that suppresses commit/response by default', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockResponse({
+          sessionId: 'sess_pcm',
+          streamUrl: '/api/session/sess_pcm/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      )
+      .mockResolvedValue(createMockResponse({ accepted: true }));
+    const stubEventSource = createStubEventSource();
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {},
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    await act(async () => {
+      await result.current.sendAudioChunk('BASE64_CHUNK');
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const [, eventArgs] = fetchImpl.mock.calls;
+    expect(eventArgs?.[0]).toBe('/api/session/sess_pcm/event');
+    const body = JSON.parse((eventArgs?.[1]?.body ?? '{}') as string);
+    expect(body).toEqual({
+      kind: 'input_audio',
+      audio: 'BASE64_CHUNK',
+      commit: false,
+      response: false,
+    });
+  });
+
+  it('allows overriding commit/response flags when sending audio chunks', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockResponse({
+          sessionId: 'sess_pcm2',
+          streamUrl: '/api/session/sess_pcm2/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      )
+      .mockResolvedValue(createMockResponse({ accepted: true }));
+    const stubEventSource = createStubEventSource();
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {},
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    await act(async () => {
+      await result.current.sendAudioChunk('FINAL_CHUNK', { commit: true, response: true });
+    });
+
+    const [, eventArgs] = fetchImpl.mock.calls;
+    const body = JSON.parse((eventArgs?.[1]?.body ?? '{}') as string);
+    expect(body.commit).toBe(true);
+    expect(body.response).toBe(true);
+  });
 });
 
 describe('createTransportEventHandler', () => {
