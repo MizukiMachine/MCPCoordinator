@@ -31,14 +31,20 @@ vi.mock('../useHandleSessionHistory', () => ({
   useHandleSessionHistory: () => ({ current: historyHandlerSpies }),
 }));
 
-const audioPlayerMock = {
+const audioPlayerMock = vi.hoisted(() => ({
   enqueue: vi.fn(),
   close: vi.fn(),
   setMuted: vi.fn(),
-};
+  stop: vi.fn(),
+}));
+const pcmPlayerCtor = vi.hoisted(() =>
+  vi.fn(function MockedPcmAudioPlayer() {
+    return audioPlayerMock;
+  }),
+);
 
 vi.mock('@/app/lib/audio/pcmPlayer', () => ({
-  PcmAudioPlayer: vi.fn(() => audioPlayerMock),
+  PcmAudioPlayer: pcmPlayerCtor,
 }));
 
 describe('useRealtimeSession', () => {
@@ -48,6 +54,8 @@ describe('useRealtimeSession', () => {
     audioPlayerMock.enqueue.mockReset();
     audioPlayerMock.close.mockReset();
     audioPlayerMock.setMuted.mockReset();
+    audioPlayerMock.stop.mockReset();
+    pcmPlayerCtor.mockClear();
   });
 
   it('forwards the outputText capability to the session API', async () => {
@@ -161,6 +169,57 @@ describe('useRealtimeSession', () => {
     const body = JSON.parse((eventArgs?.[1]?.body ?? '{}') as string);
     expect(body.commit).toBe(true);
     expect(body.response).toBe(true);
+  });
+
+  it('stops local playback when interrupt is triggered', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockResponse({
+          sessionId: 'sess_interrupt',
+          streamUrl: '/api/session/sess_interrupt/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      )
+      .mockResolvedValue(createMockResponse({ accepted: true }));
+    const stubEventSource = createStubEventSource();
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {},
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const transportListener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'transport_event',
+    )?.[1];
+
+    if (transportListener) {
+      await act(async () => {
+        transportListener({
+          data: JSON.stringify({ type: 'response.output_audio.delta', delta: 'PCM' }),
+        } as MessageEvent<string>);
+      });
+    }
+
+    await act(async () => {
+      result.current.interrupt();
+      await Promise.resolve();
+    });
+
+    expect(audioPlayerMock.stop).toHaveBeenCalled();
+    const [, eventArgs] = fetchImpl.mock.calls;
+    expect(eventArgs?.[0]).toBe('/api/session/sess_interrupt/event');
+    const body = JSON.parse((eventArgs?.[1]?.body ?? '{}') as string);
+    expect(body).toEqual({ kind: 'control', action: 'interrupt' });
   });
 });
 

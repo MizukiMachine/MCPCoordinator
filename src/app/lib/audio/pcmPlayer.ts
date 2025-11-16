@@ -4,6 +4,7 @@ export class PcmAudioPlayer {
   private readonly audioContext: AudioContext;
   private readonly gainNode: GainNode;
   private scheduledTime = 0;
+  private readonly activeSources = new Set<AudioBufferSourceNode>();
 
   constructor(options: { sampleRate?: number } = {}) {
     const context = new AudioContext({ sampleRate: options.sampleRate ?? DEFAULT_SAMPLE_RATE });
@@ -22,13 +23,30 @@ export class PcmAudioPlayer {
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(this.gainNode);
+    this.activeSources.add(source);
+    source.onended = () => {
+      this.activeSources.delete(source);
+    };
     const startTime = Math.max(this.audioContext.currentTime, this.scheduledTime);
     source.start(startTime);
     this.scheduledTime = startTime + audioBuffer.duration;
   }
 
+  stop() {
+    this.activeSources.forEach((source) => {
+      try {
+        source.stop();
+      } catch (error) {
+        console.warn('Failed to stop audio source', error);
+      }
+    });
+    this.activeSources.clear();
+    this.scheduledTime = this.audioContext.currentTime;
+  }
+
   close() {
     try {
+      this.stop();
       this.audioContext.close();
     } catch (error) {
       console.warn('Failed to close AudioContext', error);

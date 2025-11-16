@@ -97,17 +97,27 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
   const pendingVoiceReconnectRef = useRef(false);
+  const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
+
+  const handleSpeechDetected = useCallback(() => {
+    logClientEvent(
+      { type: 'barge_in_interrupt_sent' },
+      'barge_in_interrupt',
+    );
+    interrupt();
+  }, [interrupt, logClientEvent]);
 
   useMicrophoneStream({
     sessionStatus,
     sendAudioChunk,
     logClientEvent,
+    speechDetectionEnabled: !isPTTActive,
+    onSpeechDetected: handleSpeechDetected,
   });
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);
   const [userText, setUserText] = useState<string>("");
-  const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
   const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] = useState<boolean>(
     () => {

@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import { encodeFloat32ToPCM16Base64 } from '@/app/lib/audio/pcmEncoding';
 import type { SessionStatus } from '@/app/types';
 import type { SendAudioChunkOptions } from './useRealtimeSession';
+import {
+  SpeechActivityDetector,
+  type SpeechActivityDetectorTuning,
+} from '@/app/lib/audio/speechActivityDetector';
 
 const TARGET_SAMPLE_RATE = 24000;
 const PROCESSOR_BUFFER_SIZE = 4096;
@@ -13,6 +17,9 @@ interface UseMicrophoneStreamOptions {
   sendAudioChunk: (base64: string, options?: SendAudioChunkOptions) => Promise<void>;
   enabled?: boolean;
   logClientEvent?: (payload: Record<string, any>, tag?: string, metadata?: Record<string, any>) => void;
+  speechDetectionEnabled?: boolean;
+  speechDetectionConfig?: SpeechActivityDetectorTuning;
+  onSpeechDetected?: () => void;
 }
 
 export function useMicrophoneStream({
@@ -20,6 +27,9 @@ export function useMicrophoneStream({
   sendAudioChunk,
   enabled = true,
   logClientEvent,
+  speechDetectionEnabled = true,
+  speechDetectionConfig,
+  onSpeechDetected,
 }: UseMicrophoneStreamOptions) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -29,10 +39,30 @@ export function useMicrophoneStream({
   const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const streamingEnabledRef = useRef(false);
+  const speechDetectorRef = useRef<SpeechActivityDetector | null>(null);
+  const speechDetectionEnabledRef = useRef<boolean>(speechDetectionEnabled);
+  const speechDetectionConfigRef = useRef<SpeechActivityDetectorTuning | undefined>(speechDetectionConfig);
+  const onSpeechDetectedRef = useRef<(() => void) | undefined>(onSpeechDetected);
 
   useEffect(() => {
     streamingEnabledRef.current = Boolean(enabled && sessionStatus === 'CONNECTED');
   }, [enabled, sessionStatus]);
+
+  useEffect(() => {
+    speechDetectionEnabledRef.current = speechDetectionEnabled !== false;
+    if (!speechDetectionEnabledRef.current) {
+      speechDetectorRef.current = null;
+    }
+  }, [speechDetectionEnabled]);
+
+  useEffect(() => {
+    speechDetectionConfigRef.current = speechDetectionConfig;
+    speechDetectorRef.current = null;
+  }, [speechDetectionConfig]);
+
+  useEffect(() => {
+    onSpeechDetectedRef.current = onSpeechDetected ?? undefined;
+  }, [onSpeechDetected]);
 
   const cleanupStream = useCallback(() => {
     processorRef.current?.disconnect();
@@ -49,7 +79,30 @@ export function useMicrophoneStream({
       mediaStreamRef.current = null;
     }
     pendingSamplesRef.current = [];
+    speechDetectorRef.current = null;
   }, []);
+
+  const ensureSpeechDetector = useCallback(() => {
+    if (!speechDetectionEnabledRef.current) {
+      return null;
+    }
+    if (!speechDetectorRef.current) {
+      speechDetectorRef.current = new SpeechActivityDetector({
+        sampleRate: TARGET_SAMPLE_RATE,
+        ...(speechDetectionConfigRef.current ?? {}),
+        onSpeechStart: () => {
+          logClientEvent?.(
+            {
+              type: 'barge_in_detected',
+            },
+            'barge_in_detected',
+          );
+          onSpeechDetectedRef.current?.();
+        },
+      });
+    }
+    return speechDetectorRef.current;
+  }, [logClientEvent]);
 
   const queueChunkSend = useCallback(
     (chunkBase64: string) => {
@@ -73,6 +126,9 @@ export function useMicrophoneStream({
   const pushSamples = useCallback(
     (frame: Float32Array) => {
       if (!streamingEnabledRef.current) return;
+      if (speechDetectionEnabledRef.current) {
+        ensureSpeechDetector()?.process(frame);
+      }
       const buffer = pendingSamplesRef.current;
       for (let i = 0; i < frame.length; i += 1) {
         buffer.push(frame[i]);
@@ -82,7 +138,7 @@ export function useMicrophoneStream({
         queueChunkSend(encodeFloat32ToPCM16Base64(new Float32Array(chunk)));
       }
     },
-    [queueChunkSend],
+    [ensureSpeechDetector, queueChunkSend],
   );
 
   const startMicrophone = useCallback(async () => {
