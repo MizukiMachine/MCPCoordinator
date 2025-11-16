@@ -71,6 +71,7 @@ function App() {
 
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+  const initialResponseTriggeredRef = useRef(false);
   const lastUserMessageRef = useRef<{ itemId: string; text: string } | null>(null);
   const lastAssistantComparisonRef = useRef<string | null>(null);
   const comparisonInFlightRef = useRef(false);
@@ -186,7 +187,12 @@ function App() {
         `${uiText.session.agentBreadcrumbLabel}${selectedAgentName}`,
         currentAgent,
       );
-      updateSession(!handoffTriggeredRef.current);
+      const shouldTriggerInitialResponse =
+        !handoffTriggeredRef.current && !initialResponseTriggeredRef.current;
+      updateSession(shouldTriggerInitialResponse);
+      if (shouldTriggerInitialResponse) {
+        initialResponseTriggeredRef.current = true;
+      }
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
     }
@@ -214,6 +220,7 @@ function App() {
   const disconnectFromRealtime = () => {
     disconnect();
     setIsPTTUserSpeaking(false);
+    initialResponseTriggeredRef.current = false;
   };
 
   const handleTextOutputPreferenceChange = useCallback(
@@ -306,6 +313,7 @@ function App() {
 
     try {
       setSessionError(null);
+      initialResponseTriggeredRef.current = false;
       await connect({
         agentSetKey,
         preferredAgentName: selectedAgentName,
