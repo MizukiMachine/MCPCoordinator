@@ -494,19 +494,25 @@ export class SessionHost {
       );
     }
 
+    const modalities: Array<'text' | 'audio'> = [];
+
     if (audioAvailable) {
-      return ['audio'];
+      modalities.push('audio');
     }
 
     if (textOutputEnabled) {
-      return ['text'];
+      modalities.push('text');
     }
 
-    throw new SessionHostError(
-      'Audio output unavailable in current environment and text output disabled by client',
-      'invalid_client_capabilities',
-      400,
-    );
+    if (modalities.length === 0) {
+      throw new SessionHostError(
+        'Audio output unavailable in current environment and text output disabled by client',
+        'invalid_client_capabilities',
+        400,
+      );
+    }
+
+    return modalities;
   }
 
   private buildReportedModalities(

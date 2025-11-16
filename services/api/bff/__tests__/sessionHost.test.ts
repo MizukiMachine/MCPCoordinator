@@ -49,10 +49,10 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
     return super.emit(event, ...args);
   }
 
-  async connect(): Promise<void> {
+  async connect(options?: any): Promise<void> {
     this.status = 'CONNECTED';
     this.hooks.onStatusChange?.('CONNECTED');
-    this.connectMock();
+    this.connectMock(options);
   }
 
   disconnect(): void {
@@ -111,6 +111,9 @@ describe('SessionHost', () => {
     expect(result.streamUrl).toContain(result.sessionId);
     expect(result.allowedModalities).toEqual(['audio', 'text']);
     expect(result.textOutputEnabled).toBe(true);
+    expect(managers[0]!.connectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ outputModalities: ['audio', 'text'] }),
+    );
 
     const manager = managers[0]!;
     const status = await host.handleCommand(result.sessionId, {
@@ -131,6 +134,9 @@ describe('SessionHost', () => {
 
     expect(result.allowedModalities).toEqual(['audio']);
     expect(result.textOutputEnabled).toBe(false);
+    expect(managers[0]!.connectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ outputModalities: ['audio'] }),
+    );
   });
 
   it('enforces rate limiting', async () => {
@@ -208,6 +214,9 @@ describe('SessionHost', () => {
     expect(result.allowedModalities).toEqual(['text']);
     expect(result.textOutputEnabled).toBe(true);
     expect(result.capabilityWarnings).toContain('Audio disabled for test');
+    expect(managers[0]!.connectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ outputModalities: ['text'] }),
+    );
   });
 
   it('rejects sessions when both audio and text outputs are disabled', async () => {

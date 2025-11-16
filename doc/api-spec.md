@@ -57,7 +57,7 @@
 - `capabilityWarnings`: サーバーのRealtime設定に関する警告一覧。音声権限が無効な場合の理由などを含み、UIがフォールバックUIを表示する際に利用する。
 - `allowedModalities`: クライアント視点の利用可能モード。音声が有効なら `"audio"`、`clientCapabilities.outputText !== false` であれば `"text"` が含まれる。
 - `textOutputEnabled`: サーバーがテキスト出力を送信するかどうかの真偽値。UI はこの値を見て transcription 処理を有効/無効にする。
-- `clientCapabilities.outputText`: 省略時は `true`。`false` にするとサーバー→クライアント間でテキスト転送をスキップする。
+- `clientCapabilities.outputText`: 省略時は `true`。`false` にするとサーバー→クライアント間でテキスト転送をスキップする。`true`（かつ音声も有効）の場合は BFF から OpenAI Realtime へ `outputModalities=["audio","text"]` を通知し、音声と文字起こしの両方を同時に受け取る。`false` の場合は `outputModalities=["audio"]` となり、SSE でも transcription 系イベントが落とされる。
 - **エラー**: 400（不正入力） / 401（認証） / 500（内部）
 
 ### 3.2 DELETE /api/session/{id}
