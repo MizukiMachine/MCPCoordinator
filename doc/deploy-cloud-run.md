@@ -36,6 +36,23 @@ gcloud run deploy ${SERVICE_NAME} \
   --set-env-vars "OPENAI_API_KEY=${OPENAI_API_KEY},BFF_SERVICE_SHARED_SECRET=${BFF_SERVICE_SHARED_SECRET},NEXT_PUBLIC_BFF_KEY=${NEXT_PUBLIC_BFF_KEY}"
 ```
 
+## CI/CD（Cloud Build トリガー）で自動デプロイする
+1. `cloudbuild.yaml` をリポジトリ直下に追加済みです。`_REGION`（デフォルト asia-northeast1）と `_SERVICE_NAME`（デフォルト mcp-coordinator）は必要に応じて書き換えてください。
+2. Secret Manager に以下のシークレットを作成し、最新バージョンに値をセットします。
+   - `OPENAI_API_KEY`
+   - `BFF_SERVICE_SHARED_SECRET`
+   - `NEXT_PUBLIC_BFF_KEY`
+3. Cloud Build のデフォルトサービスアカウント（`${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com`）にロールを付与します。
+   - Cloud Run Admin (`roles/run.admin`)
+   - Artifact Registry Writer (`roles/artifactregistry.writer`)
+   - Service Account User (`roles/iam.serviceAccountUser`)  ※デプロイ先の実行SAを利用するため
+   - Secret Manager Secret Accessor (`roles/secretmanager.secretAccessor`)
+4. Cloud Console → Cloud Build → トリガー → 「トリガーを作成」
+   - ソース: GitHub の `main`（または `develop`）ブランチ
+   - ビルド構成: リポジトリの `cloudbuild.yaml`
+   - 置換: 必要に応じて `_REGION`, `_SERVICE_NAME` を設定
+5. 以後、対象ブランチに push すると Cloud Build がコンテナをビルド → Artifact Registry に push → Cloud Run にデプロイし、Secrets を Cloud Run 環境変数として注入します。
+
 ## 環境変数メモ
 - **必須**: `OPENAI_API_KEY`, `BFF_SERVICE_SHARED_SECRET`, `NEXT_PUBLIC_BFF_KEY`
 - **Realtime 音声/モデル**（指定がなければスクリプトがデフォルトを投入）  

@@ -60,6 +60,7 @@ OpenAI Realtime API + Agents SDK デモです。
 ## Cloud Run デプロイ
 - BFF/API とフロントを同一の Next.js コンテナとして Cloud Run にホストできます。
 - 手順と必要な環境変数は `doc/deploy-cloud-run.md` を参照してください。`scripts/deploy-cloud-run.sh` 実行で、`gcr.io/ai-conversation-engine` へビルド→Cloud Run（例: `asia-northeast1`）へデプロイできます。
+- CI/CD で自動デプロイしたい場合は `cloudbuild.yaml` を使って Cloud Build トリガーを作成してください（同ドキュメントに手順を記載）。
 
 ## BFF Session API
 - `/api/session` でセッションを作成し、レスポンスに含まれる `streamUrl` を `EventSource` で購読すると、RealtimeイベントをSSEで受信できます。
