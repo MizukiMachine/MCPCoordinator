@@ -5,7 +5,7 @@
 
 ## セットアップ手順
 1. `config/mcp.servers.yaml.example` を参考に、`config/mcp.servers.yaml` を配置（デフォルトは OSS 版 `nspady/google-calendar-mcp` を `npx @cocal/google-calendar-mcp` でSTDIO起動）。
-2. GCP で「デスクトップ アプリ」OAuth クライアントを作成し、JSON をダウンロードして `.env` の `GOOGLE_OAUTH_CREDENTIALS` にファイルパスを設定。トークン保存先を `GOOGLE_OAUTH_TOKEN_PATH` に設定する。
+2. GCP で「デスクトップ アプリ」OAuth クライアントを作成し、JSON をダウンロードして `.env` の `GOOGLE_OAUTH_CREDENTIALS` にファイルパスを設定。トークン保存先を `GOOGLE_CALENDAR_MCP_TOKEN_PATH` に設定する。
 3. サーバー起動後、ブラウザでシナリオ `Schedule Coordinator` を選択し、Google 同意ポップアップで許可する（初回のみ）。
 4. 別実装を使いたい場合は `config/mcp.servers.yaml` の `command/args` を差し替える。SSE/HTTP 版を使うなら `transport` と `url` を変更。
 5. 複数人比較を行う際は、参加者のメールアドレス/カレンダーIDと希望期間を必ず入力する。期間が広すぎるとレスポンスが長くなるため、まずは 1〜2 週間に絞るのが推奨。
@@ -22,5 +22,5 @@
 ## トラブルシュート
 - ツール一覧に Google カレンダー MCP が見えない: `config/mcp.servers.yaml` の `id` が `scenarioMcpBindings` の `requiredMcpServers` と一致しているか確認。
 - OAuth 失敗: ブラウザのポップアップブロックを解除し、再度シナリオを開始して許可をやり直す。デスクトップアプリ型のOAuthかを確認。
-- 401 / 接続失敗: `GOOGLE_OAUTH_CREDENTIALS` が正しいか、ファイルパスが存在するかを確認。`npm run dev` 再起動後に再試行。
+- 401 / 接続失敗: `GOOGLE_OAUTH_CREDENTIALS` が正しいか、ファイルパスが存在するかを確認。`npm run dev` 再起動後に再試行。パスは **絶対パス推奨**（ラッパースクリプトが相対を解決しますが、念のため確認）。
 - Free/Busy が空で返る: 期間が１日未満など極端に短い可能性。開始/終了日時を見直す。

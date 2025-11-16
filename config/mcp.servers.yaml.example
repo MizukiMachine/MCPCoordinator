@@ -24,10 +24,7 @@
 #   JSON をダウンロードして `GOOGLE_OAUTH_CREDENTIALS` で指すようにしてください。
 - id: google-calendar
   transport: stdio
-  command: npx
-  args:
-    - -y
-    - "@cocal/google-calendar-mcp"
+  command: ./scripts/run-google-calendar-mcp.sh
   name: Google Calendar (OSS)
   cacheToolsList: true
   timeoutMs: 15000
