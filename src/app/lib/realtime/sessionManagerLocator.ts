@@ -10,7 +10,11 @@ import {
   detectRuntimeEnvironment,
   type RuntimeEnvironment,
 } from '../../../../framework/di/runtimeEnvironment';
-import { allAgentSets, scenarioMcpBindings } from '@/app/agentConfigs';
+import {
+  allAgentSets,
+  scenarioMcpBindings,
+  type ScenarioMcpBinding,
+} from '@/app/agentConfigs';
 import { createOpenAISessionManager } from '../../../../services/realtime/adapters/createOpenAISessionManager';
 import { McpServerRegistry } from '../../../../services/mcp/mcpServerRegistry';
 import { loadMcpServersFromEnv } from '../../../../services/mcp/config';
@@ -31,7 +35,7 @@ type ProviderMap = Partial<Record<RuntimeEnvironment, SessionManagerProvider>>;
 export interface SessionManagerProviderContext {
   environment: RuntimeEnvironment;
   scenarioMap: Record<string, RealtimeAgent[]>;
-  scenarioMcpBindings?: Record<string, string[]>;
+  scenarioMcpBindings?: Record<string, ScenarioMcpBinding>;
   serviceManager: ServiceManager;
   logger: ServiceManagerLogger;
   hooks?: SessionManagerHooks;
@@ -47,7 +51,7 @@ export interface GetSessionManagerOptions {
   serviceManager?: ServiceManager;
   hooks?: SessionManagerHooks;
   scenarioMap?: Record<string, RealtimeAgent[]>;
-  scenarioMcpBindings?: Record<string, string[]>;
+  scenarioMcpBindings?: Record<string, ScenarioMcpBinding>;
   providers?: ProviderMap;
   transport?: OpenAIRealtimeTransportOptions;
   logger?: ServiceManagerLogger;
@@ -98,7 +102,9 @@ function buildAgentResolver(
   logger: ServiceManagerLogger,
 ): IAgentSetResolver<RealtimeAgent> {
   const bindings = ctx.scenarioMcpBindings ?? scenarioMcpBindings;
-  const hasBinding = Object.values(bindings).some((list) => list.length > 0);
+  const hasBinding = Object.values(bindings).some(
+    (binding) => binding.requiredMcpServers?.length > 0,
+  );
   if (!hasBinding) {
     return new OpenAIAgentSetResolver(ctx.scenarioMap);
   }
@@ -221,7 +227,7 @@ export function getSessionManager(
     }
 
     const scenarioMap = options.scenarioMap ?? allAgentSets;
-    const scenarioMcp = options.scenarioMcpBindings ?? scenarioMcpBindings;
+  const scenarioMcp = options.scenarioMcpBindings ?? scenarioMcpBindings;
     serviceManager.register(
       token,
       () =>

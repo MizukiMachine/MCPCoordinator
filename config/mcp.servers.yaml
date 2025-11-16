@@ -1,0 +1,9 @@
+# nspady/google-calendar-mcp (OSS) を npx 経由で STDIO 接続する設定例
+# 事前に Google Cloud で「デスクトップ アプリ」OAuth クレデンシャルを発行し、
+# その JSON のパスを `GOOGLE_OAUTH_CREDENTIALS` に設定してください。
+- id: google-calendar
+  transport: stdio
+  command: ./scripts/run-google-calendar-mcp.sh
+  cacheToolsList: true
+  timeoutMs: 15000
+  name: Google Calendar (OSS)

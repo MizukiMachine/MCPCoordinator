@@ -29,6 +29,31 @@ describe('parseMcpServers', () => {
     });
   });
 
+  it('interpolates env vars in url and headers', () => {
+    const env = { HOST: 'https://example.com', TOKEN: 'secret' };
+    const result = parseMcpServers(
+      JSON.stringify([
+        {
+          id: 'demo',
+          url: '${HOST}/mcp',
+          headers: { Authorization: 'Bearer ${TOKEN}' },
+        },
+      ]),
+      env,
+    );
+    expect(result.demo.url).toBe('https://example.com/mcp');
+    expect(result.demo.headers.Authorization).toBe('Bearer secret');
+  });
+
+  it('throws when env placeholder is missing', () => {
+    expect(() =>
+      parseMcpServers(
+        JSON.stringify([{ id: 'demo', headers: { Authorization: 'Bearer ${TOKEN}' } }]),
+        {},
+      ),
+    ).toThrowError(McpConfigError);
+  });
+
   it('throws a helpful error on invalid JSON', () => {
     expect(() => parseMcpServers('not-json')).toThrowError(McpConfigError);
   });
@@ -42,14 +67,20 @@ describe('parseMcpServers', () => {
 
 describe('loadMcpServersFromEnv', () => {
   it('returns empty object when env is unset', () => {
-    expect(loadMcpServersFromEnv({})).toEqual({});
+    expect(
+      loadMcpServersFromEnv(
+        { MCP_SERVERS_FILE: '/non-existent' },
+        { disableFileLookup: true, cwd: '/non-existent' },
+      ),
+    ).toEqual({});
   });
 
   it('delegates to parser when MCP_SERVERS is present', () => {
     const env = {
       MCP_SERVERS: JSON.stringify([{ id: 'x', transport: 'stdio', command: 'echo' }]),
+      MCP_SERVERS_FILE: '/non-existent',
     };
-    const result = loadMcpServersFromEnv(env);
+    const result = loadMcpServersFromEnv(env, { disableFileLookup: true, cwd: '/non-existent' });
     expect(result.x).toMatchObject({
       id: 'x',
       transport: 'stdio',

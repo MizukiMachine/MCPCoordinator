@@ -17,3 +17,14 @@
   transport: streamable_http
   url: https://mcp.example.com/api
   cacheToolsList: true
+
+# Google カレンダー（OSS: nspady/google-calendar-mcp）
+# - transport: stdio でローカルプロセス起動。npx 経由で実行します。
+# - 事前に GCP で「デスクトップ アプリ」OAuth クライアントを作成し、
+#   JSON をダウンロードして `GOOGLE_OAUTH_CREDENTIALS` で指すようにしてください。
+- id: google-calendar
+  transport: stdio
+  command: ./scripts/run-google-calendar-mcp.sh
+  name: Google Calendar (OSS)
+  cacheToolsList: true
+  timeoutMs: 15000

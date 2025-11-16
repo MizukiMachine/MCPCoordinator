@@ -33,27 +33,54 @@ function assertConfigShape(entry: any): asserts entry is Partial<McpServerConfig
   }
 }
 
-function normalizeEntries(entries: any[]): Record<string, McpServerConfig> {
+function interpolateEnv(value: unknown, env: Record<string, string | undefined>): unknown {
+  if (typeof value !== 'string') return value;
+
+  return value.replace(/\$\{([A-Z0-9_]+)\}/gi, (match, varName) => {
+    const resolved = env[varName];
+    if (resolved == null) {
+      throw new McpConfigError(
+        `Environment variable "${varName}" is not set but is required for MCP config`,
+      );
+    }
+    return resolved;
+  });
+}
+
+function normalizeEntries(
+  entries: any[],
+  env: Record<string, string | undefined>,
+): Record<string, McpServerConfig> {
   const result: Record<string, McpServerConfig> = {};
   for (const entry of entries) {
     assertConfigShape(entry);
     const normalized: McpServerConfig = {
       id: entry.id,
       transport: entry.transport ?? DEFAULT_TRANSPORT,
-      url: entry.url,
-      command: entry.command,
-      args: entry.args ?? [],
-      headers: entry.headers ?? {},
+      url: interpolateEnv(entry.url, env) as string | undefined,
+      command: interpolateEnv(entry.command, env) as string | undefined,
+      args: Array.isArray(entry.args)
+        ? entry.args.map((v: unknown) => interpolateEnv(v, env) as any)
+        : [],
+      headers: Object.fromEntries(
+        Object.entries(entry.headers ?? {}).map(([key, value]) => [
+          key,
+          interpolateEnv(value, env) as string,
+        ]),
+      ),
       cacheToolsList: entry.cacheToolsList ?? true,
       timeoutMs: entry.timeoutMs,
-      name: entry.name,
+      name: interpolateEnv(entry.name, env) as string | undefined,
     };
     result[normalized.id] = normalized;
   }
   return result;
 }
 
-export function parseMcpServers(raw: string): Record<string, McpServerConfig> {
+export function parseMcpServers(
+  raw: string,
+  env: Record<string, string | undefined> = process.env,
+): Record<string, McpServerConfig> {
   if (!raw.trim()) return {};
 
   let parsed: unknown;
@@ -69,10 +96,13 @@ export function parseMcpServers(raw: string): Record<string, McpServerConfig> {
     throw new McpConfigError('MCP_SERVERS must be a JSON array');
   }
 
-  return normalizeEntries(parsed);
+  return normalizeEntries(parsed, env);
 }
 
-function parseMcpServersFromFile(filePath: string): Record<string, McpServerConfig> {
+function parseMcpServersFromFile(
+  filePath: string,
+  env: Record<string, string | undefined>,
+): Record<string, McpServerConfig> {
   const raw = fs.readFileSync(filePath, 'utf8');
   const ext = path.extname(filePath).toLowerCase();
   let parsed: unknown;
@@ -99,7 +129,7 @@ function parseMcpServersFromFile(filePath: string): Record<string, McpServerConf
     throw new McpConfigError(`${filePath} must contain an array of MCP server entries`);
   }
 
-  return normalizeEntries(parsed);
+  return normalizeEntries(parsed, env);
 }
 
 function findConfigFile(
@@ -121,6 +151,8 @@ export interface LoadMcpServersOptions {
   env?: Record<string, string | undefined>;
   cwd?: string;
   preferredPath?: string;
+  disableFileLookup?: boolean;
+  configFiles?: string[];
 }
 
 export function loadMcpServers(
@@ -128,16 +160,19 @@ export function loadMcpServers(
 ): Record<string, McpServerConfig> {
   const env = options.env ?? process.env;
   const cwd = options.cwd ?? process.cwd();
+  const defaults = options.disableFileLookup
+    ? []
+    : options.configFiles ?? DEFAULT_CONFIG_FILES;
 
   const preferred = options.preferredPath ?? env.MCP_SERVERS_FILE;
-  const configFile = findConfigFile(cwd, preferred);
+  const configFile = findConfigFile(cwd, preferred, defaults);
   if (configFile) {
-    return parseMcpServersFromFile(configFile);
+    return parseMcpServersFromFile(configFile, env);
   }
 
   const raw = env.MCP_SERVERS ?? '';
   if (raw) {
-    return parseMcpServers(raw);
+    return parseMcpServers(raw, env);
   }
 
   return {};
@@ -146,6 +181,7 @@ export function loadMcpServers(
 // backward-compatible export name
 export function loadMcpServersFromEnv(
   env: Record<string, string | undefined> = process.env,
+  options?: Omit<LoadMcpServersOptions, 'env'>,
 ): Record<string, McpServerConfig> {
-  return loadMcpServers({ env });
+  return loadMcpServers({ env, ...options });
 }

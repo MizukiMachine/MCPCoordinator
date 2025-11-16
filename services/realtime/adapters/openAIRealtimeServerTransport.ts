@@ -120,6 +120,7 @@ export class OpenAIRealtimeServerTransport
       transport: 'websocket',
       model: this.model,
       context: extraContext ?? {},
+      tracingDisabled: true,
       outputGuardrails: request.outputGuardrails ?? [],
       historyStoreAudio: wantsAudio,
       config: {
