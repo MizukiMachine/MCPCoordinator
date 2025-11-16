@@ -71,6 +71,7 @@ function App() {
 
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
+  const initialResponseTriggeredRef = useRef(false);
   const lastUserMessageRef = useRef<{ itemId: string; text: string } | null>(null);
   const lastAssistantComparisonRef = useRef<string | null>(null);
   const comparisonInFlightRef = useRef(false);
@@ -107,6 +108,11 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
+  const [isTextOutputEnabled, setIsTextOutputEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('textOutputEnabled');
+    return stored ? stored === 'true' : true;
+  });
 
   const schedulePostToolAction = useCallback((action: () => void) => {
     setTimeout(action, 0);
@@ -181,7 +187,12 @@ function App() {
         `${uiText.session.agentBreadcrumbLabel}${selectedAgentName}`,
         currentAgent,
       );
-      updateSession(!handoffTriggeredRef.current);
+      const shouldTriggerInitialResponse =
+        !handoffTriggeredRef.current && !initialResponseTriggeredRef.current;
+      updateSession(shouldTriggerInitialResponse);
+      if (shouldTriggerInitialResponse) {
+        initialResponseTriggeredRef.current = true;
+      }
       // Reset flag after handling so subsequent effects behave normally
       handoffTriggeredRef.current = false;
     }
@@ -209,7 +220,19 @@ function App() {
   const disconnectFromRealtime = () => {
     disconnect();
     setIsPTTUserSpeaking(false);
+    initialResponseTriggeredRef.current = false;
   };
+
+  const handleTextOutputPreferenceChange = useCallback(
+    (enabled: boolean) => {
+      setIsTextOutputEnabled(enabled);
+      if (sessionStatus === 'CONNECTED') {
+        pendingVoiceReconnectRef.current = true;
+        disconnectFromRealtime();
+      }
+    },
+    [disconnectFromRealtime, sessionStatus],
+  );
 
   const requestScenarioChange = useCallback(async (scenarioKey: string) => {
     addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
@@ -290,6 +313,7 @@ function App() {
 
     try {
       setSessionError(null);
+      initialResponseTriggeredRef.current = false;
       await connect({
         agentSetKey,
         preferredAgentName: selectedAgentName,
@@ -299,13 +323,14 @@ function App() {
           requestAgentChange,
           logClientEvent,
         },
+        clientCapabilities: { outputText: isTextOutputEnabled },
       });
     } catch (err) {
       console.error("Error connecting via SDK:", err);
       setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
       setSessionStatus("DISCONNECTED");
     }
-  }, [addTranscriptBreadcrumb, agentSetKey, connect, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+  }, [addTranscriptBreadcrumb, agentSetKey, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
   useEffect(() => {
     if (
@@ -363,6 +388,9 @@ function App() {
   );
 
   const updateSession = (shouldTriggerResponse: boolean = false) => {
+    if (sessionStatus !== 'CONNECTED') {
+      return;
+    }
     // Reflect Push-to-Talk UI state by toggling server-side VAD via a minimal session.update.
     // We keep the payload scoped to the audio block so the agent instructions remain intact.
     const serverVadConfig = isPTTActive
@@ -375,6 +403,7 @@ function App() {
     sendEvent({
       type: 'session.update',
       session: {
+        type: 'realtime',
         audio: {
           input: {
             turn_detection: serverVadConfig,
@@ -512,6 +541,10 @@ function App() {
     if (storedAudioPlaybackEnabled) {
       setIsAudioPlaybackEnabled(storedAudioPlaybackEnabled === "true");
     }
+    const storedTextOutputEnabled = localStorage.getItem('textOutputEnabled');
+    if (storedTextOutputEnabled) {
+      setIsTextOutputEnabled(storedTextOutputEnabled === 'true');
+    }
   }, []);
 
   useEffect(() => {
@@ -528,6 +561,10 @@ function App() {
       isAudioPlaybackEnabled.toString()
     );
   }, [isAudioPlaybackEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('textOutputEnabled', isTextOutputEnabled.toString());
+  }, [isTextOutputEnabled]);
 
   useEffect(() => {
     mute(!isAudioPlaybackEnabled);
@@ -664,6 +701,8 @@ function App() {
         setIsEventsPaneExpanded={setIsEventsPaneExpanded}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+        isTextOutputEnabled={isTextOutputEnabled}
+        onTextOutputToggle={handleTextOutputPreferenceChange}
         codec={urlCodec}
         onCodecChange={handleCodecChange}
       />

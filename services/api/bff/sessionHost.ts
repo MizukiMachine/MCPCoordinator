@@ -9,6 +9,7 @@ import type { MetricEmitter } from '../../../framework/metrics/metricEmitter';
 import type { StructuredLogger } from '../../../framework/logging/structuredLogger';
 import { createModerationGuardrail } from '../../../src/app/agentConfigs/guardrails';
 import { agentSetMetadata, allAgentSets } from '../../../src/app/agentConfigs';
+import { isRealtimeTranscriptionEventPayload } from '../../../src/shared/realtimeTranscriptionEvents';
 import type {
   ISessionManager,
   SessionEventName,
@@ -62,6 +63,7 @@ export interface CreateSessionOptions {
   clientCapabilities?: {
     audio?: boolean;
     images?: boolean;
+    outputText?: boolean;
   };
   metadata?: Record<string, any>;
 }
@@ -72,6 +74,7 @@ export interface CreateSessionResult {
   expiresAt: string;
   heartbeatIntervalMs: number;
   allowedModalities: Array<'text' | 'audio'>;
+  textOutputEnabled: boolean;
   agentSet: {
     key: string;
     primary: string;
@@ -140,6 +143,8 @@ interface SessionContext {
   streamIdleTimer?: ReturnType<typeof setTimeout>;
   rateLimiter: SessionRateLimiter;
   lastCommandAt: number;
+  allowedModalities: Array<'text' | 'audio'>;
+  textOutputEnabled: boolean;
 }
 
 interface DestroySessionOptions {
@@ -214,6 +219,13 @@ export class SessionHost {
       },
     };
 
+    const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
+    const guardrail = createModerationGuardrail(companyName);
+    const envSnapshot = this.inspectEnvironment();
+    const textOutputEnabled = options.clientCapabilities?.outputText !== false;
+    const resolvedModalities = this.resolveRuntimeModalities(options, envSnapshot, textOutputEnabled);
+    const reportedModalities = this.buildReportedModalities(options, envSnapshot, textOutputEnabled);
+
     const manager = this.sessionManagerFactory(hooks);
     const now = this.now();
     const context: SessionContext = {
@@ -245,15 +257,12 @@ export class SessionHost {
       },
       rateLimiter: { hits: [] },
       lastCommandAt: now,
+      allowedModalities: reportedModalities,
+      textOutputEnabled,
     };
     contextRef = context;
 
     this.sessions.set(sessionId, context);
-
-    const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
-    const guardrail = createModerationGuardrail(companyName);
-    const envSnapshot = this.inspectEnvironment();
-    const resolvedModalities = this.resolveModalities(options, envSnapshot);
 
     if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
       this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
@@ -292,7 +301,8 @@ export class SessionHost {
       streamUrl: `/api/session/${sessionId}/stream`,
       expiresAt: new Date(context.expiresAt).toISOString(),
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
-      allowedModalities: resolvedModalities,
+      allowedModalities: reportedModalities,
+      textOutputEnabled,
       capabilityWarnings: envSnapshot.warnings,
       agentSet: {
         key: options.agentSetKey,
@@ -466,17 +476,55 @@ export class SessionHost {
     }
   }
 
-  private resolveModalities(
+  private resolveRuntimeModalities(
     options: CreateSessionOptions,
     snapshot: RealtimeEnvironmentSnapshot,
+    textOutputEnabled: boolean,
   ): Array<'text' | 'audio'> {
-    if (options.clientCapabilities?.audio === false) {
+    const audioRequested = options.clientCapabilities?.audio !== false;
+    const audioAvailable = audioRequested && snapshot.audio.enabled;
+
+    if (!audioRequested && !textOutputEnabled) {
+      throw new SessionHostError(
+        'Client must enable audio or text output when creating a session',
+        'invalid_client_capabilities',
+        400,
+      );
+    }
+
+    if (audioAvailable) {
+      return ['audio'];
+    }
+
+    if (textOutputEnabled) {
       return ['text'];
     }
-    if (!snapshot.audio.enabled) {
-      return ['text'];
+
+    throw new SessionHostError(
+      'Audio output unavailable in current environment and text output disabled by client',
+      'invalid_client_capabilities',
+      400,
+    );
+  }
+
+  private buildReportedModalities(
+    options: CreateSessionOptions,
+    snapshot: RealtimeEnvironmentSnapshot,
+    textOutputEnabled: boolean,
+  ): Array<'text' | 'audio'> {
+    const modalities: Array<'text' | 'audio'> = [];
+    const audioRequested = options.clientCapabilities?.audio !== false;
+    if (audioRequested && snapshot.audio.enabled) {
+      modalities.push('audio');
     }
-    return ['audio'];
+    if (textOutputEnabled) {
+      modalities.push('text');
+    }
+    if (modalities.length === 0) {
+      // fallback for text-only environments
+      modalities.push('text');
+    }
+    return modalities;
   }
 
   private normalizeRealtimeError(payload: any): SessionErrorSummary {
@@ -603,6 +651,9 @@ export class SessionHost {
   private broadcast(sessionId: string, event: string, data: Record<string, any> | string | null) {
     const context = this.sessions.get(sessionId);
     if (!context) return;
+    if (event === 'transport_event' && !context.textOutputEnabled && isRealtimeTranscriptionEventPayload(data)) {
+      return;
+    }
     const message: SessionStreamMessage = {
       event,
       data,

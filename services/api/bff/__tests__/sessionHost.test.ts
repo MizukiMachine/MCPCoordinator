@@ -101,6 +101,8 @@ describe('SessionHost', () => {
     const result = await host.createSession({ agentSetKey: 'demo' });
     expect(result.sessionId).toMatch(/^sess_/);
     expect(result.streamUrl).toContain(result.sessionId);
+    expect(result.allowedModalities).toEqual(['audio', 'text']);
+    expect(result.textOutputEnabled).toBe(true);
 
     const manager = managers[0]!;
     const status = await host.handleCommand(result.sessionId, {
@@ -111,6 +113,16 @@ describe('SessionHost', () => {
     expect(manager.sendEventMock).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'conversation.item.create' }),
     );
+  });
+
+  it('allows disabling text output when requested by the client', async () => {
+    const result = await host.createSession({
+      agentSetKey: 'demo',
+      clientCapabilities: { outputText: false },
+    });
+
+    expect(result.allowedModalities).toEqual(['audio']);
+    expect(result.textOutputEnabled).toBe(false);
   });
 
   it('enforces rate limiting', async () => {
@@ -165,7 +177,48 @@ describe('SessionHost', () => {
     });
 
     expect(result.allowedModalities).toEqual(['text']);
+    expect(result.textOutputEnabled).toBe(true);
     expect(result.capabilityWarnings).toContain('Audio disabled for test');
+  });
+
+  it('rejects sessions when both audio and text outputs are disabled', async () => {
+    await expect(
+      host.createSession({
+        agentSetKey: 'demo',
+        clientCapabilities: { audio: false, outputText: false },
+      }),
+    ).rejects.toThrow(SessionHostError);
+  });
+
+  it('suppresses transcription transport events when text output is disabled', async () => {
+    const { sessionId } = await host.createSession({
+      agentSetKey: 'demo',
+      clientCapabilities: { outputText: false },
+    });
+    const received: SessionStreamMessage[] = [];
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'listener',
+      send: (msg) => received.push(msg),
+    });
+
+    const countTransportEvents = () =>
+      received.filter((msg) => msg.event === 'transport_event').length;
+    const initialCount = countTransportEvents();
+
+    managers[0]!.emit('transport_event', {
+      type: 'response.output_text.delta',
+      delta: 'Hello from transcript',
+    });
+
+    expect(countTransportEvents()).toBe(initialCount);
+
+    managers[0]!.emit('transport_event', {
+      type: 'response.output_audio.delta',
+      delta: 'PCM',
+    });
+
+    expect(countTransportEvents()).toBe(initialCount + 1);
+    unsubscribe();
   });
 
   it('emits session_error events with sanitized payloads', async () => {

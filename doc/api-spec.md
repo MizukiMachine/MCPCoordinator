@@ -29,7 +29,8 @@
   "sessionLabel": "web-client:abc",     // 任意: ログ分離用ラベル
   "clientCapabilities": {
     "audio": true,
-    "images": true
+    "images": true,
+    "outputText": true
   },
   "metadata": {
     "browser": "chrome",
@@ -44,7 +45,8 @@
   "streamUrl": "/api/session/sess_c1d704ef9a/stream",
   "expiresAt": "2025-11-16T01:23:45.000Z",
   "heartbeatIntervalMs": 25000,
-  "allowedModalities": ["audio"],
+  "allowedModalities": ["audio", "text"],
+  "textOutputEnabled": true,
   "capabilityWarnings": [],
   "agentSet": {
     "key": "chatSupervisor",
@@ -53,7 +55,9 @@
 }
 ```
 - `capabilityWarnings`: サーバーのRealtime設定に関する警告一覧。音声権限が無効な場合の理由などを含み、UIがフォールバックUIを表示する際に利用する。
-- `allowedModalities`: Realtime API仕様上、`["audio"]` か `["text"]` のどちらかのみが有効。音声権限がある環境では `["audio"]`、そうでなければ `["text"]` が返る。
+- `allowedModalities`: クライアント視点の利用可能モード。音声が有効なら `"audio"`、`clientCapabilities.outputText !== false` であれば `"text"` が含まれる。
+- `textOutputEnabled`: サーバーがテキスト出力を送信するかどうかの真偽値。UI はこの値を見て transcription 処理を有効/無効にする。
+- `clientCapabilities.outputText`: 省略時は `true`。`false` にするとサーバー→クライアント間でテキスト転送をスキップする。
 - **エラー**: 400（不正入力） / 401（認証） / 500（内部）
 
 ### 3.2 DELETE /api/session/{id}
@@ -128,6 +132,7 @@ data: {"code":"access_denied","message":"Audio output disabled"}
 ```
 - 25秒ごとに `heartbeat` イベントを送信。
 - `session_error` は Realtime API の `error` を要約したイベントで、`code`/`message`/`status` を含む。受信時はクライアントが切断処理とユーザー通知を行う。
+- `textOutputEnabled=false` のセッションでは、`response.output_text.*` や transcription 系の `transport_event` は SSE 上で送信されない（バンド幅節約）。
 - SSE切断時はセッション購読者から除外し、全購読者が0になったら一定時間(60s)後に自動終了。
 
 ## 4. エラーコード
