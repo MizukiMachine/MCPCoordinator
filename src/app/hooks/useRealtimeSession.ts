@@ -218,6 +218,25 @@ export function useRealtimeSession(
       detachStreamListeners();
       const disposers: Array<() => void> = [];
 
+      const reopenStream = async () => {
+        const active = sessionStateRef.current;
+        if (!active) {
+          updateStatus('DISCONNECTED');
+          return;
+        }
+        try {
+          const newSource = createEventSource(active.streamUrl);
+          sessionStateRef.current = {
+            ...active,
+            eventSource: newSource,
+          };
+          registerStreamListeners(newSource);
+        } catch (error) {
+          console.error('Failed to reopen SSE stream', error);
+          updateStatus('DISCONNECTED');
+        }
+      };
+
       const addListener = (
         event: string,
         handler: (payload: any) => void,
@@ -291,6 +310,7 @@ export function useRealtimeSession(
       source.onerror = (event) => {
         console.error('SSE error from BFF session stream', event);
         updateStatus('CONNECTING');
+        void reopenStream();
       };
 
       listenerCleanupRef.current = () => {
@@ -305,6 +325,7 @@ export function useRealtimeSession(
       logClientEvent,
       logServerEvent,
       transportEventHandler,
+      createEventSource,
       updateStatus,
     ],
   );
