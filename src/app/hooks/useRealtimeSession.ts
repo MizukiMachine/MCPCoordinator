@@ -179,6 +179,10 @@ export function useRealtimeSession(
     return audioPlayerRef.current;
   }, []);
 
+  const stopAudioPlayback = useCallback(() => {
+    audioPlayerRef.current?.stop();
+  }, []);
+
   const transportEventHandler = useMemo(
     () =>
       createTransportEventHandler({
@@ -502,8 +506,9 @@ export function useRealtimeSession(
   );
 
   const interrupt = useCallback(() => {
+    stopAudioPlayback();
     void postSessionCommand({ kind: 'control', action: 'interrupt' });
-  }, [postSessionCommand]);
+  }, [postSessionCommand, stopAudioPlayback]);
 
   const pushToTalkStart = useCallback(() => {
     void postSessionCommand({ kind: 'control', action: 'push_to_talk_start' });
