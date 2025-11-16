@@ -10,6 +10,7 @@ import type { StructuredLogger } from '../../../framework/logging/structuredLogg
 import { createModerationGuardrail } from '../../../src/app/agentConfigs/guardrails';
 import { agentSetMetadata, allAgentSets } from '../../../src/app/agentConfigs';
 import { isRealtimeTranscriptionEventPayload } from '../../../src/shared/realtimeTranscriptionEvents';
+import type { VoiceControlDirective, VoiceControlHandlers } from '../../../src/shared/voiceControl';
 import type {
   ISessionManager,
   SessionEventName,
@@ -265,6 +266,7 @@ export class SessionHost {
     contextRef = context;
 
     this.sessions.set(sessionId, context);
+    const voiceControlHandlers = this.createVoiceControlHandlers(sessionId);
 
     if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
       this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
@@ -288,6 +290,8 @@ export class SessionHost {
         sessionLabel: options.sessionLabel,
         metadata: options.metadata ?? {},
         clientCapabilities: options.clientCapabilities ?? {},
+        requestScenarioChange: voiceControlHandlers.requestScenarioChange,
+        requestAgentChange: voiceControlHandlers.requestAgentChange,
       },
       outputGuardrails: [guardrail],
       outputModalities: resolvedModalities,
@@ -678,6 +682,29 @@ export class SessionHost {
 
   private generateSessionId(): string {
     return `sess_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  }
+
+  private createVoiceControlHandlers(sessionId: string): VoiceControlHandlers {
+    const emitDirective = (directive: VoiceControlDirective) => {
+      this.broadcast(sessionId, 'voice_control', directive);
+    };
+
+    return {
+      requestScenarioChange: async (scenarioKey: string) => {
+        if (!scenarioKey) {
+          return { success: false, message: '有効なシナリオキーを指定してください。' };
+        }
+        emitDirective({ action: 'switchScenario', scenarioKey });
+        return { success: true, message: `シナリオ「${scenarioKey}」へ切り替えます。` };
+      },
+      requestAgentChange: async (agentName: string) => {
+        if (!agentName) {
+          return { success: false, message: '有効なエージェント名を指定してください。' };
+        }
+        emitDirective({ action: 'switchAgent', agentName });
+        return { success: true, message: `エージェント「${agentName}」に切り替えます。` };
+      },
+    };
   }
 
   private getRealtimeApiKey(): string {

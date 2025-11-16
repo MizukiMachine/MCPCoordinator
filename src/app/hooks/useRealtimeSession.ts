@@ -7,6 +7,7 @@ import { PcmAudioPlayer } from '@/app/lib/audio/pcmPlayer';
 import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmitter';
 import type { SessionCommand } from '../../../services/api/bff/sessionHost';
 import { getTranscriptionEventStage } from '@/shared/realtimeTranscriptionEvents';
+import { isVoiceControlDirective, type VoiceControlDirective } from '@/shared/voiceControl';
 
 const BFF_API_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
 const CLIENT_DISCONNECT_REASON = 'client_request';
@@ -45,6 +46,7 @@ function safeJsonParse<T = any>(input: string): T {
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
   onAgentHandoff?: (agentName: string) => void;
+  onVoiceControlDirective?: (directive: VoiceControlDirective) => void;
 }
 
 export interface ClientCapabilityOverrides {
@@ -275,6 +277,11 @@ export function useRealtimeSession(
           'session_error',
         );
         updateStatus('DISCONNECTED');
+      });
+      addListener('voice_control', (payload) => {
+        if (isVoiceControlDirective(payload)) {
+          callbacks.onVoiceControlDirective?.(payload);
+        }
       });
 
       source.onerror = (event) => {

@@ -12,6 +12,7 @@ import BottomToolbar from "./components/BottomToolbar";
 // Types
 import { SessionStatus } from "@/app/types";
 import type { RealtimeAgent } from '@openai/agents/realtime';
+import type { VoiceControlDirective } from '@/shared/voiceControl';
 
 // Context providers & hooks
 import { useTranscript } from "@/app/contexts/TranscriptContext";
@@ -78,42 +79,10 @@ function App() {
   const comparisonInFlightRef = useRef(false);
 
 
-  const {
-    connect,
-    disconnect,
-    sendUserText,
-    sendEvent,
-    interrupt,
-    mute,
-    sendAudioChunk,
-  } = useRealtimeSession({
-    onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
-    onAgentHandoff: (agentName: string) => {
-      handoffTriggeredRef.current = true;
-      setSelectedAgentName(agentName);
-    },
-  });
-
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
   const pendingVoiceReconnectRef = useRef(false);
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
-
-  const handleSpeechDetected = useCallback(() => {
-    logClientEvent(
-      { type: 'barge_in_interrupt_sent' },
-      'barge_in_interrupt',
-    );
-    interrupt();
-  }, [interrupt, logClientEvent]);
-
-  useMicrophoneStream({
-    sessionStatus,
-    sendAudioChunk,
-    logClientEvent,
-    speechDetectionEnabled: !isPTTActive,
-    onSpeechDetected: handleSpeechDetected,
-  });
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);
@@ -315,6 +284,35 @@ function App() {
     };
   }, [addTranscriptBreadcrumb, disconnectFromRealtime, schedulePostToolAction, selectedAgentConfigSet, selectedAgentName]);
 
+  const handleVoiceControlDirective = useCallback(
+    (directive: VoiceControlDirective) => {
+      if (!directive) return;
+      if (directive.action === 'switchScenario') {
+        void requestScenarioChange(directive.scenarioKey);
+      } else if (directive.action === 'switchAgent') {
+        void requestAgentChange(directive.agentName);
+      }
+    },
+    [requestAgentChange, requestScenarioChange],
+  );
+
+  const {
+    connect,
+    disconnect,
+    sendUserText,
+    sendEvent,
+    interrupt,
+    mute,
+    sendAudioChunk,
+  } = useRealtimeSession({
+    onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
+    onAgentHandoff: (agentName: string) => {
+      handoffTriggeredRef.current = true;
+      setSelectedAgentName(agentName);
+    },
+    onVoiceControlDirective: handleVoiceControlDirective,
+  });
+
   const connectToRealtime = useCallback(async (source: "auto" | "manual" = "manual") => {
     if (!allAgentSets[agentSetKey]) {
       return;
@@ -349,6 +347,22 @@ function App() {
       setSessionStatus("DISCONNECTED");
     }
   }, [addTranscriptBreadcrumb, agentSetKey, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+
+  const handleSpeechDetected = useCallback(() => {
+    logClientEvent(
+      { type: 'barge_in_interrupt_sent' },
+      'barge_in_interrupt',
+    );
+    interrupt();
+  }, [interrupt, logClientEvent]);
+
+  useMicrophoneStream({
+    sessionStatus,
+    sendAudioChunk,
+    logClientEvent,
+    speechDetectionEnabled: !isPTTActive,
+    onSpeechDetected: handleSpeechDetected,
+  });
 
   useEffect(() => {
     if (

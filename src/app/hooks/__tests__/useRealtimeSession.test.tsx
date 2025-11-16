@@ -221,6 +221,53 @@ describe('useRealtimeSession', () => {
     const body = JSON.parse((eventArgs?.[1]?.body ?? '{}') as string);
     expect(body).toEqual({ kind: 'control', action: 'interrupt' });
   });
+
+  it('propagates voice_control events to the provided callback', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        createMockResponse({
+          sessionId: 'sess_voice',
+          streamUrl: '/api/session/sess_voice/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      );
+    const stubEventSource = createStubEventSource();
+    const voiceCallback = vi.fn();
+
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {
+          onVoiceControlDirective: voiceCallback,
+        },
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const listener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'voice_control',
+    )?.[1];
+    expect(listener).toBeInstanceOf(Function);
+
+    await act(async () => {
+      listener?.({
+        data: JSON.stringify({ action: 'switchScenario', scenarioKey: 'simpleHandoff' }),
+      } as MessageEvent<string>);
+    });
+
+    expect(voiceCallback).toHaveBeenCalledWith({
+      action: 'switchScenario',
+      scenarioKey: 'simpleHandoff',
+    });
+  });
 });
 
 describe('createTransportEventHandler', () => {
