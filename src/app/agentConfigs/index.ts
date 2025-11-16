@@ -12,6 +12,14 @@ export const allAgentSets: Record<string, RealtimeAgent[]> = {
   chatSupervisor: chatSupervisorScenario,
 };
 
+// 各シナリオが要求するMCPサーバーのキー（config.jsonの id と一致させる）
+export const scenarioMcpBindings: Record<string, string[]> = {
+  basicAssistant: [],
+  simpleHandoff: [],
+  customerServiceRetail: [],
+  chatSupervisor: [],
+};
+
 export const defaultAgentSetKey = 'basicAssistant';
 
 export const agentSetMetadata: Record<string, { label: string; companyName: string }> = {
