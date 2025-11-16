@@ -212,6 +212,8 @@ export class SessionHost {
         }
         this.broadcast(sessionId, 'status', { status });
       },
+      // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
+      // （音声チャンクが二重再生されるのを防ぐため）。
       onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
       guardrail: {
         onGuardrailTripped: (payload) =>
@@ -606,7 +608,6 @@ export class SessionHost {
       'history_updated',
       'history_added',
       'guardrail_tripped',
-      'transport_event',
       'error',
     ];
 

@@ -41,6 +41,14 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
     this.hooks = next;
   }
 
+  override emit(event: string | symbol, ...args: any[]): boolean {
+    if (event === 'transport_event') {
+      const payload = args.length > 1 ? args : args[0];
+      this.hooks.onServerEvent?.('transport_event', payload);
+    }
+    return super.emit(event, ...args);
+  }
+
   async connect(): Promise<void> {
     this.status = 'CONNECTED';
     this.hooks.onStatusChange?.('CONNECTED');
@@ -149,6 +157,27 @@ describe('SessionHost', () => {
     await host.handleCommand(sessionId, { kind: 'event', event: { type: 'pong' } });
     expect(messages.some((m) => m.event === 'status')).toBe(true);
     expect(messages.some((m) => m.event === 'transport_event')).toBe(true);
+    unsubscribe();
+  });
+
+  it('forwards transport events exactly once', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const received: SessionStreamMessage[] = [];
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'listener',
+      send: (msg) => received.push(msg),
+    });
+
+    const countTransportEvents = () =>
+      received.filter((msg) => msg.event === 'transport_event').length;
+    const initialCount = countTransportEvents();
+
+    managers[0]!.hooks.onServerEvent?.('transport_event', {
+      type: 'response.output_audio.delta',
+      delta: 'PCM',
+    });
+
+    expect(countTransportEvents()).toBe(initialCount + 1);
     unsubscribe();
   });
 
