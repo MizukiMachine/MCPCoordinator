@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { File } from 'undici';
 
 import { POST as createSession } from '../route';
 import { POST as forwardEvent } from '../[sessionId]/event/route';
@@ -86,6 +87,34 @@ describe('session API routes', () => {
       kind: 'input_text',
       text: 'hello',
     });
+  });
+
+  it('accepts multipart image uploads and forwards base64 payload', async () => {
+    sessionHostMock.handleCommand.mockResolvedValue('CONNECTED');
+    const file = new File([Buffer.from('hello-image')], 'photo.png', { type: 'image/png' });
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('text', 'describe this');
+    const request = new Request('http://localhost/api/session/sess_test/event', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const response = await forwardEvent(request, { params: { sessionId: 'sess_test' } });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.accepted).toBe(true);
+    expect(payload.imageMetadata.mimeType).toBe('image/png');
+    expect(sessionHostMock.handleCommand).toHaveBeenCalledWith(
+      'sess_test',
+      expect.objectContaining({
+        kind: 'input_image',
+        mimeType: 'image/png',
+        encoding: 'base64',
+        text: 'describe this',
+      }),
+    );
   });
 
   it('deletes sessions via DELETE /api/session/:id', async () => {

@@ -80,4 +80,16 @@ export interface UiText {
     alreadyWithAgent: string;
     switchingAgent: string;
   };
+  upload: {
+    title: string;
+    dropHint: string;
+    selectLabel: string;
+    sendLabel: string;
+    captionPlaceholder: string;
+    sizeNote: string;
+    statusReady: string;
+    statusUploading: string;
+    statusDone: string;
+    errorPrefix: string;
+  };
 }

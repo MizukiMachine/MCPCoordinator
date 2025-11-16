@@ -50,6 +50,12 @@ OpenAI Realtime API + Agents SDK デモです。
 - `/api/session/{id}/stream` は 25 秒ごとの `heartbeat` とセッション状態イベント（history/guardrail/agent_handoff等）を SSE で配信します。
 - 詳細なパラメータとエラールールは `doc/api-spec.md` を参照してください。`curl -H "x-bff-key: $NEXT_PUBLIC_BFF_KEY" -X POST http://localhost:3000/api/session -d '{"agentSetKey":"chatSupervisor"}'` でローカル動作確認できます。
 
+## 画像入力（UI / API）
+- UI: 左ペイン上部の「画像アップロード」パネルで JPEG/PNG/WebP/PDF（最大8MB、`.env.sample`で変更可）をドラッグ&ドロップまたはファイル選択し、任意のキャプションを付けて送信します。送信後はTranscriptにサムネイルを表示し、PDFはラベル表示します。
+- API: `/api/session/{id}/event` に `multipart/form-data` で `file` と任意の `text`/`triggerResponse` を送信します。レスポンスに `imageMetadata`（mimeType/size/storagePath）が返ります。JSONで `input_image` を送る既存形式も継続対応。
+- 環境変数: `IMAGE_UPLOAD_DIR`（保存先ディレクトリ）、`IMAGE_UPLOAD_MAX_BYTES`（最大バイト数）、`IMAGE_UPLOAD_ALLOWED_MIME_TYPES`（許可MIME、カンマ区切り）。プロトタイプではローカル保存のみで、後続タスクでS3/GCSアダプタに差し替え予定。
+- セーフガード: MIME/サイズバリデーションのみ実施。高度モデレーション/ウイルススキャンは後続タスクで差し込み可能な構造にしてあります。
+
 ## クライアント実装メモ（BFF利用時に必要な対応）
 本BFFサーバーは「どのデバイスからでも Realtime API + Agents SDK を **外部APIとして安定稼働させる**」ことを目的にしています。ただしBFFは「セッション管理・APIキー隠蔽・イベント中継」を担うレイヤーであり、**クライアント側にも下記の実装／工夫が必要**です。READMEを参照しながらAPIリファレンスを書く場合も、以下を前提としてください。
 

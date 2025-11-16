@@ -63,28 +63,28 @@
 > **依存関係メモ（2025-11-15暫定）**: Section 2（画像入力API拡張）と Section 3（MCP対応）、Section 4（E2E検証）は、上記サービスレイヤー抽出でのDI・ロギング・メトリクス整備を前提とする。優先度は Section 1-2 を P1/BLOCKER とし、完了前に後続へ進まない。
 
 ## 2. 画像入力対応（UI ↔ API ↔ Realtime）
-- [ ] **要件定義 & UXモック**  
-  - 対応フォーマット（JPEG/PNG/WebP/PDF）と最大サイズ（例: 8MB）を決定  
-  - 複数枚送信時のUX（サムネイル付きキュー、進捗表示）をFigmaモックに反映  
-  - 音声会話との並行使用ルール（画像送信中は音声を一時停止するか）を仕様化
-- [ ] **API拡張**  
-  - `/api/session/{id}/event` に `input_image` 分岐を追加し、アップロードされたファイルをS3互換バケット or GCS一時バケットへ保存  
-  - 保存URL/メタを SessionManager に引き渡し、RealtimeSessionへ `input_image` イベントとして代理送信  
-  - **プロトタイプ段階では**バケットは1種（開発用）に固定し、ライフサイクル削除やセキュアアップロードは後続タスクとしてTODO化
-- [ ] **UI実装**  
-  - `App.tsx` または `components/ImageUploadPanel.tsx` でドラッグ&ドロップ/カメラ撮影をサポート  
-  - 送信結果（エージェントからの説明テキストや引用）をTranscriptにカード表示し、サムネイルをクリックで拡大できるようにする
-- [ ] **軽量セーフガード**  
-  - モデレーションは OpenAI / Gemini 既定のライトなものに任せ、結果のみ表示  
-  - 大規模なスキャン機構はスコープ外だが、後から差し込めるよう `ImageUploadService` にフックを残す
+- [x] **要件定義 & UXモック**  
+  - 対応フォーマット: JPEG / PNG / WebP / PDF、最大サイズ: 8MB（環境変数で上書き可）  
+  - シングルファイル送信を優先し、サムネイル表示＋キャプション入力で最小UXを確定（2025-11-16）  
+  - 音声送受信とは独立運用（送信中も再生/録音は維持）。帯域問題は後続で最適化
+- [x] **API拡張**  
+  - `/api/session/{id}/event` に multipart/form-data を追加し、アップロードをローカル開発用ディレクトリ (`IMAGE_UPLOAD_DIR`) に保存  
+  - 保存メタデータ（mimeType/size/path）をレスポンス `imageMetadata` で返し、`input_image` イベントへ base64 で代理送信  
+  - **プロトタイプ段階では**ローカルストレージ1種のみ。S3/GCSアダプタは後続差し替え想定でインターフェイス化
+- [x] **UI実装**  
+  - `components/ImageUploadPanel.tsx` を追加し、ドラッグ&ドロップ/ファイル選択＋キャプション送信をサポート  
+  - Transcript で画像サムネイルを表示（PDFはラベル表示）し、メッセージと並べて確認可能
+- [x] **軽量セーフガード**  
+  - MIME種別・サイズバリデーションをAPIで実施（デフォルト8MB/4種）。モデレーションは既定のサービス任せとし、フックは保持
 - [ ] **Realtime送出調整**  
   - SessionManagerで `outputModalities` を `['audio','text']` に拡張し、画像解析結果のテキストを受信できるようにする  
   - 画像固有のレスポンス（例: `image.description`）をTranscriptへ整形するハンドラを追加
 - [ ] **テスト**  
   - VitestでAPIの画像エンドポイント（正常/サイズ超過/形式不正/アップロード失敗リトライ）  
   - React Testing LibraryでUIドラッグ&ドロップ操作の単体テスト  
-  - PlaywrightでE2E（画像→API→Realtime応答→UI反映）とダークパターン（連続アップロード、ネットワーク切断）をカバー
-- [ ] **ドキュメント/サンプル**  
+  - PlaywrightでE2E（画像→API→Realtime応答→UI反映）とダークパターン（連続アップロード、ネットワーク切断）をカバー  
+  - 2025-11-16: Unit/UIテストを追加済み。E2E（Playwright）は Section 4 で実施予定
+- [x] **ドキュメント/サンプル**  
   - READMEに「画像入力手順」「推奨サイズ」「エラー時の対処」を追記  
   - `docs/api-spec.md` に画像送信用curl例・レスポンス例を掲載し、Playground手順も更新
 

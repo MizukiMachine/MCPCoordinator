@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
+import type { TranscriptAttachment } from "@/app/types";
 
 export const extractMessageText = (content: any[] = []): string => {
   if (!Array.isArray(content)) return "";
@@ -44,6 +45,19 @@ export const extractMessageText = (content: any[] = []): string => {
     .map((chunk) => normalizeChunk(chunk))
     .filter((val) => typeof val === "string" && val.length > 0)
     .join("\n");
+};
+
+const extractImageAttachments = (content: any[] = []): TranscriptAttachment[] => {
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter((chunk) => chunk?.type === 'input_image' && typeof chunk?.image === 'string')
+    .map((chunk) => ({
+      type: 'image',
+      url: `data:${chunk?.mime_type ?? 'image/png'};base64,${chunk.image}`,
+      mimeType: chunk?.mime_type ?? 'image/png',
+      name: chunk?.name ?? undefined,
+      size: typeof chunk?.size === 'number' ? chunk.size : undefined,
+    }));
 };
 
 export function useHandleSessionHistory() {
@@ -121,9 +135,10 @@ export function useHandleSessionHistory() {
     if (itemId && role) {
       const isUser = role === "user";
       let text = extractMessageText(content);
+      const attachments = extractImageAttachments(content);
 
       if (isUser && !text) {
-        text = "[Transcribing...]";
+        text = attachments.length > 0 ? "[Image uploaded]" : "[Transcribing...]";
       }
 
       // If the guardrail has been tripped, this message is a message that gets sent to the 
@@ -133,7 +148,7 @@ export function useHandleSessionHistory() {
         const failureDetails = JSON.parse(guardrailMessage);
         addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
       } else {
-        addTranscriptMessage(itemId, role, text);
+        addTranscriptMessage(itemId, role, text, false, attachments);
       }
     }
   }
