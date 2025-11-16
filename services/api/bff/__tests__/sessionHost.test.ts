@@ -7,6 +7,7 @@ import type {
   SessionEventName,
   SessionLifecycleStatus,
   SessionManagerHooks,
+  SessionConnectOptions,
 } from '../../../realtime/types';
 import type { RealtimeAgent } from '@openai/agents/realtime';
 import {
@@ -15,11 +16,13 @@ import {
   type RealtimeEnvironmentSnapshot,
   type SessionStreamMessage,
 } from '../sessionHost';
+import type { VoiceControlDirective } from '@/shared/voiceControl';
 
 type HookedManager = ISessionManager<RealtimeAgent> & {
   hooks: SessionManagerHooks;
   connectMock: ReturnType<typeof vi.fn>;
   sendEventMock: ReturnType<typeof vi.fn>;
+  lastConnectOptions: SessionConnectOptions<RealtimeAgent> | null;
 };
 
 class FakeSessionManager extends EventEmitter implements HookedManager {
@@ -27,6 +30,7 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
   public status: SessionLifecycleStatus = 'DISCONNECTED';
   public connectMock = vi.fn();
   public sendEventMock = vi.fn();
+  public lastConnectOptions: SessionConnectOptions<RealtimeAgent> | null = null;
 
   constructor(private readonly hooksFactory: SessionManagerHooks) {
     super();
@@ -49,10 +53,11 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
     return super.emit(event, ...args);
   }
 
-  async connect(): Promise<void> {
+  async connect(options?: SessionConnectOptions<RealtimeAgent>): Promise<void> {
     this.status = 'CONNECTED';
     this.hooks.onStatusChange?.('CONNECTED');
-    this.connectMock();
+    this.connectMock(options);
+    this.lastConnectOptions = options ?? null;
   }
 
   disconnect(): void {
@@ -290,6 +295,52 @@ describe('SessionHost', () => {
       'Realtime session error',
       expect.objectContaining({ sessionId, code: 'access_denied' }),
     );
+
+    unsubscribe();
+  });
+
+  it('emits voice_control events when the realtime agent requests a scenario switch', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'voice_listener',
+      send: (msg) => received.push(msg),
+    });
+
+    const handler = managers[0]!.lastConnectOptions?.extraContext?.requestScenarioChange;
+    expect(typeof handler).toBe('function');
+
+    await handler?.('simpleHandoff');
+
+    const directive = received.find((msg) => msg.event === 'voice_control')
+      ?.data as VoiceControlDirective | undefined;
+    expect(directive).toEqual({
+      action: 'switchScenario',
+      scenarioKey: 'simpleHandoff',
+    });
+
+    unsubscribe();
+  });
+
+  it('emits voice_control events when the realtime agent requests an agent handoff', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'voice_listener_agent',
+      send: (msg) => received.push(msg),
+    });
+
+    const handler = managers[0]!.lastConnectOptions?.extraContext?.requestAgentChange;
+    expect(typeof handler).toBe('function');
+
+    await handler?.('returnsAgent');
+
+    const directive = received.find((msg) => msg.event === 'voice_control')
+      ?.data as VoiceControlDirective | undefined;
+    expect(directive).toEqual({
+      action: 'switchAgent',
+      agentName: 'returnsAgent',
+    });
 
     unsubscribe();
   });

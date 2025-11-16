@@ -19,7 +19,9 @@ export const switchScenarioTool = tool({
     additionalProperties: false,
   },
   execute: async (input, details) => {
-    const handler: ScenarioChangeHandler | undefined = (details?.context as any)?.requestScenarioChange;
+    const ctx = (details?.context ?? {}) as any;
+    const handler: ScenarioChangeHandler | undefined =
+      ctx?.requestScenarioChange ?? ctx?.voiceControl?.requestScenarioChange;
     if (!handler) {
       return { success: false, message: 'Scenario switching is unavailable right now.' };
     }
@@ -47,7 +49,9 @@ export const switchAgentTool = tool({
     additionalProperties: false,
   },
   execute: async (input, details) => {
-    const handler: AgentChangeHandler | undefined = (details?.context as any)?.requestAgentChange;
+    const ctx = (details?.context ?? {}) as any;
+    const handler: AgentChangeHandler | undefined =
+      ctx?.requestAgentChange ?? ctx?.voiceControl?.requestAgentChange;
     if (!handler) {
       return { success: false, message: 'Agent switching is unavailable right now.' };
     }

@@ -12,6 +12,7 @@ import BottomToolbar from "./components/BottomToolbar";
 // Types
 import { SessionStatus } from "@/app/types";
 import type { RealtimeAgent } from '@openai/agents/realtime';
+import type { VoiceControlDirective } from '@/shared/voiceControl';
 
 // Context providers & hooks
 import { useTranscript } from "@/app/contexts/TranscriptContext";
@@ -78,6 +79,18 @@ function App() {
   const comparisonInFlightRef = useRef(false);
 
 
+  const handleVoiceControlDirective = useCallback(
+    (directive: VoiceControlDirective) => {
+      if (!directive) return;
+      if (directive.action === 'switchScenario') {
+        void requestScenarioChange(directive.scenarioKey);
+      } else if (directive.action === 'switchAgent') {
+        void requestAgentChange(directive.agentName);
+      }
+    },
+    [requestAgentChange, requestScenarioChange],
+  );
+
   const {
     connect,
     disconnect,
@@ -92,6 +105,7 @@ function App() {
       handoffTriggeredRef.current = true;
       setSelectedAgentName(agentName);
     },
+    onVoiceControlDirective: handleVoiceControlDirective,
   });
 
   const [sessionStatus, setSessionStatus] =
