@@ -26,3 +26,6 @@
   url: https://gcal.mintmcp.com/mcp
   name: Google Calendar (MCP)
   cacheToolsList: true
+  # MintMCP が要求する認可トークンを環境変数で注入する。未設定だと 401 になる。
+  headers:
+    Authorization: "Bearer ${MINTMCP_BEARER_TOKEN}"

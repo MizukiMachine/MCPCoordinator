@@ -5,9 +5,10 @@
 
 ## セットアップ手順
 1. `config/mcp.servers.yaml.example` を参考に、`config/mcp.servers.yaml` を配置（リポジトリ同梱のデフォルトは MintMCP ホスト版 `https://gcal.mintmcp.com/mcp`）。
-2. サーバー起動後、ブラウザでシナリオ `Schedule Coordinator` を選択し、カレンダー連携の OAuth 画面で許可する。
-3. 自前デプロイしたい場合は MintMCP の README に従い、GCP プロジェクト `ai-conversation-engine` で OAuth クライアントID/Secret を作成し、`google-calendar` エントリの URL か `command/args` を自分のエンドポイントに差し替える。
-4. 複数人比較を行う際は、参加者のメールアドレス/カレンダーIDと希望期間を必ず入力する。期間が広すぎるとレスポンスが長くなるため、まずは 1〜2 週間に絞るのが推奨。
+2. MintMCP ホスト版を使う場合は `.env` に `MINTMCP_BEARER_TOKEN` を設定し、`config/mcp.servers.yaml` の `${MINTMCP_BEARER_TOKEN}` が置換されるようにする（未設定だと 401 で接続失敗）。
+3. サーバー起動後、ブラウザでシナリオ `Schedule Coordinator` を選択し、カレンダー連携の OAuth 画面で許可する。
+4. 自前デプロイしたい場合は MintMCP の README に従い、GCP プロジェクト `ai-conversation-engine` で OAuth クライアントID/Secret を作成し、`google-calendar` エントリの URL か `command/args` を自分のエンドポイントに差し替える。
+5. 複数人比較を行う際は、参加者のメールアドレス/カレンダーIDと希望期間を必ず入力する。期間が広すぎるとレスポンスが長くなるため、まずは 1〜2 週間に絞るのが推奨。
 
 ## シナリオ仕様
 - シナリオキー: `scheduleCoordinator`
@@ -22,4 +23,3 @@
 - ツール一覧に Google カレンダー MCP が見えない: `config/mcp.servers.yaml` の `id` が `scenarioMcpBindings` の `requiredMcpServers` と一致しているか確認。
 - OAuth 失敗: ブラウザのポップアップブロックを解除し、再度シナリオを開始して許可をやり直す。
 - Free/Busy が空で返る: 期間が１日未満など極端に短い可能性。開始/終了日時を見直す。
-

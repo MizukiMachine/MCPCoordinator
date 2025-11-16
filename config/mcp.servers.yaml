@@ -5,3 +5,5 @@
   url: https://gcal.mintmcp.com/mcp
   name: Google Calendar (MCP)
   cacheToolsList: true
+  headers:
+    Authorization: "Bearer ${MINTMCP_BEARER_TOKEN}"
