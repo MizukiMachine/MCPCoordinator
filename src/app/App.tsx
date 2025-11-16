@@ -8,6 +8,7 @@ import Image from "next/image";
 import Transcript from "./components/Transcript";
 import Events from "./components/Events";
 import BottomToolbar from "./components/BottomToolbar";
+import { CameraCapturePanel } from "./components/CameraCapturePanel";
 import { ImageUploadPanel } from "./components/ImageUploadPanel";
 
 // Types
@@ -471,7 +472,7 @@ function App() {
   };
 
   const handleSendImage = useCallback(
-    async (file: File, caption?: string) => {
+    async (file: File, caption?: string, triggerResponse = true) => {
       if (sessionStatus !== 'CONNECTED') {
         setSessionError('画像を送信するには先に接続してください');
         return;
@@ -483,7 +484,7 @@ function App() {
         caption: caption ?? '',
       });
       try {
-        await sendImage(file, caption ? { text: caption } : {});
+        await sendImage(file, caption ? { text: caption, triggerResponse } : { triggerResponse });
       } catch (error) {
         console.error('Failed to send image', error);
         setSessionError('画像の送信に失敗しました。ログを確認してください。');
@@ -737,6 +738,12 @@ function App() {
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
         <div className="flex flex-col flex-1 gap-2">
+          <CameraCapturePanel
+            onSend={async (file, options) =>
+              handleSendImage(file, undefined, options?.triggerResponse ?? true)
+            }
+            disabled={sessionStatus !== "CONNECTED"}
+          />
           <ImageUploadPanel
             onSend={handleSendImage}
             disabled={sessionStatus !== "CONNECTED"}
