@@ -1,0 +1,19 @@
+# MCPサーバーの定義例（人が読み書きしやすいYAML）
+# このファイルを `config/mcp.servers.yaml` にコピーして値を編集してください。
+#
+# フィールド:
+# - id: シナリオ側の scenarioMcpBindings で参照するキー
+# - transport: sse | streamable_http | stdio
+# - url: SSE / Streamable HTTP のエンドポイント
+# - command / args: STDIO を使う場合のプロセスコマンド
+# - headers: 任意ヘッダー（例: Authorization）
+- id: local-tools
+  transport: sse
+  url: http://localhost:5173/mcp
+  headers:
+    Authorization: "Bearer change-me"
+
+- id: docs-search
+  transport: streamable_http
+  url: https://mcp.example.com/api
+  cacheToolsList: true

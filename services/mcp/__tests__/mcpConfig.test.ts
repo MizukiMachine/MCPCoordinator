@@ -1,7 +1,16 @@
 /// <reference types="vitest" />
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, it, expect } from 'vitest';
 
-import { loadMcpServersFromEnv, parseMcpServers, McpConfigError } from '../config';
+import {
+  loadMcpServersFromEnv,
+  parseMcpServers,
+  McpConfigError,
+  loadMcpServers,
+} from '../config';
 
 describe('parseMcpServers', () => {
   it('returns empty object for blank input', () => {
@@ -46,5 +55,35 @@ describe('loadMcpServersFromEnv', () => {
       transport: 'stdio',
       command: 'echo',
     });
+  });
+});
+
+describe('loadMcpServers (file preferred)', () => {
+  function createTempConfig(ext: string, content: string) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-config-'));
+    const file = path.join(dir, `mcp.servers.${ext}`);
+    fs.writeFileSync(file, content, 'utf8');
+    return file;
+  }
+
+  it('prefers YAML file when present', () => {
+    const file = createTempConfig(
+      'yaml',
+      `
+- id: news
+  transport: sse
+  url: https://example.com/news
+`,
+    );
+    const result = loadMcpServers({ preferredPath: file, env: {} });
+    expect(result.news).toMatchObject({ id: 'news', transport: 'sse' });
+  });
+
+  it('falls back to env JSON when file is absent', () => {
+    const env = {
+      MCP_SERVERS: JSON.stringify([{ id: 'env', url: 'https://env/mcp' }]),
+    };
+    const result = loadMcpServers({ env, cwd: '/non-existent' });
+    expect(result.env).toBeDefined();
   });
 });
