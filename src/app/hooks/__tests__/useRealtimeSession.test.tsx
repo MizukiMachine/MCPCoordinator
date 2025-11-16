@@ -268,6 +268,101 @@ describe('useRealtimeSession', () => {
       scenarioKey: 'simpleHandoff',
     });
   });
+
+  it('keeps the session status when a recoverable session_error arrives', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        createMockResponse({
+          sessionId: 'sess_error',
+          streamUrl: '/api/session/sess_error/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      );
+    const stubEventSource = createStubEventSource();
+
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {},
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const statusListener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'status',
+    )?.[1];
+    const errorListener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'session_error',
+    )?.[1];
+
+    await act(async () => {
+      statusListener?.({
+        data: JSON.stringify({ status: 'CONNECTED' }),
+      } as MessageEvent<string>);
+    });
+    expect(result.current.status).toBe('CONNECTED');
+
+    await act(async () => {
+      errorListener?.({
+        data: JSON.stringify({ code: 'invalid_value', message: 'recoverable' }),
+      } as MessageEvent<string>);
+    });
+
+    expect(result.current.status).toBe('CONNECTED');
+  });
+
+  it('marks status as CONNECTING (not DISCONNECTED) when SSE stream errors', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        createMockResponse({
+          sessionId: 'sess_sse_error',
+          streamUrl: '/api/session/sess_sse_error/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      );
+    const stubEventSource = createStubEventSource();
+
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {},
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const statusListener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'status',
+    )?.[1];
+
+    await act(async () => {
+      statusListener?.({
+        data: JSON.stringify({ status: 'CONNECTED' }),
+      } as MessageEvent<string>);
+    });
+    expect(result.current.status).toBe('CONNECTED');
+
+    await act(async () => {
+      stubEventSource.onerror?.(new Event('error') as Event);
+    });
+
+    expect(result.current.status).toBe('CONNECTING');
+  });
 });
 
 describe('createTransportEventHandler', () => {
@@ -349,5 +444,6 @@ function createStubEventSource(): EventSource {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     close: vi.fn(),
+    onerror: null,
   } as unknown as EventSource;
 }

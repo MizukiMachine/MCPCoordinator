@@ -281,7 +281,6 @@ export function useRealtimeSession(
           },
           'session_error',
         );
-        updateStatus('DISCONNECTED');
       });
       addListener('voice_control', (payload) => {
         if (isVoiceControlDirective(payload)) {
@@ -291,7 +290,7 @@ export function useRealtimeSession(
 
       source.onerror = (event) => {
         console.error('SSE error from BFF session stream', event);
-        updateStatus('DISCONNECTED');
+        updateStatus('CONNECTING');
       };
 
       listenerCleanupRef.current = () => {
