@@ -4,710 +4,69 @@
    - Environments: .env
 
  ✓ Starting...
- ✓ Ready in 1512ms
- ○ Compiling / ...
- ✓ Compiled / in 2.2s (1603 modules)
-[envSetup] Loaded environment from .env (OPENAI_API_KEY=sk-p…dscA)
- GET / 200 in 2928ms
- ✓ Compiled in 743ms (648 modules)
+ ✓ Ready in 1714ms
  ○ Compiling /api/client-logs ...
- ✓ Compiled /api/client-logs in 593ms (1609 modules)
+ ✓ Compiled /api/client-logs in 602ms (296 modules)
+CLIENT LOG [client] event_log.ttl_cleanup {
+  requestId: '4dd28030-0108-44d2-93dd-bef82a3ff6f5',
+  sessionId: null,
+  eventData: {
+    type: 'event_log.ttl_cleanup',
+    removedCount: 1,
+    removedEventIds: [ '1f1351b8-30a2-4244-bc73-04325fe8f126' ],
+    cutoffTimestampMs: 1763271593678,
+    sessionId: null,
+    requestId: '4dd28030-0108-44d2-93dd-bef82a3ff6f5'
+  },
+  createdAtMs: 1763271893678
+}
+ POST /api/client-logs 200 in 758ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.7s (1628 modules)
 [envSetup] Loaded environment from .env (OPENAI_API_KEY=sk-p…dscA)
+ GET /?agentConfig=simpleHandoff 200 in 3421ms
+ ✓ Compiled in 814ms (652 modules)
 CLIENT LOG [client] session_warning session_warning {
-  requestId: 'bb2a21f7-cc7b-403f-b836-62fc93d3a895',
+  requestId: '7538f186-d47a-420f-8f69-6190dca47699',
   sessionId: null,
   eventData: {
     type: 'session_warning',
     message: 'Command ignored because session is not connected',
     sessionId: null,
-    requestId: 'bb2a21f7-cc7b-403f-b836-62fc93d3a895'
+    requestId: '7538f186-d47a-420f-8f69-6190dca47699'
   },
-  createdAtMs: 1763268890697
+  createdAtMs: 1763271899574
 }
- POST /api/client-logs 200 in 772ms
- GET / 200 in 775ms
+ POST /api/client-logs 200 in 44ms
  ○ Compiling /api/session ...
- ✓ Compiled /api/session in 993ms (2010 modules)
+ ✓ Compiled /api/session in 1210ms (2015 modules)
 CLIENT LOG [client] session_status session_status {
-  requestId: 'dce206a4-4afc-4668-8525-534d469c09c9',
-  sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
+  requestId: '0a74b23b-86ce-4083-8e75-26015bad637e',
+  sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
   eventData: {
     type: 'session_status',
     status: 'CONNECTING',
-    sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-    requestId: 'dce206a4-4afc-4668-8525-534d469c09c9'
+    sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+    requestId: '0a74b23b-86ce-4083-8e75-26015bad637e'
   },
-  createdAtMs: 1763268893897
+  createdAtMs: 1763271904794
 }
- POST /api/client-logs 200 in 1215ms
+ POST /api/client-logs 200 in 1437ms
 [structured-log] {
   level: 'info',
   message: 'Session connected',
-  sessionId: 'sess_4111668ea345',
-  agentSetKey: 'chatSupervisor',
-  preferredAgent: 'chatAgent',
-  component: 'bff.session'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_connect_success_total',
-  value: 1,
-  tags: {},
-  timestamp: '2025-11-16T04:54:55.773Z'
-}
-[metric] {
-  namespace: 'bff.session',
-  type: 'counter',
-  name: 'bff.session.created_total',
-  value: 1,
-  tags: {},
-  timestamp: '2025-11-16T04:54:55.773Z'
-}
- POST /api/session 200 in 1713ms
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:55.778Z'
-}
- ✓ Compiled /api/session/[sessionId]/stream in 306ms (2012 modules)
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:56.511Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:56.668Z'
-}
-CLIENT LOG [client] session_status session_status {
-  requestId: 'c16e6c5a-ddbb-4beb-b41b-a46a2835a54b',
-  sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-  eventData: {
-    type: 'session_status',
-    status: 'CONNECTED',
-    sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-    requestId: 'c16e6c5a-ddbb-4beb-b41b-a46a2835a54b'
-  },
-  createdAtMs: 1763268896689
-}
- POST /api/client-logs 200 in 28ms
-CLIENT LOG [server] ready ready {
-  requestId: 'a5e8f8ae-8084-4f3f-9496-c3f2db54b6aa',
-  sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-  eventData: {
-    type: 'ready',
-    payload: { sessionId: 'sess_4111668ea345' },
-    sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-    requestId: 'a5e8f8ae-8084-4f3f-9496-c3f2db54b6aa'
-  },
-  createdAtMs: 1763268896690
-}
- POST /api/client-logs 200 in 49ms
- ✓ Compiled /api/session/[sessionId]/event in 453ms (2014 modules)
-CLIENT LOG [client] response.create initial response trigger {
-  requestId: '15d3ac61-f2ee-4835-afff-b3c2656ab623',
-  sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-  eventData: {
-    type: 'response.create',
-    sessionId: '6f0b2c87-4b10-4447-b3ef-f381222c09a5',
-    requestId: '15d3ac61-f2ee-4835-afff-b3c2656ab623'
-  },
-  createdAtMs: 1763268896696
-}
- POST /api/client-logs 200 in 485ms
-[metric] {
-  namespace: 'bff.session',
-  type: 'counter',
-  name: 'bff.session.event_forwarded_total',
-  value: 1,
-  tags: { kind: 'raw_event' },
-  timestamp: '2025-11-16T04:54:57.919Z'
-}
-[metric] {
-  namespace: 'bff.session',
-  type: 'counter',
-  name: 'bff.session.event_forwarded_total',
-  value: 1,
-  tags: { kind: 'raw_event' },
-  timestamp: '2025-11-16T04:54:57.919Z'
-}
- POST /api/session/sess_4111668ea345/event 200 in 1107ms
- POST /api/session/sess_4111668ea345/event 200 in 1106ms
- POST /api/session/sess_4111668ea345/event 200 in 1105ms
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.261Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.263Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.445Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'history_added' },
-  timestamp: '2025-11-16T04:54:58.446Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:54:58.446Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.447Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:54:58.447Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.483Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.485Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.492Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.565Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.606Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.700Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.702Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.702Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.742Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.752Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.789Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.797Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.805Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.814Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.822Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.831Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.907Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.937Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.978Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:58.993Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.000Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.011Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.020Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.026Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.037Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.042Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.111Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.155Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.194Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.232Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.272Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.312Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.313Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.318Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.326Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.334Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.344Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.353Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.427Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.463Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.522Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.559Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.598Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.633Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.694Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.703Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.704Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.705Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.706Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:54:59.706Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.707Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:54:59.707Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.708Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:54:59.711Z'
-}
- GET /api/session/sess_4111668ea345/stream?bffKey=dev-secret 200 in 12898ms
- ○ Compiling /api/session/[sessionId] ...
- ✓ Compiled /api/session/[sessionId] in 511ms (2016 modules)
-[envSetup] Loaded environment from .env (OPENAI_API_KEY=sk-p…dscA)
-CLIENT LOG [client] session_status session_status {
-  requestId: '72328a61-8dd5-41ea-acd7-cb044bc10692',
-  sessionId: null,
-  eventData: {
-    type: 'session_status',
-    status: 'DISCONNECTED',
-    sessionId: null,
-    requestId: '72328a61-8dd5-41ea-acd7-cb044bc10692'
-  },
-  createdAtMs: 1763268908883
-}
- POST /api/client-logs 200 in 618ms
- GET /?agentConfig=simpleHandoff 200 in 702ms
-[structured-log] {
-  level: 'info',
-  message: 'Session disconnected',
-  sessionId: 'sess_4111668ea345',
-  component: 'bff.session'
-}
-[metric] {
-  namespace: 'bff.session.sess_4111668ea345',
-  type: 'counter',
-  name: 'session_disconnect_total',
-  value: 1,
-  tags: { stage: 'connected' },
-  timestamp: '2025-11-16T04:55:09.960Z'
-}
-[structured-log] {
-  level: 'info',
-  message: 'Session destroyed',
-  sessionId: 'sess_4111668ea345',
-  reason: 'client_request',
-  initiatedBy: 'client',
-  component: 'bff.session'
-}
-[metric] {
-  namespace: 'bff.session',
-  type: 'counter',
-  name: 'bff.session.closed_total',
-  value: 1,
-  tags: { initiatedBy: 'client', reason: 'client_request' },
-  timestamp: '2025-11-16T04:55:09.961Z'
-}
- DELETE /api/session/sess_4111668ea345?reason=client_request 200 in 1283ms
-CLIENT LOG [client] session_status session_status {
-  requestId: '725e68b0-11e1-4ac1-876c-e13e5ca96f61',
-  sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-  eventData: {
-    type: 'session_status',
-    status: 'CONNECTING',
-    sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-    requestId: '725e68b0-11e1-4ac1-876c-e13e5ca96f61'
-  },
-  createdAtMs: 1763268910933
-}
- POST /api/client-logs 200 in 37ms
-[structured-log] {
-  level: 'info',
-  message: 'Session connected',
-  sessionId: 'sess_92476a30392e',
+  sessionId: 'sess_b58117979bb4',
   agentSetKey: 'simpleHandoff',
   preferredAgent: 'greeter',
   component: 'bff.session'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_connect_success_total',
   value: 1,
   tags: {},
-  timestamp: '2025-11-16T04:55:11.648Z'
+  timestamp: '2025-11-16T05:45:06.673Z'
 }
 [metric] {
   namespace: 'bff.session',
@@ -715,914 +74,5946 @@ CLIENT LOG [client] session_status session_status {
   name: 'bff.session.created_total',
   value: 1,
   tags: {},
-  timestamp: '2025-11-16T04:55:11.648Z'
+  timestamp: '2025-11-16T05:45:06.674Z'
 }
- POST /api/session 200 in 977ms
+ POST /api/session 200 in 1981ms
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:11.653Z'
+  timestamp: '2025-11-16T05:45:06.679Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:06.996Z'
+}
+ ✓ Compiled /api/session/[sessionId]/stream in 310ms (2017 modules)
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:07.469Z'
 }
 CLIENT LOG [client] session_status session_status {
-  requestId: 'e0d5d01a-992e-4732-a657-3153d84f77a3',
-  sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
+  requestId: '8c410fe3-22af-45ae-a945-a1218dc4e1d4',
+  sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
   eventData: {
     type: 'session_status',
     status: 'CONNECTED',
-    sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-    requestId: 'e0d5d01a-992e-4732-a657-3153d84f77a3'
+    sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+    requestId: '8c410fe3-22af-45ae-a945-a1218dc4e1d4'
   },
-  createdAtMs: 1763268911981
+  createdAtMs: 1763271907839
 }
- POST /api/client-logs 200 in 20ms
+ POST /api/client-logs 200 in 19ms
 CLIENT LOG [server] ready ready {
-  requestId: '3456bc33-955b-4677-bc61-63e1841c1ff2',
-  sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
+  requestId: '43a41866-25ef-41e8-ac68-48befcab38a5',
+  sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
   eventData: {
     type: 'ready',
-    payload: { sessionId: 'sess_92476a30392e' },
-    sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-    requestId: '3456bc33-955b-4677-bc61-63e1841c1ff2'
+    payload: { sessionId: 'sess_b58117979bb4' },
+    sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+    requestId: '43a41866-25ef-41e8-ac68-48befcab38a5'
   },
-  createdAtMs: 1763268911981
-}
- POST /api/client-logs 200 in 35ms
-[metric] {
-  namespace: 'bff.session',
-  type: 'counter',
-  name: 'bff.session.event_forwarded_total',
-  value: 1,
-  tags: { kind: 'raw_event' },
-  timestamp: '2025-11-16T04:55:11.760Z'
-}
- POST /api/session/sess_92476a30392e/event 200 in 45ms
-CLIENT LOG [client] response.create initial response trigger {
-  requestId: 'af3124e0-7d15-4365-8d52-9b071815616e',
-  sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-  eventData: {
-    type: 'response.create',
-    sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-    requestId: 'af3124e0-7d15-4365-8d52-9b071815616e'
-  },
-  createdAtMs: 1763268911991
+  createdAtMs: 1763271907840
 }
  POST /api/client-logs 200 in 52ms
+ ○ Compiling /api/session/[sessionId]/event ...
+ ✓ Compiled /api/session/[sessionId]/event in 508ms (2019 modules)
+CLIENT LOG [client] response.create initial response trigger {
+  requestId: 'a33e726e-2e5d-4c39-b6fd-68c2103b9adf',
+  sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+  eventData: {
+    type: 'response.create',
+    sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+    requestId: 'a33e726e-2e5d-4c39-b6fd-68c2103b9adf'
+  },
+  createdAtMs: 1763271907849
+}
+ POST /api/client-logs 200 in 592ms
 [metric] {
   namespace: 'bff.session',
   type: 'counter',
   name: 'bff.session.event_forwarded_total',
   value: 1,
   tags: { kind: 'raw_event' },
-  timestamp: '2025-11-16T04:55:11.777Z'
+  timestamp: '2025-11-16T05:45:08.879Z'
 }
- POST /api/session/sess_92476a30392e/event 200 in 60ms
- POST /api/session/sess_92476a30392e/event 200 in 60ms
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'raw_event' },
+  timestamp: '2025-11-16T05:45:08.879Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:08.879Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 1173ms
+ POST /api/session/sess_b58117979bb4/event 200 in 1171ms
+ POST /api/session/sess_b58117979bb4/event 200 in 1169ms
+ POST /api/session/sess_b58117979bb4/event 200 in 550ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:08.915Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 25ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:09.162Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.439Z'
+  timestamp: '2025-11-16T05:45:09.166Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.585Z'
+  timestamp: '2025-11-16T05:45:09.167Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.728Z'
+  timestamp: '2025-11-16T05:45:09.397Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.729Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_92476a30392e',
-  type: 'counter',
-  name: 'session_events_total',
-  value: 1,
-  tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.730Z'
-}
-[metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'history_added' },
-  timestamp: '2025-11-16T04:55:12.731Z'
+  timestamp: '2025-11-16T05:45:09.397Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:55:12.731Z'
+  timestamp: '2025-11-16T05:45:09.397Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.732Z'
+  timestamp: '2025-11-16T05:45:09.398Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:55:12.732Z'
+  timestamp: '2025-11-16T05:45:09.398Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.733Z'
+  timestamp: '2025-11-16T05:45:09.412Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.733Z'
+  timestamp: '2025-11-16T05:45:09.413Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.734Z'
+  timestamp: '2025-11-16T05:45:09.420Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.871Z'
+  timestamp: '2025-11-16T05:45:09.487Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session',
   type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:09.502Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.534Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.578Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.584Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.591Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.674Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.720Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.732Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.739Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.747Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.806Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:09.834Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.901Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.902Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.902Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.903Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.909Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.912Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.923Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.927Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.939Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:09.992Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:10.038Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:10.085Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:10.124Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:10.165Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:10.203Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:10.223Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.879Z'
+  timestamp: '2025-11-16T05:45:10.224Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.880Z'
+  timestamp: '2025-11-16T05:45:10.234Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.882Z'
+  timestamp: '2025-11-16T05:45:10.238Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.882Z'
+  timestamp: '2025-11-16T05:45:10.247Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.883Z'
+  timestamp: '2025-11-16T05:45:10.253Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:12.884Z'
+  timestamp: '2025-11-16T05:45:10.272Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.013Z'
+  timestamp: '2025-11-16T05:45:10.273Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.014Z'
+  timestamp: '2025-11-16T05:45:10.277Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.015Z'
+  timestamp: '2025-11-16T05:45:10.285Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.015Z'
+  timestamp: '2025-11-16T05:45:10.293Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.016Z'
+  timestamp: '2025-11-16T05:45:10.301Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.017Z'
+  timestamp: '2025-11-16T05:45:10.308Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.018Z'
+  timestamp: '2025-11-16T05:45:10.318Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session',
   type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:10.350Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.019Z'
+  timestamp: '2025-11-16T05:45:10.381Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.020Z'
+  timestamp: '2025-11-16T05:45:10.414Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.021Z'
+  timestamp: '2025-11-16T05:45:10.453Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.022Z'
+  timestamp: '2025-11-16T05:45:10.498Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.022Z'
+  timestamp: '2025-11-16T05:45:10.546Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.023Z'
+  timestamp: '2025-11-16T05:45:10.604Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.024Z'
+  timestamp: '2025-11-16T05:45:10.644Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.024Z'
+  timestamp: '2025-11-16T05:45:10.686Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:10.694Z'
 }
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.025Z'
+  timestamp: '2025-11-16T05:45:10.728Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.026Z'
+  timestamp: '2025-11-16T05:45:10.733Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.027Z'
+  timestamp: '2025-11-16T05:45:10.738Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.161Z'
+  timestamp: '2025-11-16T05:45:10.747Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.162Z'
+  timestamp: '2025-11-16T05:45:10.754Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.163Z'
+  timestamp: '2025-11-16T05:45:10.763Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.164Z'
+  timestamp: '2025-11-16T05:45:10.772Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.165Z'
+  timestamp: '2025-11-16T05:45:10.789Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.166Z'
+  timestamp: '2025-11-16T05:45:10.848Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.166Z'
+  timestamp: '2025-11-16T05:45:10.898Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.167Z'
+  timestamp: '2025-11-16T05:45:10.929Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.168Z'
+  timestamp: '2025-11-16T05:45:10.971Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.168Z'
+  timestamp: '2025-11-16T05:45:11.012Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:11.026Z'
 }
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.169Z'
+  timestamp: '2025-11-16T05:45:11.053Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.170Z'
+  timestamp: '2025-11-16T05:45:11.097Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.170Z'
+  timestamp: '2025-11-16T05:45:11.159Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.171Z'
+  timestamp: '2025-11-16T05:45:11.208Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.172Z'
+  timestamp: '2025-11-16T05:45:11.226Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.173Z'
+  timestamp: '2025-11-16T05:45:11.238Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.222Z'
+  timestamp: '2025-11-16T05:45:11.239Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.256Z'
+  timestamp: '2025-11-16T05:45:11.248Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.297Z'
+  timestamp: '2025-11-16T05:45:11.256Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.360Z'
+  timestamp: '2025-11-16T05:45:11.265Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.395Z'
+  timestamp: '2025-11-16T05:45:11.274Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.432Z'
+  timestamp: '2025-11-16T05:45:11.284Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.469Z'
+  timestamp: '2025-11-16T05:45:11.294Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.507Z'
+  timestamp: '2025-11-16T05:45:11.300Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.546Z'
+  timestamp: '2025-11-16T05:45:11.310Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.547Z'
+  timestamp: '2025-11-16T05:45:11.316Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.553Z'
+  timestamp: '2025-11-16T05:45:11.326Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.554Z'
+  timestamp: '2025-11-16T05:45:11.390Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.565Z'
+  timestamp: '2025-11-16T05:45:11.447Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.573Z'
+  timestamp: '2025-11-16T05:45:11.476Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.576Z'
+  timestamp: '2025-11-16T05:45:11.528Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session',
   type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:11.534Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.587Z'
+  timestamp: '2025-11-16T05:45:11.565Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.593Z'
+  timestamp: '2025-11-16T05:45:11.604Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.603Z'
+  timestamp: '2025-11-16T05:45:11.660Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.607Z'
+  timestamp: '2025-11-16T05:45:11.709Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.616Z'
+  timestamp: '2025-11-16T05:45:11.745Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.623Z'
+  timestamp: '2025-11-16T05:45:11.763Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.632Z'
+  timestamp: '2025-11-16T05:45:11.764Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.713Z'
+  timestamp: '2025-11-16T05:45:11.769Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.729Z'
+  timestamp: '2025-11-16T05:45:11.774Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.765Z'
+  timestamp: '2025-11-16T05:45:11.783Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.803Z'
+  timestamp: '2025-11-16T05:45:11.791Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.858Z'
+  timestamp: '2025-11-16T05:45:11.804Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.893Z'
+  timestamp: '2025-11-16T05:45:11.809Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:11.870Z'
 }
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.932Z'
+  timestamp: '2025-11-16T05:45:11.873Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:13.967Z'
+  timestamp: '2025-11-16T05:45:11.914Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.003Z'
+  timestamp: '2025-11-16T05:45:11.956Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.062Z'
+  timestamp: '2025-11-16T05:45:12.002Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.102Z'
+  timestamp: '2025-11-16T05:45:12.041Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.135Z'
+  timestamp: '2025-11-16T05:45:12.088Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.172Z'
+  timestamp: '2025-11-16T05:45:12.124Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.213Z'
+  timestamp: '2025-11-16T05:45:12.183Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:12.210Z'
 }
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.247Z'
+  timestamp: '2025-11-16T05:45:12.222Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.274Z'
+  timestamp: '2025-11-16T05:45:12.269Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.310Z'
+  timestamp: '2025-11-16T05:45:12.288Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.311Z'
+  timestamp: '2025-11-16T05:45:12.289Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.311Z'
+  timestamp: '2025-11-16T05:45:12.290Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.312Z'
+  timestamp: '2025-11-16T05:45:12.290Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:55:14.312Z'
+  timestamp: '2025-11-16T05:45:12.290Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.313Z'
+  timestamp: '2025-11-16T05:45:12.291Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'history_updated' },
-  timestamp: '2025-11-16T04:55:14.314Z'
+  timestamp: '2025-11-16T05:45:12.292Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.322Z'
+  timestamp: '2025-11-16T05:45:12.295Z'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_events_total',
   value: 1,
   tags: { event: 'transport_event' },
-  timestamp: '2025-11-16T04:55:14.324Z'
+  timestamp: '2025-11-16T05:45:12.300Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:12.714Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:13.066Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 45ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:13.402Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:13.906Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:14.246Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:14.582Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:15.090Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:15.434Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:16.306Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:16.802Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:17.134Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:17.470Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:17.971Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:18.157Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:18.306Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:18.308Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:18.650Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.092Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.094Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:19.154Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 45ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.332Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.333Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.334Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:19.335Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.337Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.339Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.341Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.343Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:19.490Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.560Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:19.560Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.563Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.564Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.567Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.577Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.578Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.584Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.647Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.698Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.728Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.729Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.732Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.733Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.745Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.749Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.794Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:19.830Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.832Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.875Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.882Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.890Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.896Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.909Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:19.913Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:19.970Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.006Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.045Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.051Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.058Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.069Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.072Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.079Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.140Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.178Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.220Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.261Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.311Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:20.330Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.339Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.346Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.354Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.362Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.371Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.380Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.384Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.393Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.401Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.408Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.415Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.423Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.432Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.502Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.540Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.581Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.617Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.656Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:20.662Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.695Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.737Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.774Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.813Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.817Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.826Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.832Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.840Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.853Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.881Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.881Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.882Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.931Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:20.988Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:21.006Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.022Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.062Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.100Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.145Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.188Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.224Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.270Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.271Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.275Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.285Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.298Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.299Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.305Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.314Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.325Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.380Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.419Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.460Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.510Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:21.511Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.547Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.587Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.626Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.665Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.718Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.736Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.738Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.738Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.739Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:21.744Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.745Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:21.749Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.750Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:21.751Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:21.842Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:22.346Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:22.678Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:23.014Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:23.522Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 36ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:23.858Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:24.195Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 44ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:24.694Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:25.026Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:25.362Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:25.871Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 36ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:26.206Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:26.542Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 44ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:27.042Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:27.378Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:27.710Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:28.210Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:28.550Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 37ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:28.890Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:29.386Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:29.722Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:29.907Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:30.054Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:30.066Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:30.554Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:30.879Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:30.888Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:30.898Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 36ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:31.231Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.421Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.422Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.423Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:31.423Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:31.433Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.435Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:31.448Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.452Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.677Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:31.678Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:31.686Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.689Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:31.700Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.705Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.707Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.711Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.713Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.718Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:31.734Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 27ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.794Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.806Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.810Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.829Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.829Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.831Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.839Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.840Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.846Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.853Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.860Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.874Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.878Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.879Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.880Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.882Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:31.895Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.897Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.948Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:31.985Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.029Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.047Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.061Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:32.070Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:32.072Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 48ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.094Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.133Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.171Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.174Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.184Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.190Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.198Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.206Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.218Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.223Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.230Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.237Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.245Z'
 }
 CLIENT LOG [server] heartbeat heartbeat {
-  requestId: '6a723af4-1dfd-43cc-ba52-1e380e51b240',
-  sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
+  requestId: '15149247-ebfe-4ee8-ad20-143e812fd06e',
+  sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
   eventData: {
     type: 'heartbeat',
-    payload: { ts: 1763268937476 },
-    sessionId: '2749b396-6c5f-4be7-98e3-98cf32adcf04',
-    requestId: '6a723af4-1dfd-43cc-ba52-1e380e51b240'
+    payload: { ts: 1763271932206 },
+    sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+    requestId: '15149247-ebfe-4ee8-ad20-143e812fd06e'
   },
-  createdAtMs: 1763268937550
+  createdAtMs: 1763271932204
 }
- POST /api/client-logs 200 in 18ms
- GET /api/session/sess_92476a30392e/stream?bffKey=dev-secret 200 in 33534ms
+ POST /api/client-logs 200 in 43ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.323Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.363Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:32.398Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.401Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.437Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.479Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.516Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.522Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.528Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.535Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.543Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.551Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.559Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.617Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.657Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.697Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.735Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.776Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.828Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.867Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.905Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:32.906Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 47ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.944Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.948Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.956Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.968Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.970Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.980Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.986Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:32.994Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.003Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.009Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.017Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.025Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.034Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.092Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.130Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.169Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.210Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:33.234Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.255Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.301Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.345Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.386Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.423Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.427Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.435Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.442Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.450Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.458Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.464Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.480Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.493Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.497Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.507Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.511Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.520Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.578Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:33.579Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.617Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.658Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.695Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.734Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.773Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.811Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.865Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.905Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.908Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.916Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:33.987Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.015Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.064Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:34.078Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.094Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.131Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.168Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.183Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.184Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.185Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.186Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:34.197Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.199Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:34.207Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.210Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:34.211Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:34.418Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 45ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:34.922Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:35.258Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:35.590Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:36.102Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:36.434Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:36.770Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:37.270Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:37.602Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:37.926Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 39ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:38.439Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:38.770Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 39ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:39.106Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:39.606Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 39ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:39.942Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:40.274Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 38ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:40.787Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:41.118Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:41.454Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:41.962Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 39ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:42.298Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:42.634Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:43.142Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:43.478Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:43.810Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:44.310Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:44.646Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 38ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:44.982Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:45.482Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:45.663Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:45.812Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:45.826Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 36ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:46.162Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:46.662Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:46.691Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:46.708Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:46.995Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:47.498Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:47.834Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 46ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:48.174Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:48.942Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:48.943Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:48.944Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:48.944Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:48.960Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:48.962Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:48.984Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:48.987Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:49.262Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.359Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.360Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.361Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.369Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.375Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.383Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.389Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.397Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.407Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.430Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.438Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.495Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.496Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.497Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.497Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.498Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.499Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.499Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.500Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:49.500Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:49.516Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'agent_tool_start' },
+  timestamp: '2025-11-16T05:45:49.548Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:49.583Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'agent_tool_end' },
+  timestamp: '2025-11-16T05:45:49.601Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.609Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.613Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.616Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.619Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.621Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.626Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:49.634Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 21ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.638Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.656Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.678Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.685Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.700Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.752Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.754Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.755Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.757Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.759Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.766Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.769Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.775Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.791Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.807Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.819Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.837Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:49.853Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:49.918Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 33ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:49.983Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_added' },
+  timestamp: '2025-11-16T05:45:49.983Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:50.008Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.010Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:50.025Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.027Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.028Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.293Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:50.312Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.315Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.316Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.316Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.317Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.318Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.319Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.319Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.320Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.321Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.321Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.322Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.322Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.376Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.415Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:50.430Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.452Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.475Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.483Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.490Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.501Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.506Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.515Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.521Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.529Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.537Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.545Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.553Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.561Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.620Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.659Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.699Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.747Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:50.766Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.783Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.822Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.828Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.835Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.842Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.851Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.858Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.864Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.873Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.879Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.887Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.896Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.904Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:50.963Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.017Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.056Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.096Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:51.102Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.135Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.174Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.213Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.251Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.296Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.297Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.304Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.311Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.318Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.327Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.334Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.341Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.349Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.357Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.416Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.456Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.495Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.550Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.603Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:51.614Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.632Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.667Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.707Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.746Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.749Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.757Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.764Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.776Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.781Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.788Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.797Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.803Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.812Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.819Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.827Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.835Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.842Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.850Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.912Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:51.950Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 38ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.952Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:51.987Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.044Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.083Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.124Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.163Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.203Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.241Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.244Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.268Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.268Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.273Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.276Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:52.286Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.290Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.292Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.299Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.308Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.323Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.385Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.429Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.460Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.500Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.539Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.595Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.634Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.670Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.716Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.751Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.788Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:52.790Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 34ms
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.827Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.847Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.867Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.868Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.868Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.869Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:52.887Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.889Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'history_updated' },
+  timestamp: '2025-11-16T05:45:52.909Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.911Z'
+}
+[metric] {
+  namespace: 'bff.session.sess_b58117979bb4',
+  type: 'counter',
+  name: 'session_events_total',
+  value: 1,
+  tags: { event: 'transport_event' },
+  timestamp: '2025-11-16T05:45:52.913Z'
+}
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:53.126Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:53.462Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:53.978Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:54.310Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:54.650Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:55.155Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 44ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:55.486Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:55.826Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 44ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:56.342Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 45ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:56.675Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:57.010Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:57.514Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:57.831Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 21ms
+CLIENT LOG [server] heartbeat heartbeat {
+  requestId: '6c64e0e8-091c-465b-b33c-7b0c41780d14',
+  sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+  eventData: {
+    type: 'heartbeat',
+    payload: { ts: 1763271957790 },
+    sessionId: 'd2aeab5e-df75-4309-ab8a-2961719484c5',
+    requestId: '6c64e0e8-091c-465b-b33c-7b0c41780d14'
+  },
+  createdAtMs: 1763271957614
+}
+ POST /api/client-logs 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:58.186Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:58.686Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:59.026Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:59.358Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 42ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:45:59.854Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:00.186Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:00.682Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:01.014Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:01.354Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 41ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:01.854Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:02.182Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 40ms
+[metric] {
+  namespace: 'bff.session',
+  type: 'counter',
+  name: 'bff.session.event_forwarded_total',
+  value: 1,
+  tags: { kind: 'input_audio' },
+  timestamp: '2025-11-16T05:46:02.518Z'
+}
+ POST /api/session/sess_b58117979bb4/event 200 in 43ms
+ GET /api/session/sess_b58117979bb4/stream?bffKey=dev-secret 200 in 56130ms
 CLIENT LOG [client] session_status session_status {
-  requestId: '98fcff86-e60e-492b-8043-1a1d5e768e27',
+  requestId: 'd2a1dc39-b9bd-49bc-9bab-374fe9073ee7',
   sessionId: null,
   eventData: {
     type: 'session_status',
     status: 'DISCONNECTED',
     sessionId: null,
-    requestId: '98fcff86-e60e-492b-8043-1a1d5e768e27'
+    requestId: 'd2a1dc39-b9bd-49bc-9bab-374fe9073ee7'
   },
-  createdAtMs: 1763268945447
+  createdAtMs: 1763271962741
 }
- POST /api/client-logs 200 in 25ms
+ POST /api/client-logs 200 in 49ms
+ ✓ Compiled /api/session/[sessionId] in 421ms (2021 modules)
 [structured-log] {
   level: 'info',
   message: 'Session disconnected',
-  sessionId: 'sess_92476a30392e',
+  sessionId: 'sess_b58117979bb4',
   component: 'bff.session'
 }
 [metric] {
-  namespace: 'bff.session.sess_92476a30392e',
+  namespace: 'bff.session.sess_b58117979bb4',
   type: 'counter',
   name: 'session_disconnect_total',
   value: 1,
   tags: { stage: 'connected' },
-  timestamp: '2025-11-16T04:55:45.227Z'
+  timestamp: '2025-11-16T05:46:03.884Z'
 }
 [structured-log] {
   level: 'info',
   message: 'Session destroyed',
-  sessionId: 'sess_92476a30392e',
+  sessionId: 'sess_b58117979bb4',
   reason: 'client_request',
   initiatedBy: 'client',
   component: 'bff.session'
@@ -1633,6 +6024,7 @@ CLIENT LOG [client] session_status session_status {
   name: 'bff.session.closed_total',
   value: 1,
   tags: { initiatedBy: 'client', reason: 'client_request' },
-  timestamp: '2025-11-16T04:55:45.227Z'
+  timestamp: '2025-11-16T05:46:03.884Z'
 }
- DELETE /api/session/sess_92476a30392e?reason=client_request 200 in 43ms
+ DELETE /api/session/sess_b58117979bb4?reason=client_request 200 in 1079ms
+[?25h

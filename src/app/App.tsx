@@ -17,6 +17,7 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
 import { useRealtimeSession } from "./hooks/useRealtimeSession";
+import { useMicrophoneStream } from "./hooks/useMicrophoneStream";
 
 // Agent configs
 import { allAgentSets, agentSetMetadata, defaultAgentSetKey } from "@/app/agentConfigs";
@@ -84,6 +85,7 @@ function App() {
     sendEvent,
     interrupt,
     mute,
+    sendAudioChunk,
   } = useRealtimeSession({
     onConnectionChange: (s) => setSessionStatus(s as SessionStatus),
     onAgentHandoff: (agentName: string) => {
@@ -95,6 +97,12 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
   const pendingVoiceReconnectRef = useRef(false);
+
+  useMicrophoneStream({
+    sessionStatus,
+    sendAudioChunk,
+    logClientEvent,
+  });
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
     useState<boolean>(true);

@@ -53,6 +53,11 @@ export interface ClientCapabilityOverrides {
   outputText?: boolean;
 }
 
+export interface SendAudioChunkOptions {
+  commit?: boolean;
+  response?: boolean;
+}
+
 export interface ConnectOptions {
   agentSetKey: string;
   preferredAgentName?: string;
@@ -460,6 +465,19 @@ export function useRealtimeSession(
     [fetchImpl, logClientEvent],
   );
 
+  const sendAudioChunk = useCallback(
+    async (audioBase64: string, options: SendAudioChunkOptions = {}) => {
+      if (!audioBase64) return;
+      await postSessionCommand({
+        kind: 'input_audio',
+        audio: audioBase64,
+        commit: options.commit ?? false,
+        response: options.response ?? false,
+      });
+    },
+    [postSessionCommand],
+  );
+
   const sendUserText = useCallback(
     (text: string) => {
       void postSessionCommand({ kind: 'input_text', text });
@@ -505,6 +523,7 @@ export function useRealtimeSession(
     pushToTalkStart,
     pushToTalkStop,
     interrupt,
+    sendAudioChunk,
   } as const;
 }
 
