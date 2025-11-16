@@ -389,24 +389,31 @@ export class SessionHost {
         this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
         break;
       case 'input_image':
-        context.manager.sendEvent({
-          type: 'conversation.item.create',
-          item: {
-            type: 'message',
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: command.text ?? '[Image uploaded]',
-              },
-              {
-                type: 'input_image',
-                mime_type: command.mimeType,
-                image: command.data,
-              },
-            ],
-          },
-        });
+        // Realtime API expects `image_url` (data URL or remote URL). Persisted images are stored as
+        // raw base64, so convert to a data URL if not already provided.
+        {
+          const imageUrl =
+            command.mimeType && command.data && command.data.startsWith('data:')
+              ? command.data
+              : `data:${command.mimeType ?? 'image/png'};base64,${command.data}`;
+          context.manager.sendEvent({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: command.text ?? '[Image uploaded]',
+                },
+                {
+                  type: 'input_image',
+                  image_url: imageUrl,
+                },
+              ],
+            },
+          });
+        }
         if (command.triggerResponse !== false) {
           context.manager.sendEvent({ type: 'response.create' });
         }

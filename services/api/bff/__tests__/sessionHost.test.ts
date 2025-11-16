@@ -186,6 +186,25 @@ describe('SessionHost', () => {
     unsubscribe();
   });
 
+  it('converts base64 images to data URLs when forwarding', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const base64 = Buffer.from('hello').toString('base64');
+
+    await host.handleCommand(sessionId, {
+      kind: 'input_image',
+      data: base64,
+      mimeType: 'image/png',
+      encoding: 'base64',
+      text: 'photo',
+    });
+
+    const sent = managers[0]!.sendEventMock.mock.calls.find(
+      (c) => c[0]?.type === 'conversation.item.create',
+    )?.[0];
+
+    expect(sent?.item?.content?.[1]?.image_url).toBe(`data:image/png;base64,${base64}`);
+  });
+
   it('falls back to text-only output when audio capability is disabled', async () => {
     envSnapshot = {
       warnings: ['Audio disabled for test'],
