@@ -10,8 +10,14 @@ import {
   detectRuntimeEnvironment,
   type RuntimeEnvironment,
 } from '../../../../framework/di/runtimeEnvironment';
-import { allAgentSets } from '@/app/agentConfigs';
+import { allAgentSets, scenarioMcpBindings } from '@/app/agentConfigs';
 import { createOpenAISessionManager } from '../../../../services/realtime/adapters/createOpenAISessionManager';
+import { McpServerRegistry } from '../../../../services/mcp/mcpServerRegistry';
+import { loadMcpServersFromEnv } from '../../../../services/mcp/config';
+import { McpEnabledAgentSetResolver } from '../../../../services/realtime/adapters/mcpEnabledAgentSetResolver';
+import { OpenAIAgentSetResolver } from '../../../../services/realtime/adapters/openAIAgentSetResolver';
+import type { IAgentSetResolver } from '../../../../services/realtime/types';
+import type { McpServerConfig } from '../../../../services/mcp/mcpTypes';
 import type { OpenAIRealtimeTransportOptions } from '../../../../services/realtime/adapters/openAIRealtimeTransport';
 import type {
   ISessionManager,
@@ -25,6 +31,9 @@ type ProviderMap = Partial<Record<RuntimeEnvironment, SessionManagerProvider>>;
 export interface SessionManagerProviderContext {
   environment: RuntimeEnvironment;
   scenarioMap: Record<string, RealtimeAgent[]>;
+  scenarioMcpBindings?: Record<string, string[]>;
+  serviceManager: ServiceManager;
+  logger: ServiceManagerLogger;
   hooks?: SessionManagerHooks;
   transport?: OpenAIRealtimeTransportOptions;
 }
@@ -38,6 +47,7 @@ export interface GetSessionManagerOptions {
   serviceManager?: ServiceManager;
   hooks?: SessionManagerHooks;
   scenarioMap?: Record<string, RealtimeAgent[]>;
+  scenarioMcpBindings?: Record<string, string[]>;
   providers?: ProviderMap;
   transport?: OpenAIRealtimeTransportOptions;
   logger?: ServiceManagerLogger;
@@ -63,9 +73,57 @@ const sessionTokens: Record<
 const providerOverrides: Partial<Record<RuntimeEnvironment, SessionManagerProvider>> =
   {};
 
+const MCP_REGISTRY_TOKEN = createServiceToken<McpServerRegistry>(
+  'realtime.mcp.registry',
+);
+
+function ensureMcpRegistry(
+  serviceManager: ServiceManager,
+  configs: Record<string, McpServerConfig>,
+  logger: ServiceManagerLogger,
+): McpServerRegistry {
+  if (!serviceManager.has(MCP_REGISTRY_TOKEN)) {
+    const registry = new McpServerRegistry({
+      configs,
+      serviceManager,
+      logger,
+    });
+    serviceManager.register(MCP_REGISTRY_TOKEN, () => registry);
+  }
+  return serviceManager.get(MCP_REGISTRY_TOKEN);
+}
+
+function buildAgentResolver(
+  ctx: SessionManagerProviderContext,
+  logger: ServiceManagerLogger,
+): IAgentSetResolver<RealtimeAgent> {
+  const bindings = ctx.scenarioMcpBindings ?? scenarioMcpBindings;
+  const hasBinding = Object.values(bindings).some((list) => list.length > 0);
+  if (!hasBinding) {
+    return new OpenAIAgentSetResolver(ctx.scenarioMap);
+  }
+
+  const configs = loadMcpServersFromEnv();
+  if (Object.keys(configs).length === 0) {
+    logger.warn?.('MCP bindings exist but MCP_SERVERS is empty; skipping MCP wiring', {
+      environment: ctx.environment,
+    });
+    return new OpenAIAgentSetResolver(ctx.scenarioMap);
+  }
+
+  const registry = ensureMcpRegistry(ctx.serviceManager, configs, logger);
+  return new McpEnabledAgentSetResolver({
+    scenarios: ctx.scenarioMap,
+    bindings,
+    registry,
+    logger,
+  });
+}
+
 const defaultProviders: ProviderMap = {
   web: (ctx) =>
     createOpenAISessionManager({
+      agentResolver: buildAgentResolver(ctx, ctx.logger),
       scenarioMap: ctx.scenarioMap,
       hooks: ctx.hooks,
       transport: {
@@ -163,12 +221,16 @@ export function getSessionManager(
     }
 
     const scenarioMap = options.scenarioMap ?? allAgentSets;
+    const scenarioMcp = options.scenarioMcpBindings ?? scenarioMcpBindings;
     serviceManager.register(
       token,
       () =>
         provider({
           environment,
           scenarioMap,
+          scenarioMcpBindings: scenarioMcp,
+          serviceManager,
+          logger,
           hooks: options.hooks,
           transport: options.transport,
         }),

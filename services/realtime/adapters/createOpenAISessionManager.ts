@@ -1,7 +1,11 @@
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
 import { SessionManager } from '../SessionManager';
-import type { ISessionManager, SessionManagerHooks } from '../types';
+import type {
+  ISessionManager,
+  SessionManagerHooks,
+  IAgentSetResolver,
+} from '../types';
 import { OpenAIAgentSetResolver } from './openAIAgentSetResolver';
 import {
   OpenAIRealtimeTransport,
@@ -9,7 +13,8 @@ import {
 } from './openAIRealtimeTransport';
 
 export interface OpenAISessionManagerConfig {
-  scenarioMap: Record<string, RealtimeAgent[]>;
+  scenarioMap?: Record<string, RealtimeAgent[]>;
+  agentResolver?: IAgentSetResolver<RealtimeAgent>;
   transport?: OpenAIRealtimeTransportOptions;
   hooks?: SessionManagerHooks;
 }
@@ -17,7 +22,14 @@ export interface OpenAISessionManagerConfig {
 export function createOpenAISessionManager(
   config: OpenAISessionManagerConfig,
 ): ISessionManager<RealtimeAgent> {
-  const resolver = new OpenAIAgentSetResolver(config.scenarioMap);
+  const resolver =
+    config.agentResolver ??
+    new OpenAIAgentSetResolver(
+      config.scenarioMap ??
+        (() => {
+          throw new Error('scenarioMap is required when agentResolver is not provided');
+        })(),
+    );
 
   return new SessionManager<RealtimeAgent>({
     agentResolver: resolver,

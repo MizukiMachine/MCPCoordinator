@@ -30,6 +30,11 @@ OpenAI Realtime API + Agents SDK デモです。
 4. **3. MCP対応**: ServiceManager配下にMCPプラグインを登録し、シナリオごとのオン/オフ切替を実装
 5. **4. File Search統合**: Google Drive分類/容量設計に沿って同期し、RAGハンドラから File Search を叩く
 
+## MCP接続基盤（2025-11追加）
+- `.env` の `MCP_SERVERS`（JSON配列）にSSE/STDIO/Streamable HTTPの各MCPサーバーを列挙すると、自動で接続・ライフサイクル管理します。
+- シナリオ側の要求は `scenarioMcpBindings`（`src/app/agentConfigs/index.ts`）で宣言し、`id` が一致したMCPだけを初期化してエージェントに紐付けます。
+- `ServiceManager.shutdownAll()` を呼ぶと接続中のMCPサーバーもまとめてクリーンアップされるため、テストやサーバー再起動時の後処理が容易です。
+
 詳細は `doc/IMPLEMENTATION_PLAN.md` を参照してください。
 
 ## プロジェクト概要

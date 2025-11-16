@@ -8,7 +8,7 @@ import { createConsoleMetricEmitter } from '../../../framework/metrics/metricEmi
 import type { MetricEmitter } from '../../../framework/metrics/metricEmitter';
 import type { StructuredLogger } from '../../../framework/logging/structuredLogger';
 import { createModerationGuardrail } from '../../../src/app/agentConfigs/guardrails';
-import { agentSetMetadata, allAgentSets } from '../../../src/app/agentConfigs';
+import { agentSetMetadata, allAgentSets, scenarioMcpBindings } from '../../../src/app/agentConfigs';
 import { isRealtimeTranscriptionEventPayload } from '../../../src/shared/realtimeTranscriptionEvents';
 import type { VoiceControlDirective, VoiceControlHandlers } from '../../../src/shared/voiceControl';
 import type {
@@ -16,8 +16,14 @@ import type {
   SessionEventName,
   SessionManagerHooks,
   SessionLifecycleStatus,
+  IAgentSetResolver,
 } from '../../realtime/types';
 import { createOpenAIServerSessionManager } from '../../realtime/adapters/createOpenAIServerSessionManager';
+import { McpEnabledAgentSetResolver } from '../../realtime/adapters/mcpEnabledAgentSetResolver';
+import { loadMcpServersFromEnv } from '../../mcp/config';
+import { McpServerRegistry } from '../../mcp/mcpServerRegistry';
+import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
+import { ServiceManager } from '../../../framework/di/ServiceManager';
 
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const SESSION_MAX_LIFETIME_MS = 30 * 60 * 1000;
@@ -160,6 +166,9 @@ interface SessionHostDeps {
   sessionManagerFactory?: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   scenarioMap?: Record<string, RealtimeAgent[]>;
   envInspector?: () => RealtimeEnvironmentSnapshot;
+  scenarioMcpBindings?: Record<string, string[]>;
+  mcpRegistry?: McpServerRegistry;
+  serviceManager?: ServiceManager;
 }
 
 export class SessionHost {
@@ -169,21 +178,54 @@ export class SessionHost {
   private readonly now: () => number;
   private readonly sessionManagerFactory: (hooks: SessionManagerHooks) => ISessionManager<RealtimeAgent>;
   private readonly scenarioMap: Record<string, RealtimeAgent[]>;
+  private readonly scenarioMcpBindings: Record<string, string[]>;
   private readonly inspectEnvironment: () => RealtimeEnvironmentSnapshot;
+  private readonly mcpRegistry?: McpServerRegistry;
+  private readonly registryServiceManager?: ServiceManager;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
     this.metrics = deps.metrics ?? createConsoleMetricEmitter('bff.session');
     this.now = deps.now ?? (() => Date.now());
     this.scenarioMap = deps.scenarioMap ?? allAgentSets;
+    this.scenarioMcpBindings = deps.scenarioMcpBindings ?? scenarioMcpBindings;
     this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
+
+    const mcpConfigs = loadMcpServersFromEnv();
+    const hasBindings = Object.values(this.scenarioMcpBindings).some(
+      (list) => list.length > 0,
+    );
+    if (hasBindings && Object.keys(mcpConfigs).length > 0) {
+      this.registryServiceManager = deps.serviceManager ?? new ServiceManager();
+      this.mcpRegistry =
+        deps.mcpRegistry ??
+        new McpServerRegistry({
+          configs: mcpConfigs,
+          serviceManager: this.registryServiceManager,
+          logger: this.logger,
+        });
+    }
+
     this.sessionManagerFactory =
       deps.sessionManagerFactory ??
       ((hooks) =>
         createOpenAIServerSessionManager({
           scenarioMap: this.scenarioMap,
+          agentResolver: this.buildAgentResolver(),
           hooks,
         }));
+  }
+
+  private buildAgentResolver(): IAgentSetResolver<RealtimeAgent> {
+    if (this.mcpRegistry) {
+      return new McpEnabledAgentSetResolver({
+        scenarios: this.scenarioMap,
+        bindings: this.scenarioMcpBindings,
+        registry: this.mcpRegistry,
+        logger: this.logger,
+      });
+    }
+    return new OpenAIAgentSetResolver(this.scenarioMap);
   }
 
   async createSession(options: CreateSessionOptions): Promise<CreateSessionResult> {
