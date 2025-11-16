@@ -380,6 +380,9 @@ function App() {
   );
 
   const updateSession = (shouldTriggerResponse: boolean = false) => {
+    if (sessionStatus !== 'CONNECTED') {
+      return;
+    }
     // Reflect Push-to-Talk UI state by toggling server-side VAD via a minimal session.update.
     // We keep the payload scoped to the audio block so the agent instructions remain intact.
     const serverVadConfig = isPTTActive
@@ -392,6 +395,7 @@ function App() {
     sendEvent({
       type: 'session.update',
       session: {
+        type: 'realtime',
         audio: {
           input: {
             turn_detection: serverVadConfig,
