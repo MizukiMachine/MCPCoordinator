@@ -31,7 +31,7 @@ yarn-error.log*
 
 # Ignore all env files except .env.sample
 .env
-
+.env.deploy
 
 # vercel
 .vercel
