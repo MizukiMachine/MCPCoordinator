@@ -10,7 +10,13 @@ steps:
       - "gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
       - "."
 
-  # 2) Deploy to Cloud Run
+  # 2) Push image so Cloud Run can pull it in the same build
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - push
+      - "gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
+
+  # 3) Deploy to Cloud Run
   - name: "gcr.io/cloud-builders/gcloud"
     args:
       - run
