@@ -15,6 +15,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const bffKey =
+    process.env.NEXT_PUBLIC_BFF_KEY ?? process.env.BFF_SERVICE_SHARED_SECRET ?? '';
   const incomingHeaders = await headers();
   const hostHeader =
     incomingHeaders.get("x-forwarded-host") ??
@@ -34,7 +36,17 @@ export default async function RootLayout({
       suppressHydrationWarning
       style={htmlStyle}
     >
-      <body className={`antialiased`}>{children}</body>
+      <body className={`antialiased`}>
+        {bffKey ? (
+          <script
+            id="mcpc-bff-key"
+            dangerouslySetInnerHTML={{
+              __html: `window.__MCPC_BFF_KEY=${JSON.stringify(bffKey)};`,
+            }}
+          />
+        ) : null}
+        {children}
+      </body>
     </html>
   );
 }
