@@ -72,3 +72,52 @@ export function logError(message: string, data?: LogFields, request?: Request) {
   logStructured({ message, severity: "ERROR", data, request });
 }
 
+export type StructuredLogger = {
+  debug(message: string, data?: LogFields, request?: Request): void;
+  info(message: string, data?: LogFields, request?: Request): void;
+  warn(message: string, data?: LogFields, request?: Request): void;
+  error(message: string, data?: LogFields, request?: Request): void;
+  with(context: LogFields): StructuredLogger;
+};
+
+type CreateStructuredLoggerOptions = {
+  component?: string;
+  defaultContext?: LogFields;
+  labels?: Record<string, string>;
+};
+
+function createLoggerWithContext(
+  options: CreateStructuredLoggerOptions,
+  inheritedContext: LogFields = {},
+): StructuredLogger {
+  const { component, defaultContext = {}, labels } = options;
+  const baseContext = { ...defaultContext, ...inheritedContext };
+
+  const logAt = (severity: Severity) => (message: string, data?: LogFields, request?: Request) =>
+    logStructured({
+      message,
+      severity,
+      component,
+      data: { ...baseContext, ...(data ?? {}) },
+      request,
+      labels,
+    });
+
+  return {
+    debug: logAt("DEBUG"),
+    info: logAt("INFO"),
+    warn: logAt("WARNING"),
+    error: logAt("ERROR"),
+    with: (context: LogFields) => createLoggerWithContext(options, { ...baseContext, ...context }),
+  };
+}
+
+/**
+ * コンポーネント名やデフォルトコンテキストをひも付けた構造化ロガーを生成する。
+ * `logger.with({ sessionId })` のようにして追加コンテキストを付与した派生ロガーも作れる。
+ */
+export function createStructuredLogger(
+  options: CreateStructuredLoggerOptions = {},
+): StructuredLogger {
+  return createLoggerWithContext(options);
+}

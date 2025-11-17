@@ -46,12 +46,20 @@ export class SessionManager<TAgentHandle = unknown>
     current?: SessionManagerHooks['logger'],
     next?: SessionManagerHooks['logger'],
   ): SessionManagerHooks['logger'] {
-    return {
+    if (!current && !next) return undefined;
+
+    let merged: SessionManagerHooks['logger'];
+    const withFn = (context: Record<string, any>) =>
+      (next?.with ?? current?.with ?? (() => merged!))(context);
+
+    merged = {
       debug: next?.debug ?? current?.debug ?? (() => {}),
       info: next?.info ?? current?.info ?? (() => {}),
       warn: next?.warn ?? current?.warn ?? (() => {}),
       error: next?.error ?? current?.error ?? (() => {}),
+      with: withFn,
     };
+    return merged;
   }
 
   private static mergeMetrics(
