@@ -56,6 +56,7 @@ describe('useRealtimeSession', () => {
     audioPlayerMock.setMuted.mockReset();
     audioPlayerMock.stop.mockReset();
     pcmPlayerCtor.mockClear();
+    delete (window as any).__MCPC_BFF_KEY;
   });
 
   it('forwards the outputText capability to the session API', async () => {
@@ -89,6 +90,37 @@ describe('useRealtimeSession', () => {
     const requestInit = fetchImpl.mock.calls[0]?.[1];
     const body = JSON.parse((requestInit!.body ?? '{}') as string);
     expect(body.clientCapabilities).toEqual({ audio: true, outputText: false });
+  });
+
+  it('sends the injected BFF key with session API calls when present at runtime', async () => {
+    (window as any).__MCPC_BFF_KEY = 'runtime-bff-key';
+
+    const fetchImpl = vi.fn().mockResolvedValue(
+      createMockResponse({
+        sessionId: 'sess_bff',
+        streamUrl: '/api/session/sess_bff/stream',
+        allowedModalities: ['audio'],
+        capabilityWarnings: [],
+      }),
+    );
+    const stubEventSource = createStubEventSource();
+
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        {},
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const headers = (fetchImpl.mock.calls[0]?.[1]?.headers ?? {}) as Record<string, string>;
+    expect(headers['x-bff-key']).toBe('runtime-bff-key');
   });
 
   it('exposes sendAudioChunk that suppresses commit/response by default', async () => {

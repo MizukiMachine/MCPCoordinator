@@ -9,7 +9,7 @@ import type { SessionCommand } from '../../../services/api/bff/sessionHost';
 import { getTranscriptionEventStage } from '@/shared/realtimeTranscriptionEvents';
 import { isVoiceControlDirective, type VoiceControlDirective } from '@/shared/voiceControl';
 
-const BFF_API_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
+const BUILD_TIME_BFF_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
 const CLIENT_DISCONNECT_REASON = 'client_request';
 
 function addFallbackItemId(event: any) {
@@ -604,22 +604,28 @@ export function useRealtimeSession(
 }
 
 function buildHeaders(): Record<string, string> {
-  if (BFF_API_KEY) {
-    return { 'x-bff-key': BFF_API_KEY };
-  }
-  return {};
+  const bffKey = resolveBffKey();
+  return bffKey ? { 'x-bff-key': bffKey } : {};
 }
 
 function appendBffKeyToUrl(streamUrl: string): string {
-  if (!BFF_API_KEY) {
+  const bffKey = resolveBffKey();
+  if (!bffKey) {
     return streamUrl;
   }
   try {
     const base = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
     const parsed = new URL(streamUrl, base);
-    parsed.searchParams.set('bffKey', BFF_API_KEY);
+    parsed.searchParams.set('bffKey', bffKey);
     return parsed.toString();
   } catch {
     return streamUrl;
   }
+}
+
+function resolveBffKey(): string | undefined {
+  if (typeof window !== 'undefined' && window.__MCPC_BFF_KEY) {
+    return window.__MCPC_BFF_KEY;
+  }
+  return BUILD_TIME_BFF_KEY;
 }
