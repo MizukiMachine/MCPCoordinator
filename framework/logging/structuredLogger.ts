@@ -1,97 +1,74 @@
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type Severity =
+  | "DEFAULT"
+  | "DEBUG"
+  | "INFO"
+  | "NOTICE"
+  | "WARNING"
+  | "ERROR"
+  | "CRITICAL"
+  | "ALERT"
+  | "EMERGENCY";
 
-export type StructuredLogContext = Record<string, any>;
+type LogFields = Record<string, any>;
 
-export type StructuredLogSink = (
-  level: LogLevel,
-  message: string,
-  context?: StructuredLogContext,
-) => void;
-
-export interface StructuredLogger {
-  debug(message: string, context?: StructuredLogContext): void;
-  info(message: string, context?: StructuredLogContext): void;
-  warn(message: string, context?: StructuredLogContext): void;
-  error(message: string, context?: StructuredLogContext): void;
-}
-
-export interface StructuredLoggerOptions {
-  sink?: StructuredLogSink;
+type LogParams = {
+  message: string;
+  severity?: Severity;
   component?: string;
-  defaultContext?: StructuredLogContext;
-}
-
-function resolveConsoleMethod(level: LogLevel) {
-  if (typeof console === 'undefined') {
-    return () => {};
-  }
-  const method = (console as unknown as Record<LogLevel, unknown>)[level];
-  if (typeof method === 'function') {
-    return (method as (...args: unknown[]) => void).bind(console);
-  }
-  return console.log.bind(console);
-}
-
-const consoleSink: StructuredLogSink = (level, message, context) => {
-  const target = resolveConsoleMethod(level);
-  target('[structured-log]', { level, message, ...(context ?? {}) });
+  data?: LogFields;
+  request?: Request | null;
+  labels?: Record<string, string>;
 };
 
-const noop: StructuredLogger = {
-  debug() {},
-  info() {},
-  warn() {},
-  error() {},
-};
+/**
+ * Cloud Logging がそのままパースできる JSON 形式で stdout へ出力する。
+ * Cloud Run 上では request header の trace を付与すると、ログビューアでリクエストと紐付く。
+ */
+export function logStructured({
+  message,
+  severity = "INFO",
+  component,
+  data = {},
+  request,
+  labels,
+}: LogParams) {
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCP_PROJECT;
+  const traceHeader = request?.headers?.get("x-cloud-trace-context");
+  const [traceId] = traceHeader ? traceHeader.split("/") : [];
+  const trace =
+    projectId && traceId
+      ? `projects/${projectId}/traces/${traceId}`
+      : undefined;
 
-export const noopStructuredLogger: StructuredLogger = noop;
-
-function mergeContext(
-  defaults: StructuredLogContext | undefined,
-  overrides: StructuredLogContext | undefined,
-  component?: string,
-): StructuredLogContext | undefined {
-  if (!defaults && !overrides && !component) {
-    return undefined;
-  }
-  return {
-    ...(defaults ?? {}),
-    ...(overrides ?? {}),
-    ...(component ? { component } : {}),
-  };
-}
-
-export function createStructuredLogger(
-  options: StructuredLoggerOptions = {},
-): StructuredLogger {
-  const sink = options.sink ?? consoleSink;
-  const component = options.component;
-  const defaultContext = options.defaultContext;
-
-  const invoke = (level: LogLevel, message: string, context?: StructuredLogContext) => {
-    sink(level, message, mergeContext(defaultContext, context, component));
-  };
-
-  return {
-    debug: (message, context) => invoke('debug', message, context),
-    info: (message, context) => invoke('info', message, context),
-    warn: (message, context) => invoke('warn', message, context),
-    error: (message, context) => invoke('error', message, context),
-  };
-}
-
-export function createConsoleLogger(component?: string): StructuredLogger {
-  return createStructuredLogger({
+  const entry: Record<string, any> = {
+    severity,
+    message,
     component,
-    sink: (level, message, context) => {
-      const target = resolveConsoleMethod(level);
-      const payload = {
-        timestamp: new Date().toISOString(),
-        level,
-        message,
-        ...(context ?? {}),
-      };
-      target('[structured-log]', payload);
-    },
-  });
+    labels,
+    ...data,
+  };
+
+  if (trace) {
+    entry["logging.googleapis.com/trace"] = trace;
+  }
+
+  try {
+    console.log(JSON.stringify(entry));
+  } catch (err) {
+    // JSON.stringify が失敗してもメッセージは落とさない
+    console.log(
+      JSON.stringify({
+        severity: "ERROR",
+        message: "Failed to log structured entry",
+        component,
+        originalMessage: message,
+        error: String(err),
+      }),
+    );
+  }
 }
+
+export function logError(message: string, data?: LogFields, request?: Request) {
+  logStructured({ message, severity: "ERROR", data, request });
+}
+

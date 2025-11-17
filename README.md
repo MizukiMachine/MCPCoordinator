@@ -62,6 +62,24 @@ OpenAI Realtime API + Agents SDK デモです。
 - 手順と必要な環境変数は `doc/deploy-cloud-run.md` を参照してください。`scripts/deploy-cloud-run.sh` 実行で、`gcr.io/ai-conversation-engine` へビルド→Cloud Run（例: `asia-northeast1`）へデプロイできます。
 - CI/CD で自動デプロイしたい場合は `cloudbuild.yaml` を使って Cloud Build トリガーを作成してください（同ドキュメントに手順を記載）。
 
+## Cloud Run ログの確認
+- リアルタイムで追う:
+  ```bash
+  gcloud run services logs read ai-conversation-engine \
+    --region=asia-northeast1 \
+    --stream \
+    --limit=200
+  ```
+- エラーだけを見る:
+  ```bash
+  gcloud run services logs read ai-conversation-engine \
+    --region=asia-northeast1 \
+    --severity=ERROR \
+    --limit=100
+  ```
+- ブラウザ未捕捉エラーや `logClientEvent` で送ったイベントは `/api/client-logs` 経由で Cloud Logging に出ます。ログビューアでは `component="client_log"` でフィルタすると見やすいです。
+- Cloud Console から見る場合: 「Logging → ログ エクスプローラ」でリソースを「Cloud Run サービス」、サービス名を `ai-conversation-engine` に指定してください。
+
 ## BFF Session API
 - `/api/session` でセッションを作成し、レスポンスに含まれる `streamUrl` を `EventSource` で購読すると、RealtimeイベントをSSEで受信できます。
 - クライアントは `x-bff-key` ヘッダ（`NEXT_PUBLIC_BFF_KEY`）を付与して各APIを呼び出します。サーバー側は `BFF_SERVICE_SHARED_SECRET` と突き合わせます。

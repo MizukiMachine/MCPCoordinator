@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { ZodError } from 'zod';
 
 import { SessionHostError } from '../../../../services/api/bff/sessionHost';
+import { logStructured } from '../../../../framework/logging/structuredLogger';
 
 export function requireBffSecret(request: Request): void {
   const expected = process.env.BFF_SERVICE_SHARED_SECRET;
@@ -40,7 +41,12 @@ export function handleRouteError(error: unknown) {
     );
   }
 
-  console.error('Unexpected BFF error', error);
+  logStructured({
+    message: 'Unexpected BFF error',
+    severity: 'ERROR',
+    component: 'api.session',
+    data: { error: String(error) },
+  });
   return NextResponse.json(
     { error: 'internal_error', message: 'Internal Server Error' },
     { status: 500 },

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createCreativeSandboxRunner } from '@/app/lib/creativeSandboxRunner';
 import type { CreativePromptPayload } from '@/app/creativeSandbox/types';
 import { logCreativeSandboxEvent } from '@/app/lib/creativeSandboxLogger';
+import { logStructured } from '../../../../../framework/logging/structuredLogger';
 
 const payloadSchema = z.object({
   role: z.enum(['filmCritic', 'literaryCritic', 'copywriter']),
@@ -33,7 +34,12 @@ export async function POST(req: NextRequest) {
     await logCreativeSandboxEvent({ kind: 'single', payload, response: result });
     return NextResponse.json(result);
   } catch (error) {
-    console.error('[creativeSandbox.single] failed', error);
+    logStructured({
+      message: '[creativeSandbox.single] failed',
+      severity: 'ERROR',
+      component: 'api.creativeSandbox.single',
+      data: { error: String(error) },
+    });
     const message = error instanceof Error ? error.message : 'Unknown error';
     await logCreativeSandboxEvent({ kind: 'single', payload, error: message });
     return NextResponse.json({ error: 'Failed to run single creative response' }, { status: 500 });

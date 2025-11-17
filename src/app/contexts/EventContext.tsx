@@ -273,6 +273,48 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [buildLoggedEvent]);
 
+  // ブラウザ側の未捕捉エラーを自動で収集し、BFF経由で Cloud Logging へ送る
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      logClientEvent(
+        {
+          type: "window.error",
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          stack: event.error?.stack,
+          severity: "ERROR",
+        },
+        "window.error",
+      );
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      logClientEvent(
+        {
+          type: "unhandledrejection",
+          reason: event.reason ? String(event.reason) : undefined,
+          stack: (event.reason as Error | undefined)?.stack,
+          severity: "ERROR",
+        },
+        "unhandledrejection",
+      );
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("error", handleError);
+      window.addEventListener("unhandledrejection", handleRejection);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("error", handleError);
+        window.removeEventListener("unhandledrejection", handleRejection);
+      }
+    };
+  }, [logClientEvent]);
+
   return (
     <EventContext.Provider
       value={{

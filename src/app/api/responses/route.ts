@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { logStructured } from '../../../../framework/logging/structuredLogger';
 
 // Proxy endpoint for the OpenAI Responses API
 export async function POST(req: NextRequest) {
@@ -23,7 +24,12 @@ async function structuredResponse(openai: OpenAI, body: any) {
 
     return NextResponse.json(response);
   } catch (err: any) {
-    console.error('responses proxy error', err);
+    logStructured({
+      message: 'responses proxy error',
+      severity: 'ERROR',
+      component: 'api.responses',
+      data: { error: String(err) },
+    });
     return NextResponse.json({ error: 'failed' }, { status: 500 }); 
   }
 }
@@ -37,7 +43,12 @@ async function textResponse(openai: OpenAI, body: any) {
 
     return NextResponse.json(response);
   } catch (err: any) {
-    console.error('responses proxy error', err);
+    logStructured({
+      message: 'responses proxy error',
+      severity: 'ERROR',
+      component: 'api.responses',
+      data: { error: String(err) },
+    });
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
 }

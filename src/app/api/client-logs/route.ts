@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logStructured } from "../../../../framework/logging/structuredLogger";
 
 type ClientLogPayload = {
   id?: string;
@@ -18,15 +19,36 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ClientLogPayload;
     const direction = body?.direction ?? "client";
     const eventName = body?.eventName ?? "client.log";
-    console.log(`CLIENT LOG [${direction}] ${eventName}`, {
-      requestId: body?.requestId,
-      sessionId: body?.sessionId,
-      eventData: body?.eventData ?? body,
-      createdAtMs: body?.createdAtMs,
+    const severity = String(
+      body?.eventData?.severity ?? body?.eventData?.level ?? "INFO",
+    ).toUpperCase();
+
+    logStructured({
+      message: `CLIENT LOG [${direction}] ${eventName}`,
+      severity: severity as any,
+      component: "client_log",
+      request,
+      data: {
+        requestId: body?.requestId,
+        sessionId: body?.sessionId,
+        eventId: body?.id,
+        eventData: body?.eventData ?? body,
+        createdAtMs: body?.createdAtMs,
+      },
+      labels: {
+        direction,
+        eventName,
+      },
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Failed to mirror client log", error);
+    logStructured({
+      message: "Failed to mirror client log",
+      severity: "ERROR",
+      component: "client_log",
+      request,
+      data: { error: String(error) },
+    });
     return NextResponse.json({ error: "invalid_log_payload" }, { status: 400 });
   }
 }
