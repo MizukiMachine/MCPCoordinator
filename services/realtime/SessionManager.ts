@@ -42,6 +42,29 @@ export class SessionManager<TAgentHandle = unknown>
     this.hooks = options.hooks ?? {};
   }
 
+  private static mergeLogger(
+    current?: SessionManagerHooks['logger'],
+    next?: SessionManagerHooks['logger'],
+  ): SessionManagerHooks['logger'] {
+    return {
+      debug: next?.debug ?? current?.debug ?? (() => {}),
+      info: next?.info ?? current?.info ?? (() => {}),
+      warn: next?.warn ?? current?.warn ?? (() => {}),
+      error: next?.error ?? current?.error ?? (() => {}),
+    };
+  }
+
+  private static mergeMetrics(
+    current?: SessionManagerHooks['metrics'],
+    next?: SessionManagerHooks['metrics'],
+  ): SessionManagerHooks['metrics'] {
+    if (!current && !next) return undefined;
+    return {
+      increment: next?.increment ?? current?.increment ?? (() => {}),
+      observe: next?.observe ?? current?.observe ?? (() => {}),
+    };
+  }
+
   getStatus(): SessionLifecycleStatus {
     return this.status;
   }
@@ -50,14 +73,8 @@ export class SessionManager<TAgentHandle = unknown>
     this.hooks = {
       ...this.hooks,
       ...next,
-      logger: {
-        ...(this.hooks.logger ?? {}),
-        ...(next.logger ?? {}),
-      },
-      metrics: {
-        ...(this.hooks.metrics ?? {}),
-        ...(next.metrics ?? {}),
-      },
+      logger: SessionManager.mergeLogger(this.hooks.logger, next.logger),
+      metrics: SessionManager.mergeMetrics(this.hooks.metrics, next.metrics),
       guardrail: {
         ...(this.hooks.guardrail ?? {}),
         ...(next.guardrail ?? {}),

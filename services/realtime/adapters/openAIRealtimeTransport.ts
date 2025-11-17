@@ -78,7 +78,7 @@ class OpenAIRealtimeSessionHandle implements ISessionHandle {
   }
 
   sendEvent(event: Record<string, any>): void {
-    this.session.transport.sendEvent(event);
+    this.session.transport.sendEvent(event as any);
   }
 
   mute(muted: boolean): void {

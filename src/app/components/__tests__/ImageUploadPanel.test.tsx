@@ -1,6 +1,6 @@
+import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { File } from "undici";
 
 import { ImageUploadPanel } from "../ImageUploadPanel";
 
@@ -13,7 +13,7 @@ describe("ImageUploadPanel", () => {
     const input = screen.getByTestId("file-input") as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(await screen.findByText("photo.png")).toBeInTheDocument();
+    expect(await screen.findByText("photo.png")).toBeTruthy();
 
     const sendButton = screen.getByTestId("send-image-button");
     fireEvent.click(sendButton);
@@ -30,7 +30,7 @@ describe("ImageUploadPanel", () => {
     const input = screen.getByTestId("file-input") as HTMLInputElement;
     fireEvent.change(input, { target: { files: [bigFile] } });
 
-    expect(screen.getByText(/ファイルサイズ/)).toBeInTheDocument();
+    expect(screen.getByText(/ファイルサイズ/)).toBeTruthy();
     expect(onSend).not.toHaveBeenCalled();
   });
 });

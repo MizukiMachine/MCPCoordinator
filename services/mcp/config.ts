@@ -54,8 +54,9 @@ function normalizeEntries(
   const result: Record<string, McpServerConfig> = {};
   for (const entry of entries) {
     assertConfigShape(entry);
+    const id = entry.id as string;
     const normalized: McpServerConfig = {
-      id: entry.id,
+      id,
       transport: entry.transport ?? DEFAULT_TRANSPORT,
       url: interpolateEnv(entry.url, env) as string | undefined,
       command: interpolateEnv(entry.command, env) as string | undefined,
@@ -72,7 +73,7 @@ function normalizeEntries(
       timeoutMs: entry.timeoutMs,
       name: interpolateEnv(entry.name, env) as string | undefined,
     };
-    result[normalized.id] = normalized;
+    result[id] = normalized;
   }
   return result;
 }

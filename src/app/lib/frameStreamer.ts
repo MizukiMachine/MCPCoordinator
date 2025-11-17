@@ -52,8 +52,8 @@ export class FrameStreamer {
   public async start() {
     if (this.running) return;
     this.running = true;
-    await this.sendFrame(true);
     this.scheduleNext();
+    await this.sendFrame(true);
   }
 
   public stop() {
@@ -73,7 +73,9 @@ export class FrameStreamer {
     if (!this.running) return;
     const intervalMs = this.config.fps > 0 ? 1000 / this.config.fps : 2000;
     this.timerId = setTimeout(() => {
-      void this.sendFrame(false).finally(() => this.scheduleNext());
+      if (!this.running) return;
+      this.scheduleNext();
+      void this.sendFrame(false);
     }, intervalMs);
   }
 

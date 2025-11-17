@@ -1,4 +1,6 @@
+import { File as NodeFile, Blob as NodeBlob } from 'node:buffer';
 import { TextEncoder, TextDecoder } from 'util';
+import React from 'react';
 
 if (!globalThis.TextEncoder) {
   // @ts-ignore
@@ -37,4 +39,18 @@ if (typeof globalThis.SharedArrayBuffer === 'undefined') {
   // Fallback to ArrayBuffer so that webidl-conversions can inspect the prototype safely.
   // @ts-ignore
   globalThis.SharedArrayBuffer = ArrayBuffer;
+}
+
+// Vitest (jsdom) does not inject React automatically; ensure classic runtime works for JSX.
+// @ts-ignore
+globalThis.React = React;
+
+// JSDOM で File/Blob が未定義な環境向けのフォールバック
+if (typeof globalThis.File === 'undefined') {
+  // @ts-ignore
+  globalThis.File = NodeFile;
+}
+if (typeof globalThis.Blob === 'undefined') {
+  // @ts-ignore
+  globalThis.Blob = NodeBlob;
 }
