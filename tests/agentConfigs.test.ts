@@ -6,7 +6,14 @@ import {
   defaultAgentSetKey,
 } from '@/app/agentConfigs';
 
-const EXPECTED_SCENARIOS = ['basicAssistant', 'simpleHandoff', 'customerServiceRetail', 'chatSupervisor', 'kate'];
+const EXPECTED_SCENARIOS = [
+  'graffity',
+  'basicAssistant',
+  'simpleHandoff',
+  'customerServiceRetail',
+  'chatSupervisor',
+  'kate',
+];
 
 describe('agentConfigs', () => {
   it('公開シナリオをMed/Tech抜きの許可リストに限定する', () => {
@@ -19,8 +26,14 @@ describe('agentConfigs', () => {
     expect(metaKeys).toEqual([...EXPECTED_SCENARIOS].sort());
   });
 
-  it('デフォルトシナリオが有効なキーに含まれている', () => {
-    expect(EXPECTED_SCENARIOS).toContain(defaultAgentSetKey);
+  it('デフォルトシナリオがGraffityに設定されている', () => {
+    expect(defaultAgentSetKey).toBe('graffity');
     expect(allAgentSets[defaultAgentSetKey]).toBeDefined();
+  });
+
+  it('Graffityシナリオが1人目のエージェントとしてGraffityを持つ', () => {
+    const graffity = allAgentSets.graffity;
+    expect(graffity).toBeDefined();
+    expect(graffity[0]?.name).toBe('Graffity');
   });
 });

@@ -3,10 +3,12 @@ import { customerServiceRetailScenario, customerServiceRetailCompanyName } from 
 import { chatSupervisorScenario, chatSupervisorCompanyName } from './chatSupervisor';
 import { basicAssistantScenario, basicAssistantCompanyName } from './basicAssistant';
 import { kateScenario, kateCompanyName } from './kate';
+import { graffityScenario, graffityCompanyName } from './graffity';
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Map of scenario key -> array of RealtimeAgent objects
 export const allAgentSets: Record<string, RealtimeAgent[]> = {
+  graffity: graffityScenario,
   basicAssistant: basicAssistantScenario,
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
@@ -24,12 +26,17 @@ export const scenarioMcpBindings: Record<string, ScenarioMcpBinding> = {
   simpleHandoff: { requiredMcpServers: [] },
   customerServiceRetail: { requiredMcpServers: [] },
   chatSupervisor: { requiredMcpServers: [] },
+  graffity: { requiredMcpServers: [] },
   kate: { requiredMcpServers: ['google-calendar'] },
 };
 
-export const defaultAgentSetKey = 'basicAssistant';
+export const defaultAgentSetKey = 'graffity';
 
 export const agentSetMetadata: Record<string, { label: string; companyName: string }> = {
+  graffity: {
+    label: 'Graffity (Default)',
+    companyName: graffityCompanyName,
+  },
   basicAssistant: {
     label: 'Basic Assistant (JP, Vision)',
     companyName: basicAssistantCompanyName,
