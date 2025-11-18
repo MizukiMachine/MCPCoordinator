@@ -350,19 +350,16 @@ function App() {
   });
 
   useEffect(() => {
-    if (
-      pendingVoiceReconnectRef.current &&
-      selectedAgentName &&
-      sessionStatus === 'DISCONNECTED'
-    ) {
+    if (pendingVoiceReconnectRef.current && sessionStatus === 'DISCONNECTED') {
       pendingVoiceReconnectRef.current = false;
       connectToRealtime('auto');
     }
-  }, [connectToRealtime, selectedAgentName, sessionStatus]);
+  }, [connectToRealtime, sessionStatus]);
 
-  // セッション切断時は常にデフォルトシナリオへリセットする
+  // セッション切断時のシナリオリセットは、音声のシナリオ切替による再接続を邪魔しないよう
+  // pendingVoiceReconnectRef が立っていない場合のみ行う
   useEffect(() => {
-    if (sessionStatus === 'DISCONNECTED') {
+    if (sessionStatus === 'DISCONNECTED' && !pendingVoiceReconnectRef.current) {
       setAgentSetKey(defaultAgentSetKey);
     }
   }, [sessionStatus]);
