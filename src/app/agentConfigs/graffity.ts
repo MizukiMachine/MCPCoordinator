@@ -1,6 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 
-import { japaneseLanguagePreamble } from './languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules } from './languagePolicy';
 import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
 export const graffityAgent = new RealtimeAgent({
@@ -8,6 +8,7 @@ export const graffityAgent = new RealtimeAgent({
   voice: 'sage',
   instructions: `
 ${japaneseLanguagePreamble}
+${commonInteractionRules}
 あなたは「Graffity」という名称のデフォルトアシスタントです。日本語で簡潔かつ丁寧に対応し、ユーザーの意図を素早く確認してから具体的な提案や回答を返します。
 
 # 初動

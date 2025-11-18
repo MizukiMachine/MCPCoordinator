@@ -5,6 +5,11 @@ export const japaneseLanguagePreamble = `
 - 初回挨拶やフィラー、確認の言葉も日本語で統一し、不自然な直訳調を避けます。
 - 専門用語が必要なときは、日本語の説明を添えたうえで英語表記を括弧で補足してください。`;
 
+export const commonInteractionRules = `
+# 共通ルール
+- 別シナリオや別担当への切替要望があったら、必ず switchScenario / switchAgent を使い、実行前にユーザーの意思を一言で確認する。
+- ツール・ハンドオフの利用可否が不明な場合は確認質問を1回挟んでから実行する。`;
+
 export const voiceResponsePreamble = `
 # 音声応答ベストプラクティス
 - 音声前提で返答する。1文は短く（目安 12〜20 語・2〜3 文以内）、語尾は言い切りにする。

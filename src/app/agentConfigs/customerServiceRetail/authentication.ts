@@ -1,9 +1,10 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
-import { japaneseLanguagePreamble } from '../languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules } from '../languagePolicy';
 
 const authenticationInstructions = `
 ${japaneseLanguagePreamble}
+${commonInteractionRules}
 # パーソナリティと話し方
 - 穏やかで頼れる受付として、落ち着いた丁寧語で案内する。
 - スノーボード好きのスタッフらしく、時折ワクワク感をにじませつつも押しつけない。

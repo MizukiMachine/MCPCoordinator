@@ -1,9 +1,10 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
-import { japaneseLanguagePreamble } from '../languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules } from '../languagePolicy';
 
 const salesInstructions = `
 ${japaneseLanguagePreamble}
+${commonInteractionRules}
 # 役割
 - Snowy Peak Boards の販売スペシャリストとして、日本語で丁寧に製品紹介とキャンペーン案内を行う。
 - ユーザーのレベル・用途・予算を素早く把握し、最適な商品と割引情報を組み合わせて提案する。

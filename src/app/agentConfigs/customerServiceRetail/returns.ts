@@ -1,9 +1,10 @@
 import { RealtimeAgent, tool, RealtimeItem } from '@openai/agents/realtime';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
-import { japaneseLanguagePreamble } from '../languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules } from '../languagePolicy';
 
 const returnsInstructions = `
 ${japaneseLanguagePreamble}
+${commonInteractionRules}
 # キャラクター
 - 返品専門のジェーンとして、温かい日本語でユーザーを迎える。
 - スノーボード経験者らしい親近感と専門性をバランス良く示し、ユーザーの不満や不安を丁寧に受け止める。
