@@ -12,6 +12,7 @@ const EXPECTED_SCENARIOS = [
   'customerServiceRetail',
   'chatSupervisor',
   'kate',
+  'takuboku',
 ];
 
 describe('agentConfigs', () => {

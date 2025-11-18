@@ -98,7 +98,7 @@ OpenAI Realtime API + Agents SDK デモです。
     - 「低fps連投を開始」: 1–2fpsなど低レートで連投します。デフォルトでは **初回のみ応答** を返し、以降はサイレントで送信します（レート/コスト抑制のため）。必要なら「毎フレーム応答」チェックか「次のフレームだけ応答」ボタンで一時的に応答を有効化できます。
   - **画像アップロード**: JPEG/PNG/WebP/PDF（最大8MB、`.env.sample`で変更可）をドラッグ&ドロップまたはファイル選択し、任意のキャプションを付けて送信できます。送信後はTranscriptにサムネイルを表示し、PDFはラベル表示します。
 - API: `/api/session/{id}/event` に `multipart/form-data` で `file` と任意の `text`/`triggerResponse` を送信します。レスポンスに `imageMetadata`（mimeType/size/storagePath）が返ります。JSONで `input_image` を送る既存形式も継続対応。
-- 環境変数: `IMAGE_UPLOAD_DIR`（保存先ディレクトリ）、`IMAGE_UPLOAD_MAX_BYTES`（最大バイト数）、`IMAGE_UPLOAD_ALLOWED_MIME_TYPES`（許可MIME、カンマ区切り）。プロトタイプではローカル保存のみで、後続タスクでS3/GCSアダプタに差し替え予定。
+- 環境変数: `IMAGE_UPLOAD_TARGET`=`local|gcs`（既定: local）、`IMAGE_UPLOAD_DIR`（local時の保存先）、`IMAGE_UPLOAD_GCS_BUCKET` / `IMAGE_UPLOAD_GCS_PREFIX`（gcs時のバケット／任意プレフィックス）、`IMAGE_UPLOAD_MAX_BYTES`、`IMAGE_UPLOAD_ALLOWED_MIME_TYPES`。本番は GCS 保存＋ライフサイクルルール（7日削除）を推奨。ローカル開発は従来通りディスク保存で動作します。
 - セーフガード: MIME/サイズバリデーションのみ実施。高度モデレーション/ウイルススキャンは後続タスクで差し込み可能な構造にしてあります。
 
 ## クライアント実装メモ（BFF利用時に必要な対応）

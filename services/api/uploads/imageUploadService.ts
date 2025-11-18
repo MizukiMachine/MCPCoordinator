@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { Storage } from '@google-cloud/storage';
 
 export type SupportedMimeType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
 
@@ -115,6 +116,71 @@ function inferExtension(mime: SupportedMimeType): string {
   }
 }
 
+interface SaveOptions {
+  fileName: string;
+  buffer: Buffer;
+  contentType: SupportedMimeType;
+  baseDir?: string;
+}
+
+interface ImageStorage {
+  save(options: SaveOptions): Promise<string /* storagePath */>;
+}
+
+class LocalImageStorage implements ImageStorage {
+  async save({ fileName, buffer, baseDir }: SaveOptions): Promise<string> {
+    const dir = baseDir ?? resolveBaseDir();
+    const storagePath = path.join(dir, fileName);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(storagePath, buffer);
+    return storagePath;
+  }
+}
+
+class GcsImageStorage implements ImageStorage {
+  private bucketName: string;
+  private prefix: string;
+  private storage: Storage;
+
+  constructor(bucketName: string, prefix?: string) {
+    this.bucketName = bucketName;
+    this.prefix = normalizePrefix(prefix);
+    this.storage = new Storage();
+  }
+
+  async save({ fileName, buffer, contentType }: SaveOptions): Promise<string> {
+    const objectPath = path.posix.join(this.prefix, fileName);
+    const bucket = this.storage.bucket(this.bucketName);
+    await bucket.file(objectPath).save(buffer, {
+      resumable: false,
+      contentType,
+      metadata: {
+        // Content-Typeを維持し、将来Signed URLなどを使う場合に備える
+        contentType,
+      },
+    });
+    return `gs://${bucket.name}/${objectPath}`;
+  }
+}
+
+function normalizePrefix(prefix?: string): string {
+  if (!prefix) return '';
+  return prefix.replace(/^\/+/, '').replace(/\/+$/, '');
+}
+
+function resolveStorage(): ImageStorage {
+  const target = (process.env.IMAGE_UPLOAD_TARGET ?? 'local').toLowerCase();
+  if (target === 'gcs') {
+    const bucket = process.env.IMAGE_UPLOAD_GCS_BUCKET;
+    if (!bucket) {
+      throw new ImageUploadError('GCS保存先バケット(IMAGE_UPLOAD_GCS_BUCKET)が未設定です', 'missing_file', 500);
+    }
+    const prefix = process.env.IMAGE_UPLOAD_GCS_PREFIX;
+    return new GcsImageStorage(bucket, prefix);
+  }
+  return new LocalImageStorage();
+}
+
 export async function persistImage(options: PersistOptions): Promise<StoredImage> {
   ensureFile(options.file);
   const maxBytes = options.maxBytes ?? resolveMaxBytes();
@@ -127,12 +193,14 @@ export async function persistImage(options: PersistOptions): Promise<StoredImage
   const mimeType = options.file.type as SupportedMimeType;
   const extension = inferExtension(mimeType);
   const id = randomUUID();
-  const dir = options.baseDir ?? resolveBaseDir();
   const fileName = `${options.sessionId}-${id}.${extension}`;
-  const storagePath = path.join(dir, fileName);
-
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(storagePath, buffer);
+  const storage = resolveStorage();
+  const storagePath = await storage.save({
+    fileName,
+    buffer,
+    contentType: mimeType,
+    baseDir: options.baseDir,
+  });
 
   return {
     id,

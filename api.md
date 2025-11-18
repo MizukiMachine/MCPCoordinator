@@ -151,13 +151,16 @@
 - 画像アップロード関連の環境変数
     
     
-    | 変数名 | 説明 |
-    | --- | --- |
-    | `IMAGE_UPLOAD_DIR` | 保存先ディレクトリ |
-    | `IMAGE_UPLOAD_MAX_BYTES` | 最大サイズ |
-    | `IMAGE_UPLOAD_ALLOWED_MIME_TYPES` | 許可 MIME（カンマ区切り） |
+| 変数名 | 説明 |
+| --- | --- |
+| `IMAGE_UPLOAD_TARGET` | `local` or `gcs`（既定: `local`） |
+| `IMAGE_UPLOAD_DIR` | `local` 時の保存先ディレクトリ |
+| `IMAGE_UPLOAD_GCS_BUCKET` | `gcs` 時に必須のバケット名 |
+| `IMAGE_UPLOAD_GCS_PREFIX` | `gcs` 時の任意プレフィックス（末尾スラなし推奨） |
+| `IMAGE_UPLOAD_MAX_BYTES` | 受け付ける最大サイズ |
+| `IMAGE_UPLOAD_ALLOWED_MIME_TYPES` | 許可 MIME（カンマ区切り） |
 
-※ 現状、サーバー保存してます！ 数日以内にGCSに保存する処理にする予定
+※ 本番は `IMAGE_UPLOAD_TARGET=gcs` 推奨。バケットのライフサイクルルールで7日後削除を設定してください。
 
 - 補足
     - キャプション未指定時は `[Image] <ファイル名 or MIME>` を自動付与
