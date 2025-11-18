@@ -3,6 +3,7 @@ import { customerServiceRetailScenario, customerServiceRetailCompanyName } from 
 import { chatSupervisorScenario, chatSupervisorCompanyName } from './chatSupervisor';
 import { kateScenario, kateCompanyName } from './kate';
 import { graffityScenario, graffityCompanyName } from './graffity';
+import { takubokuScenario, takubokuCompanyName } from './takuboku';
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Map of scenario key -> array of RealtimeAgent objects
@@ -12,6 +13,7 @@ export const allAgentSets: Record<string, RealtimeAgent[]> = {
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   kate: kateScenario,
+  takuboku: takubokuScenario,
 };
 
 export type ScenarioMcpBinding = {
@@ -25,6 +27,7 @@ export const scenarioMcpBindings: Record<string, ScenarioMcpBinding> = {
   chatSupervisor: { requiredMcpServers: [] },
   graffity: { requiredMcpServers: [] },
   kate: { requiredMcpServers: ['google-calendar'] },
+  takuboku: { requiredMcpServers: [] },
 };
 
 export const defaultAgentSetKey = 'graffity';
@@ -37,6 +40,10 @@ export const agentSetMetadata: Record<string, { label: string; companyName: stri
   basho: {
     label: 'バショウ (Haiku)',
     companyName: bashoCompanyName,
+  },
+  takuboku: {
+    label: 'タクボク (Tanka)',
+    companyName: takubokuCompanyName,
   },
   customerServiceRetail: {
     label: 'Retail Support (Snowy Peak)',

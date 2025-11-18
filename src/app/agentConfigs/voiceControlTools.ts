@@ -6,13 +6,13 @@ type AgentChangeHandler = (agentName: string) => Promise<{ success: boolean; mes
 export const switchScenarioTool = tool({
   name: 'switchScenario',
   description:
-    'Switches the entire conversation to a different scenario (e.g., graffity, basho, chatSupervisor, customerServiceRetail, kate). Use when the user explicitly requests a different experience.',
+    'Switches the entire conversation to a different scenario (e.g., graffity, basho, takuboku, chatSupervisor, customerServiceRetail, kate). Use when the user explicitly requests a different experience.',
   parameters: {
     type: 'object',
     properties: {
       scenarioKey: {
         type: 'string',
-        description: 'The scenario identifier to switch to (graffity, basho, chatSupervisor, customerServiceRetail, kate, etc.).',
+        description: 'The scenario identifier to switch to (graffity, basho, takuboku, chatSupervisor, customerServiceRetail, kate, etc.).',
       },
     },
     required: ['scenarioKey'],
