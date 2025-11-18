@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { EventEmitter } from 'events';
+import { getOrCreateTrace } from '@openai/agents-core';
 
 import type {
   ISessionManager,
@@ -17,6 +18,10 @@ import {
   type SessionStreamMessage,
 } from '../sessionHost';
 import type { VoiceControlDirective } from '@/shared/voiceControl';
+
+vi.mock('@openai/agents-core', () => ({
+  getOrCreateTrace: vi.fn((fn: () => any, _options?: unknown) => fn()),
+}));
 
 type HookedManager = ISessionManager<RealtimeAgent> & {
   hooks: SessionManagerHooks;
@@ -93,6 +98,7 @@ describe('SessionHost', () => {
   let envSnapshot: RealtimeEnvironmentSnapshot;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     managers = [];
     envSnapshot = {
       warnings: [],
@@ -362,5 +368,15 @@ describe('SessionHost', () => {
     });
 
     unsubscribe();
+  });
+
+  it('wraps session creation in tracing with a descriptive name', async () => {
+    const traceMock = vi.mocked(getOrCreateTrace);
+
+    await host.createSession({ agentSetKey: 'demo' });
+
+    expect(traceMock).toHaveBeenCalledTimes(1);
+    const [, options] = traceMock.mock.calls[0] ?? [];
+    expect(options?.name).toBe('session:create:demo');
   });
 });
