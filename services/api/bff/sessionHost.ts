@@ -210,6 +210,7 @@ export class SessionHost {
           serviceManager: this.registryServiceManager,
           logger: this.logger,
         });
+      this.eagerConnectMcpServers();
     }
 
     this.sessionManagerFactory =
@@ -238,6 +239,28 @@ export class SessionHost {
     return getOrCreateTrace(() => this.createSessionImpl(options), {
       name: `session:create:${options.agentSetKey}`,
     });
+  }
+
+  /**
+   * Optional eager MCP接続。環境変数 MCP_EAGER_SERVERS="google-calendar,foo"
+   * のように指定すると、BFF起動時にバックグラウンドで connect を開始する。
+   * 失敗しても起動を止めず、ログのみ出す。
+   */
+  private eagerConnectMcpServers() {
+    const list = (process.env.MCP_EAGER_SERVERS ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!this.mcpRegistry || list.length === 0) return;
+
+    // fire-and-forget
+    Promise.all(list.map((id) => this.mcpRegistry!.ensureServer(id)))
+      .then(() => {
+        this.logger.info('Eager MCP connect completed', { servers: list });
+      })
+      .catch((error) => {
+        this.logger.warn('Eager MCP connect failed (non-fatal)', { servers: list, error });
+      });
   }
 
   private async createSessionImpl(options: CreateSessionOptions): Promise<CreateSessionResult> {

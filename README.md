@@ -45,6 +45,7 @@ OpenAI Realtime API + Agents SDK デモです。
 - リポジトリにサブモジュールとして同梱された `external/google-calendar-mcp` を利用し、スクリプト内で `npm ci` / `npm run build` を自動実行してローカル起動します。ネットワーク依存を最小化したい場合や npm パッケージ版を避けたい場合に有効です。
 - シナリオキーは `kate`。`src/app/agentConfigs/index.ts` の `scenarioMcpBindings` で `requiredMcpServers: ['google-calendar']` を指定済み。
 - ブラウザで初回のみ Google 同意ポップアップを許可するとトークンが保存され、以降は予定取得・作成・変更・削除が可能です。
+- 初回遅延を避けたい場合は `.env` の `MCP_EAGER_SERVERS=google-calendar` を設定しておくと、BFF起動時にバックグラウンドで MCP 接続をウォームアップします（失敗しても起動は継続）。
 - 詳細な手順とトラブルシュートは `doc/google-calendar-mcp.md` を参照してください。
 
 ## プロジェクト概要
