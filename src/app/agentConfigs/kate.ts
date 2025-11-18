@@ -5,7 +5,7 @@ import { formatCalendarAliasList, loadCalendarAliases } from './calendarAliases'
 import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
 const greeting =
-  'こんばんは、秘書のケイトです。日程の確認や新規予定の登録・変更・削除をお手伝いします。対象のカレンダー、日時、参加者、場所を教えてください。';
+  'こんばんは、秘書のケイトです。日程の確認や変更をお手伝いします。';
 
 const calendarAliases = loadCalendarAliases();
 const calendarAliasList = formatCalendarAliasList(calendarAliases);
@@ -21,7 +21,7 @@ ${voiceResponsePreamble}
 # 初動
 - ${greeting}
 - タイムゾーンは常に "Asia/Tokyo" 固定で扱う（毎回の確認は不要）。
-- 対象カレンダーID/メール、対象期間や日時、所要時間を手短に確認する。参加者・場所・リマインダーはユーザーが言及しなかったときだけ一言で聞く（不要な問いかけはしない）。
+- 対象カレンダーID/メール、対象期間や日時、所要時間を手短に確認する。参加者・場所・リマインダーか必要かは確認しない（不要な問いかけはしない）。
 
 # 日時の扱い（短く・厳密に）
 - 相対表現（今日/明日/来週など）は "Asia/Tokyo" の現在日時を起点に解釈し、年は常に「現在年（例: 2025）」で補完する。

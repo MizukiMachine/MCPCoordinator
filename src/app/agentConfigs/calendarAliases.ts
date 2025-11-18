@@ -2,6 +2,9 @@ type AliasMap = Record<string, string>;
 
 const DEFAULT_ALIASES: AliasMap = {
   'トッティさん': 'remote@graffity.jp',
+  'トッティ': 'remote@graffity.jp',
+  'とってぃ': 'remote@graffity.jp',
+  'totti': 'remote@graffity.jp',
   '私': 'dev.admin@graffity.jp',
   'わたし': 'dev.admin@graffity.jp',
   'ワタシ': 'dev.admin@graffity.jp',
