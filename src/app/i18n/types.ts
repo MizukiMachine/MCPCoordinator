@@ -96,4 +96,10 @@ export interface UiText {
     errorNoStream: string;
     errorMaxSize: string;
   };
+  memory: {
+    resetLabel: string;
+    resettingLabel: string;
+    resetDoneBreadcrumb: string;
+    resetFailedPrefix: string;
+  };
 }

@@ -30,6 +30,13 @@ import { McpServerRegistry } from '../../mcp/mcpServerRegistry';
 import { getOrCreateTrace } from '@openai/agents-core';
 import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
 import { ServiceManager } from '../../../framework/di/ServiceManager';
+import {
+  buildReplayEvents,
+  getPersistentMemoryStore,
+  resolveMemoryKey,
+  toMemoryEntry,
+  type MemoryStore,
+} from '../../coreData/persistentMemory';
 
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const SESSION_MAX_LIFETIME_MS = 30 * 60 * 1000;
@@ -37,6 +44,9 @@ const HEARTBEAT_INTERVAL_MS = 25_000;
 const STREAM_IDLE_CLEANUP_MS = 60_000;
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_EVENTS = 10;
+const PERSISTENT_MEMORY_ENABLED = process.env.PERSISTENT_MEMORY_ENABLED !== 'false';
+const PERSISTENT_MEMORY_REPLAY_LIMIT =
+  Number(process.env.PERSISTENT_MEMORY_REPLAY_LIMIT ?? '') || 30;
 
 export type SessionCommand =
   | {
@@ -79,6 +89,8 @@ export interface CreateSessionOptions {
     outputText?: boolean;
   };
   metadata?: Record<string, any>;
+  memoryKey?: string | null;
+  memoryEnabled?: boolean;
 }
 
 export interface CreateSessionResult {
@@ -158,6 +170,7 @@ interface SessionContext {
   lastCommandAt: number;
   allowedModalities: Array<'text' | 'audio'>;
   textOutputEnabled: boolean;
+  memoryKey?: string | null;
 }
 
 interface DestroySessionOptions {
@@ -175,6 +188,7 @@ interface SessionHostDeps {
   scenarioMcpBindings?: Record<string, ScenarioMcpBinding>;
   mcpRegistry?: McpServerRegistry;
   serviceManager?: ServiceManager;
+  memoryStore?: MemoryStore;
 }
 
 export class SessionHost {
@@ -188,6 +202,7 @@ export class SessionHost {
   private readonly inspectEnvironment: () => RealtimeEnvironmentSnapshot;
   private readonly mcpRegistry?: McpServerRegistry;
   private readonly registryServiceManager?: ServiceManager;
+  private readonly memoryStore: MemoryStore;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -196,6 +211,7 @@ export class SessionHost {
     this.scenarioMap = deps.scenarioMap ?? allAgentSets;
     this.scenarioMcpBindings = deps.scenarioMcpBindings ?? scenarioMcpBindings;
     this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
+    this.memoryStore = deps.memoryStore ?? getPersistentMemoryStore();
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
@@ -305,6 +321,10 @@ export class SessionHost {
     const textOutputEnabled = options.clientCapabilities?.outputText !== false;
     const resolvedModalities = this.resolveRuntimeModalities(options, envSnapshot, textOutputEnabled);
     const reportedModalities = this.buildReportedModalities(options, envSnapshot, textOutputEnabled);
+    const memoryEnabled = options.memoryEnabled ?? PERSISTENT_MEMORY_ENABLED;
+    const memoryKey = memoryEnabled
+      ? resolveMemoryKey(options.agentSetKey, options.memoryKey, options.metadata)
+      : null;
 
     const manager = this.sessionManagerFactory(hooks);
     const now = this.now();
@@ -339,6 +359,7 @@ export class SessionHost {
       lastCommandAt: now,
       allowedModalities: reportedModalities,
       textOutputEnabled,
+      memoryKey,
     };
     contextRef = context;
 
@@ -369,10 +390,15 @@ export class SessionHost {
         clientCapabilities: options.clientCapabilities ?? {},
         requestScenarioChange: voiceControlHandlers.requestScenarioChange,
         requestAgentChange: voiceControlHandlers.requestAgentChange,
+        persistentMemoryKey: memoryKey ?? undefined,
       },
       outputGuardrails: [guardrail],
       outputModalities: resolvedModalities,
     });
+
+    if (memoryKey) {
+      await this.rehydratePersistentMemory(context);
+    }
 
     this.attachManagerListeners(context);
     this.startHeartbeat(context);
@@ -702,6 +728,9 @@ export class SessionHost {
     forwardableEvents.forEach((event) => {
       const handler = (...args: any[]) => {
         const payload = args.length > 1 ? args : args[0];
+        if (event === 'history_added' || event === 'history_updated') {
+          void this.persistMemoryFromHistory(context, payload);
+        }
         this.broadcast(context.id, event, payload);
         if (event === 'error') {
           const summary = this.normalizeRealtimeError(payload);
@@ -720,6 +749,59 @@ export class SessionHost {
       context.manager.on(event, handler as any);
       context.emitter.once('cleanup', () => context.manager.off(event, handler as any));
     });
+  }
+
+  private async rehydratePersistentMemory(context: SessionContext): Promise<void> {
+    if (!context.memoryKey) return;
+    try {
+      const entries = await this.memoryStore.read(context.memoryKey, PERSISTENT_MEMORY_REPLAY_LIMIT);
+      if (entries.length === 0) return;
+      const events = buildReplayEvents(entries, PERSISTENT_MEMORY_REPLAY_LIMIT);
+      events.forEach((ev) => {
+        try {
+          context.manager.sendEvent(ev);
+        } catch (error) {
+          this.logger.warn('Failed to send replay event', {
+            sessionId: context.id,
+            error,
+          });
+        }
+      });
+      this.logger.info('Persistent memory replayed', {
+        sessionId: context.id,
+        memoryKey: context.memoryKey,
+        count: events.length,
+      });
+    } catch (error) {
+      this.logger.warn('Failed to replay persistent memory', {
+        sessionId: context.id,
+        memoryKey: context.memoryKey,
+        error,
+      });
+    }
+  }
+
+  private async persistMemoryFromHistory(context: SessionContext, payload: any): Promise<void> {
+    if (!context.memoryKey || !PERSISTENT_MEMORY_ENABLED) return;
+    const items = Array.isArray(payload) ? payload : [payload];
+    const now = this.now();
+    const entries = items
+      .map((item) => toMemoryEntry(item, now))
+      .filter((entry): entry is NonNullable<ReturnType<typeof toMemoryEntry>> => Boolean(entry));
+
+    if (entries.length === 0) return;
+
+    await Promise.all(
+      entries.map((entry) =>
+        this.memoryStore.upsert(context.memoryKey!, entry).catch((error) => {
+          this.logger.warn('Failed to persist memory entry', {
+            sessionId: context.id,
+            memoryKey: context.memoryKey,
+            error,
+          });
+        }),
+      ),
+    );
   }
 
   private startHeartbeat(context: SessionContext) {

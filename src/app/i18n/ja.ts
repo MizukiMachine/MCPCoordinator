@@ -97,4 +97,10 @@ export const jaText: UiText = {
     errorNoStream: "カメラストリームが有効ではありません",
     errorMaxSize: "画像が最大サイズを超えました ({{maxSizeMb}}MB)",
   },
+  memory: {
+    resetLabel: "記憶をリセット",
+    resettingLabel: "リセット中...",
+    resetDoneBreadcrumb: "永続メモリをリセットしました",
+    resetFailedPrefix: "永続メモリのリセットに失敗しました: ",
+  },
 };
