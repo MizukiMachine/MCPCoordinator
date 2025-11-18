@@ -59,7 +59,7 @@ gcloud run deploy ${SERVICE_NAME} \
   `OPENAI_REALTIME_MODEL`, `OPENAI_REALTIME_TRANSCRIPTION_MODEL`, `OPENAI_REALTIME_VOICE`, `NEXT_PUBLIC_REALTIME_MODEL`, `NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL`, `NEXT_PUBLIC_REALTIME_VOICE`
 - **ログ転送**: `NEXT_PUBLIC_CLIENT_LOG_ENDPOINT`（デフォルト `/api/client-logs`）
 - **GCP/RAG**: `GOOGLE_CLOUD_PROJECT_ID`（既定で `PROJECT_ID`）、`GOOGLE_APPLICATION_CREDENTIALS`, `GEMINI_FILE_SEARCH_DATA_STORE`, `RAG_SOURCE_DRIVE_ID` などは必要に応じて Secret Manager から参照させる。
-- **ファイルアップロード**: `IMAGE_UPLOAD_DIR`（既定 `/app/var/uploads/images`）。永続化する場合は Cloud Storage をマウントする。
+- **ファイルアップロード**: `IMAGE_UPLOAD_TARGET=gcs` を推奨。`IMAGE_UPLOAD_GCS_BUCKET` と任意の `IMAGE_UPLOAD_GCS_PREFIX` を設定する。ローカル開発・簡易検証は `IMAGE_UPLOAD_TARGET=local` で `IMAGE_UPLOAD_DIR`（既定 `/app/var/uploads/images`）へ保存。
 
 ## 動作確認チェックリスト
 1. サービスURLにブラウザでアクセスし、通常の UI 表示とマイク権限が動作すること
