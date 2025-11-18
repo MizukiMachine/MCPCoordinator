@@ -138,7 +138,8 @@ export class OpenAIRealtimeTransport
       }),
       model: this.model,
       config: {
-        tracing: false,
+        // Disable realtime tracing until we intentionally wire observability
+        tracing: null,
         outputModalities: outputModalities ?? this.defaultOutputModalities,
         audio: {
           input: {
