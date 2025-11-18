@@ -4,14 +4,14 @@
 - Google カレンダー MCP を接続し、複数人の空き時間を比較して候補を提示・予定作成まで実行する。
 
 ## セットアップ手順
-1. `config/mcp.servers.yaml.example` を参考に、`config/mcp.servers.yaml` を配置（デフォルトは OSS 版 `nspady/google-calendar-mcp` を `npx @cocal/google-calendar-mcp` でSTDIO起動）。
+1. `config/mcp.servers.yaml.example` を参考に、`config/mcp.servers.yaml` を配置（デフォルトは OSS 版 `nspady/google-calendar-mcp` サブモジュールを `./scripts/run-google-calendar-mcp.sh` でローカルSTDIO起動。初回に `npm ci --install-strategy=hoisted --install-links=false` とビルドを自動実行し、失敗した場合は同スクリプトが `npm install --package-lock=false --install-strategy=hoisted --install-links=false` でリトライします）。
 2. GCP で「デスクトップ アプリ」OAuth クライアントを作成し、JSON をダウンロードして `.env` の `GOOGLE_OAUTH_CREDENTIALS` にファイルパスを設定。トークン保存先を `GOOGLE_CALENDAR_MCP_TOKEN_PATH` に設定する。
-3. サーバー起動後、ブラウザでシナリオ `Schedule Coordinator` を選択し、Google 同意ポップアップで許可する（初回のみ）。
+3. サーバー起動後、ブラウザでシナリオ `kate` を選択し、Google 同意ポップアップで許可する（初回のみ）。
 4. 別実装を使いたい場合は `config/mcp.servers.yaml` の `command/args` を差し替える。SSE/HTTP 版を使うなら `transport` と `url` を変更。
 5. 複数人比較を行う際は、参加者のメールアドレス/カレンダーIDと希望期間を必ず入力する。期間が広すぎるとレスポンスが長くなるため、まずは 1〜2 週間に絞るのが推奨。
 
 ## シナリオ仕様
-- シナリオキー: `scheduleCoordinator`
+- シナリオキー: `kate`
 - 必要な MCP: `google-calendar`（`scenarioMcpBindings.requiredMcpServers` で指定）
 - 代表的なツール呼び出しフロー:
   1. `list_calendars` で対象カレンダーの存在を確認（任意）

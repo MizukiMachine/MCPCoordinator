@@ -19,7 +19,8 @@
   cacheToolsList: true
 
 # Google カレンダー（OSS: nspady/google-calendar-mcp）
-# - transport: stdio でローカルプロセス起動。npx 経由で実行します。
+# - transport: stdio でローカルプロセス起動。リポジトリ配下のサブモジュール
+#   `external/google-calendar-mcp` を ./scripts/run-google-calendar-mcp.sh で起動します。
 # - 事前に GCP で「デスクトップ アプリ」OAuth クライアントを作成し、
 #   JSON をダウンロードして `GOOGLE_OAUTH_CREDENTIALS` で指すようにしてください。
 - id: google-calendar

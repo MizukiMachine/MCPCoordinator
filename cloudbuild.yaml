@@ -9,6 +9,10 @@ substitutions:
   _NEXT_PUBLIC_REALTIME_VOICE: marin
   _NEXT_PUBLIC_CLIENT_LOG_ENDPOINT: /api/client-logs
 steps:
+  # 0) Fetch submodules (google-calendar-mcp) so Docker build context includes MCP server
+  - name: "gcr.io/cloud-builders/git"
+    args: ["submodule", "update", "--init", "--recursive"]
+
   # 1) Build container image
   - name: "gcr.io/cloud-builders/docker"
     args:
