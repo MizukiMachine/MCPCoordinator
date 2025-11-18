@@ -30,6 +30,13 @@ import { McpServerRegistry } from '../../mcp/mcpServerRegistry';
 import { getOrCreateTrace } from '@openai/agents-core';
 import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
 import { ServiceManager } from '../../../framework/di/ServiceManager';
+import {
+  buildReplayEvents,
+  getPersistentMemoryStore,
+  resolveMemoryKey,
+  toMemoryEntry,
+  type MemoryStore,
+} from '../../coreData/persistentMemory';
 
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const SESSION_MAX_LIFETIME_MS = 30 * 60 * 1000;
@@ -37,6 +44,9 @@ const HEARTBEAT_INTERVAL_MS = 25_000;
 const STREAM_IDLE_CLEANUP_MS = 60_000;
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_EVENTS = 10;
+const PERSISTENT_MEMORY_ENABLED = process.env.PERSISTENT_MEMORY_ENABLED !== 'false';
+const PERSISTENT_MEMORY_REPLAY_LIMIT =
+  Number(process.env.PERSISTENT_MEMORY_REPLAY_LIMIT ?? '') || 30;
 
 export type SessionCommand =
   | {
@@ -79,6 +89,8 @@ export interface CreateSessionOptions {
     outputText?: boolean;
   };
   metadata?: Record<string, any>;
+  memoryKey?: string | null;
+  memoryEnabled?: boolean;
 }
 
 export interface CreateSessionResult {
@@ -158,6 +170,7 @@ interface SessionContext {
   lastCommandAt: number;
   allowedModalities: Array<'text' | 'audio'>;
   textOutputEnabled: boolean;
+  memoryKey?: string | null;
 }
 
 interface DestroySessionOptions {
@@ -175,6 +188,7 @@ interface SessionHostDeps {
   scenarioMcpBindings?: Record<string, ScenarioMcpBinding>;
   mcpRegistry?: McpServerRegistry;
   serviceManager?: ServiceManager;
+  memoryStore?: MemoryStore;
 }
 
 export class SessionHost {
@@ -188,6 +202,7 @@ export class SessionHost {
   private readonly inspectEnvironment: () => RealtimeEnvironmentSnapshot;
   private readonly mcpRegistry?: McpServerRegistry;
   private readonly registryServiceManager?: ServiceManager;
+  private readonly memoryStore: MemoryStore;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -196,6 +211,7 @@ export class SessionHost {
     this.scenarioMap = deps.scenarioMap ?? allAgentSets;
     this.scenarioMcpBindings = deps.scenarioMcpBindings ?? scenarioMcpBindings;
     this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
+    this.memoryStore = deps.memoryStore ?? getPersistentMemoryStore();
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
@@ -235,6 +251,37 @@ export class SessionHost {
     return new OpenAIAgentSetResolver(this.scenarioMap);
   }
 
+  private createSessionHooks(
+    sessionId: string,
+    contextRef: { current: SessionContext | null },
+  ): SessionManagerHooks {
+    const sessionLogger = createStructuredLogger({
+      component: 'bff.session',
+      defaultContext: { sessionId },
+    });
+    const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
+    return {
+      logger: sessionLogger,
+      metrics: sessionMetrics,
+      onStatusChange: (status) => {
+        if (contextRef.current) {
+          contextRef.current.status = status;
+          if (status === 'CONNECTED') {
+            contextRef.current.connectedAt = this.now();
+          }
+        }
+        this.broadcast(sessionId, 'status', { status });
+      },
+      // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
+      // （音声チャンクが二重再生されるのを防ぐため）。
+      onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
+      guardrail: {
+        onGuardrailTripped: (payload) =>
+          this.broadcast(sessionId, 'guardrail_tripped', payload ?? {}),
+      },
+    };
+  }
+
   async createSession(options: CreateSessionOptions): Promise<CreateSessionResult> {
     return getOrCreateTrace(() => this.createSessionImpl(options), {
       name: `session:create:${options.agentSetKey}`,
@@ -257,9 +304,11 @@ export class SessionHost {
     Promise.all(list.map((id) => this.mcpRegistry!.ensureServer(id)))
       .then(() => {
         this.logger.info('Eager MCP connect completed', { servers: list });
+        this.metrics.increment('bff.session.mcp_eager_success_total', 1, { servers: list.join(',') });
       })
       .catch((error) => {
         this.logger.warn('Eager MCP connect failed (non-fatal)', { servers: list, error });
+        this.metrics.increment('bff.session.mcp_eager_failure_total', 1, { servers: list.join(',') });
       });
   }
 
@@ -270,34 +319,8 @@ export class SessionHost {
     }
 
     const sessionId = this.generateSessionId();
-    const sessionLogger = createStructuredLogger({
-      component: 'bff.session',
-      defaultContext: { sessionId },
-    });
-
-    const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
-    let contextRef: SessionContext | null = null;
-
-    const hooks: SessionManagerHooks = {
-      logger: sessionLogger,
-      metrics: sessionMetrics,
-      onStatusChange: (status) => {
-        if (contextRef) {
-          contextRef.status = status;
-          if (status === 'CONNECTED') {
-            contextRef.connectedAt = this.now();
-          }
-        }
-        this.broadcast(sessionId, 'status', { status });
-      },
-      // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
-      // （音声チャンクが二重再生されるのを防ぐため）。
-      onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
-      guardrail: {
-        onGuardrailTripped: (payload) =>
-          this.broadcast(sessionId, 'guardrail_tripped', payload ?? {}),
-      },
-    };
+    const contextRef: { current: SessionContext | null } = { current: null };
+    const hooks = this.createSessionHooks(sessionId, contextRef);
 
     const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
     const guardrail = createModerationGuardrail(companyName);
@@ -305,8 +328,88 @@ export class SessionHost {
     const textOutputEnabled = options.clientCapabilities?.outputText !== false;
     const resolvedModalities = this.resolveRuntimeModalities(options, envSnapshot, textOutputEnabled);
     const reportedModalities = this.buildReportedModalities(options, envSnapshot, textOutputEnabled);
+    const memoryEnabled = options.memoryEnabled ?? PERSISTENT_MEMORY_ENABLED;
+    const memoryKey = memoryEnabled
+      ? resolveMemoryKey(options.agentSetKey, options.memoryKey, options.metadata)
+      : null;
 
     const manager = this.sessionManagerFactory(hooks);
+    const context = this.buildSessionContext({
+      sessionId,
+      options,
+      reportedModalities,
+      textOutputEnabled,
+      manager,
+      memoryKey,
+    });
+    contextRef.current = context;
+
+    this.sessions.set(sessionId, context);
+    const voiceControlHandlers = this.createVoiceControlHandlers(sessionId);
+
+    if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
+      this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
+        sessionId,
+        reason: envSnapshot.audio.reason,
+      });
+    }
+
+    if (envSnapshot.warnings.length > 0) {
+      this.logger.warn('Realtime environment warnings detected', {
+        sessionId,
+        warnings: envSnapshot.warnings,
+      });
+    }
+
+    await manager.connect({
+      agentSetKey: options.agentSetKey,
+      preferredAgentName: options.preferredAgentName,
+      getEphemeralKey: async () => this.getRealtimeApiKey(),
+      extraContext: {
+        sessionLabel: options.sessionLabel,
+        metadata: options.metadata ?? {},
+        clientCapabilities: options.clientCapabilities ?? {},
+        requestScenarioChange: voiceControlHandlers.requestScenarioChange,
+        requestAgentChange: voiceControlHandlers.requestAgentChange,
+        persistentMemoryKey: memoryKey ?? undefined,
+      },
+      outputGuardrails: [guardrail],
+      outputModalities: resolvedModalities,
+    });
+
+    if (memoryKey) {
+      await this.rehydratePersistentMemory(context);
+    }
+
+    this.attachManagerListeners(context);
+    this.startHeartbeat(context);
+    this.broadcast(sessionId, 'status', { status: 'CONNECTED' });
+    this.metrics.increment('bff.session.created_total');
+
+    return {
+      sessionId,
+      streamUrl: `/api/session/${sessionId}/stream`,
+      expiresAt: new Date(context.expiresAt).toISOString(),
+      heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
+      allowedModalities: reportedModalities,
+      textOutputEnabled,
+      capabilityWarnings: envSnapshot.warnings,
+      agentSet: {
+        key: options.agentSetKey,
+        primary: agentSet[0]?.name ?? 'agent',
+      },
+    };
+  }
+
+  private buildSessionContext(params: {
+    sessionId: string;
+    options: CreateSessionOptions;
+    reportedModalities: Array<'text' | 'audio'>;
+    textOutputEnabled: boolean;
+    manager: ISessionManager<RealtimeAgent>;
+    memoryKey: string | null;
+  }): SessionContext {
+    const { sessionId, options, reportedModalities, textOutputEnabled, manager, memoryKey } = params;
     const now = this.now();
     const context: SessionContext = {
       id: sessionId,
@@ -339,59 +442,9 @@ export class SessionHost {
       lastCommandAt: now,
       allowedModalities: reportedModalities,
       textOutputEnabled,
+      memoryKey,
     };
-    contextRef = context;
-
-    this.sessions.set(sessionId, context);
-    const voiceControlHandlers = this.createVoiceControlHandlers(sessionId);
-
-    if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
-      this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
-        sessionId,
-        reason: envSnapshot.audio.reason,
-      });
-    }
-
-    if (envSnapshot.warnings.length > 0) {
-      this.logger.warn('Realtime environment warnings detected', {
-        sessionId,
-        warnings: envSnapshot.warnings,
-      });
-    }
-
-    await manager.connect({
-      agentSetKey: options.agentSetKey,
-      preferredAgentName: options.preferredAgentName,
-      getEphemeralKey: async () => this.getRealtimeApiKey(),
-      extraContext: {
-        sessionLabel: options.sessionLabel,
-        metadata: options.metadata ?? {},
-        clientCapabilities: options.clientCapabilities ?? {},
-        requestScenarioChange: voiceControlHandlers.requestScenarioChange,
-        requestAgentChange: voiceControlHandlers.requestAgentChange,
-      },
-      outputGuardrails: [guardrail],
-      outputModalities: resolvedModalities,
-    });
-
-    this.attachManagerListeners(context);
-    this.startHeartbeat(context);
-    this.broadcast(sessionId, 'status', { status: 'CONNECTED' });
-    this.metrics.increment('bff.session.created_total');
-
-    return {
-      sessionId,
-      streamUrl: `/api/session/${sessionId}/stream`,
-      expiresAt: new Date(context.expiresAt).toISOString(),
-      heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
-      allowedModalities: reportedModalities,
-      textOutputEnabled,
-      capabilityWarnings: envSnapshot.warnings,
-      agentSet: {
-        key: options.agentSetKey,
-        primary: agentSet[0]?.name ?? 'agent',
-      },
-    };
+    return context;
   }
 
   async destroySession(sessionId: string, options: DestroySessionOptions = {}): Promise<boolean> {
@@ -431,74 +484,16 @@ export class SessionHost {
 
     switch (command.kind) {
       case 'input_text':
-        context.manager.sendEvent({
-          type: 'conversation.item.create',
-          item: {
-            type: 'message',
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: command.text,
-              },
-            ],
-          },
-        });
-        if (command.triggerResponse !== false) {
-          context.manager.sendEvent({
-            type: 'response.create',
-            response: { metadata: command.metadata ?? {} },
-          });
-        }
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+        this.handleInputText(context, command);
         break;
       case 'input_audio':
-        context.manager.sendEvent({
-          type: 'input_audio_buffer.append',
-          audio: command.audio,
-        });
-        if (command.commit !== false) {
-          context.manager.sendEvent({ type: 'input_audio_buffer.commit' });
-        }
-        if (command.response !== false) {
-          context.manager.sendEvent({ type: 'response.create' });
-        }
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
+        this.handleInputAudio(context, command);
         break;
       case 'input_image':
-        // Realtime API expects `image_url` (data URL or remote URL). Persisted images are stored as
-        // raw base64, so convert to a data URL if not already provided.
-        {
-          const imageUrl =
-            command.mimeType && command.data && command.data.startsWith('data:')
-              ? command.data
-              : `data:${command.mimeType ?? 'image/png'};base64,${command.data}`;
-          context.manager.sendEvent({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: command.text ?? '[Image uploaded]',
-                },
-                {
-                  type: 'input_image',
-                  image_url: imageUrl,
-                },
-              ],
-            },
-          });
-        }
-        if (command.triggerResponse !== false) {
-          context.manager.sendEvent({ type: 'response.create' });
-        }
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_image' });
+        this.handleInputImage(context, command);
         break;
       case 'event':
-        context.manager.sendEvent(command.event);
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'raw_event' });
+        this.handleRawEvent(context, command);
         break;
       case 'control':
         this.handleControlCommand(context, command);
@@ -508,6 +503,76 @@ export class SessionHost {
     }
 
     return context.manager.getStatus();
+  }
+
+  private handleInputText(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_text' }>) {
+    context.manager.sendEvent({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: command.text,
+          },
+        ],
+      },
+    });
+    if (command.triggerResponse !== false) {
+      context.manager.sendEvent({
+        type: 'response.create',
+        response: { metadata: command.metadata ?? {} },
+      });
+    }
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+  }
+
+  private handleInputAudio(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_audio' }>) {
+    context.manager.sendEvent({
+      type: 'input_audio_buffer.append',
+      audio: command.audio,
+    });
+    if (command.commit !== false) {
+      context.manager.sendEvent({ type: 'input_audio_buffer.commit' });
+    }
+    if (command.response !== false) {
+      context.manager.sendEvent({ type: 'response.create' });
+    }
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
+  }
+
+  private handleInputImage(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_image' }>) {
+    const imageUrl =
+      command.mimeType && command.data && command.data.startsWith('data:')
+        ? command.data
+        : `data:${command.mimeType ?? 'image/png'};base64,${command.data}`;
+    context.manager.sendEvent({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: command.text ?? '[Image uploaded]',
+          },
+          {
+            type: 'input_image',
+            image_url: imageUrl,
+          },
+        ],
+      },
+    });
+    if (command.triggerResponse !== false) {
+      context.manager.sendEvent({ type: 'response.create' });
+    }
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_image' });
+  }
+
+  private handleRawEvent(context: SessionContext, command: Extract<SessionCommand, { kind: 'event' }>) {
+    context.manager.sendEvent(command.event);
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'raw_event' });
   }
 
   subscribe(sessionId: string, subscriber: SessionSubscriber): () => void {
@@ -702,6 +767,9 @@ export class SessionHost {
     forwardableEvents.forEach((event) => {
       const handler = (...args: any[]) => {
         const payload = args.length > 1 ? args : args[0];
+        if (event === 'history_added' || event === 'history_updated') {
+          void this.persistMemoryFromHistory(context, payload);
+        }
         this.broadcast(context.id, event, payload);
         if (event === 'error') {
           const summary = this.normalizeRealtimeError(payload);
@@ -720,6 +788,59 @@ export class SessionHost {
       context.manager.on(event, handler as any);
       context.emitter.once('cleanup', () => context.manager.off(event, handler as any));
     });
+  }
+
+  private async rehydratePersistentMemory(context: SessionContext): Promise<void> {
+    if (!context.memoryKey) return;
+    try {
+      const entries = await this.memoryStore.read(context.memoryKey, PERSISTENT_MEMORY_REPLAY_LIMIT);
+      if (entries.length === 0) return;
+      const events = buildReplayEvents(entries, PERSISTENT_MEMORY_REPLAY_LIMIT);
+      events.forEach((ev) => {
+        try {
+          context.manager.sendEvent(ev);
+        } catch (error) {
+          this.logger.warn('Failed to send replay event', {
+            sessionId: context.id,
+            error,
+          });
+        }
+      });
+      this.logger.info('Persistent memory replayed', {
+        sessionId: context.id,
+        memoryKey: context.memoryKey,
+        count: events.length,
+      });
+    } catch (error) {
+      this.logger.warn('Failed to replay persistent memory', {
+        sessionId: context.id,
+        memoryKey: context.memoryKey,
+        error,
+      });
+    }
+  }
+
+  private async persistMemoryFromHistory(context: SessionContext, payload: any): Promise<void> {
+    if (!context.memoryKey || !PERSISTENT_MEMORY_ENABLED) return;
+    const items = Array.isArray(payload) ? payload : [payload];
+    const now = this.now();
+    const entries = items
+      .map((item) => toMemoryEntry(item, now))
+      .filter((entry): entry is NonNullable<ReturnType<typeof toMemoryEntry>> => Boolean(entry));
+
+    if (entries.length === 0) return;
+
+    await Promise.all(
+      entries.map((entry) =>
+        this.memoryStore.upsert(context.memoryKey!, entry).catch((error) => {
+          this.logger.warn('Failed to persist memory entry', {
+            sessionId: context.id,
+            memoryKey: context.memoryKey,
+            error,
+          });
+        }),
+      ),
+    );
   }
 
   private startHeartbeat(context: SessionContext) {
@@ -823,12 +944,11 @@ const AUDIO_REQUIREMENT_KEYS = [
   'OPENAI_REALTIME_VOICE',
 ] as const;
 
-const PLACEHOLDER_KEY_PATTERN = /^sk[-_]?your/i;
-
 export function inspectRealtimeEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): RealtimeEnvironmentSnapshot {
   const warnings: string[] = [];
+  const PLACEHOLDER_KEY_PATTERN = /^sk[-_]?your/i;
 
   const apiKey =
     env.OPENAI_API_KEY ?? env.OPENAI_REALTIME_API_KEY ?? env.OPENAI_API_KEY_VOICE ?? '';

@@ -37,20 +37,20 @@ const SERVER_VAD_TEMPLATE = {
   silence_duration_ms: 500,
 };
 
-const scenarioAliases: Record<string, string> = {
-  kate: 'kate',
-  'kateシナリオ': 'kate',
-  'ケイト': 'kate',
-  'ケイトシナリオ': 'kate',
-  'ｹｲﾄ': 'kate',
-  'けいと': 'kate',
-};
+function resolveBffKeyForClient(): string | undefined {
+  if (typeof window !== 'undefined' && (window as any).__MCPC_BFF_KEY) {
+    return (window as any).__MCPC_BFF_KEY;
+  }
+  return process.env.NEXT_PUBLIC_BFF_KEY;
+}
 
-function normalizeScenarioKey(rawKey: string): string {
-  if (!rawKey) return rawKey;
-  const trimmed = rawKey.trim();
-  const lower = trimmed.toLowerCase();
-  return scenarioAliases[lower] ?? scenarioAliases[trimmed] ?? lower;
+function buildBffHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const bffKey = resolveBffKeyForClient();
+  if (bffKey) {
+    headers['x-bff-key'] = bffKey;
+  }
+  return headers;
 }
 
 function App() {
@@ -58,6 +58,20 @@ function App() {
   const router = useRouter();
   const pathname = usePathname();
   const shouldAutoConnect = searchParams.get("autoConnect") === "true";
+  const scenarioAliases: Record<string, string> = {
+    kate: 'kate',
+    'kateシナリオ': 'kate',
+    'ケイト': 'kate',
+    'ケイトシナリオ': 'kate',
+    'ｹｲﾄ': 'kate',
+    'けいと': 'kate',
+  };
+  const normalizeScenarioKey = (rawKey: string): string => {
+    if (!rawKey) return rawKey;
+    const trimmed = rawKey.trim();
+    const lower = trimmed.toLowerCase();
+    return scenarioAliases[lower] ?? scenarioAliases[trimmed] ?? lower;
+  };
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -83,6 +97,7 @@ function App() {
     RealtimeAgent[] | null
   >(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [isResettingMemory, setIsResettingMemory] = useState<boolean>(false);
 
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
@@ -328,8 +343,8 @@ function App() {
       });
     } catch (err) {
       console.error("Error connecting via SDK:", err);
-      setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
       setSessionStatus("DISCONNECTED");
+      setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
     }
   }, [addTranscriptBreadcrumb, agentSetKey, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
@@ -497,6 +512,36 @@ function App() {
     window.location.replace(url.toString());
   };
 
+  const handleResetMemory = useCallback(async () => {
+    setIsResettingMemory(true);
+    try {
+      const response = await fetch('/api/memory', {
+        method: 'DELETE',
+        headers: buildBffHeaders(),
+        body: JSON.stringify({
+          agentSetKey: normalizeScenarioKey(agentSetKey),
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const reason = payload?.message ?? payload?.error ?? 'unknown';
+        throw new Error(reason);
+      }
+      addTranscriptBreadcrumb(uiText.memory.resetDoneBreadcrumb, { agentSetKey });
+      setSessionError(null);
+    } catch (error) {
+      const message = (error as Error)?.message ?? 'unknown';
+      setSessionError(`${uiText.memory.resetFailedPrefix}${message}`);
+    } finally {
+      setIsResettingMemory(false);
+    }
+  }, [
+    addTranscriptBreadcrumb,
+    agentSetKey,
+    uiText.memory.resetDoneBreadcrumb,
+    uiText.memory.resetFailedPrefix,
+  ]);
+
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
     if (storedPushToTalkUI) {
@@ -636,6 +681,14 @@ function App() {
               </div>
             </div>
           )}
+
+          <button
+            onClick={handleResetMemory}
+            disabled={isResettingMemory}
+            className="ml-6 px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isResettingMemory ? uiText.memory.resettingLabel : uiText.memory.resetLabel}
+          </button>
         </div>
       </div>
       {sessionError && (

@@ -18,6 +18,7 @@ import {
   type SessionStreamMessage,
 } from '../sessionHost';
 import type { VoiceControlDirective } from '@/shared/voiceControl';
+import type { MemoryEntry, MemoryStore } from '../../../coreData/persistentMemory';
 
 vi.mock('@openai/agents-core', () => ({
   getOrCreateTrace: vi.fn((fn: () => any, _options?: unknown) => fn()),
@@ -28,6 +29,7 @@ type HookedManager = ISessionManager<RealtimeAgent> & {
   connectMock: ReturnType<typeof vi.fn>;
   sendEventMock: ReturnType<typeof vi.fn>;
   lastConnectOptions: SessionConnectOptions<RealtimeAgent> | null;
+  sentEvents: any[];
 };
 
 class FakeSessionManager extends EventEmitter implements HookedManager {
@@ -36,6 +38,7 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
   public connectMock = vi.fn();
   public sendEventMock = vi.fn();
   public lastConnectOptions: SessionConnectOptions<RealtimeAgent> | null = null;
+  public sentEvents: any[] = [];
 
   constructor(private readonly hooksFactory: SessionManagerHooks) {
     super();
@@ -74,6 +77,7 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
 
   sendEvent(payload: Record<string, any>): void {
     this.sendEventMock(payload);
+    this.sentEvents.push(payload);
     this.emit('transport_event', payload);
   }
 
@@ -81,6 +85,35 @@ class FakeSessionManager extends EventEmitter implements HookedManager {
   mute(): void {}
   pushToTalkStart(): void {}
   pushToTalkStop(): void {}
+}
+
+class InMemoryMemoryStore implements MemoryStore {
+  constructor(private data: Record<string, MemoryEntry[]> = {}) {}
+
+  async read(key: string, limit?: number): Promise<MemoryEntry[]> {
+    const list = this.data[key] ?? [];
+    if (typeof limit === 'number' && limit > 0) {
+      return list.slice(-limit);
+    }
+    return [...list];
+  }
+
+  async upsert(key: string, entry: MemoryEntry): Promise<void> {
+    const list = this.data[key] ?? [];
+    const idx = entry.itemId
+      ? list.findIndex((item) => item.itemId === entry.itemId)
+      : -1;
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...entry };
+    } else {
+      list.push(entry);
+    }
+    this.data[key] = list;
+  }
+
+  async reset(key: string): Promise<void> {
+    delete this.data[key];
+  }
 }
 
 describe('SessionHost', () => {
@@ -155,6 +188,40 @@ describe('SessionHost', () => {
     await expect(
       host.handleCommand(sessionId, { kind: 'event', event: { type: 'overflow' } }),
     ).rejects.toThrow(SessionHostError);
+  });
+
+  it('rehydrates and persists persistent memory', async () => {
+    const seededAt = new Date('2025-01-01T00:00:00.000Z').toISOString();
+    const memoryStore = new InMemoryMemoryStore({
+      demo: [{ role: 'assistant', text: '以前の会話', createdAt: seededAt }],
+    });
+    managers = [];
+    host = new SessionHost({
+      scenarioMap,
+      sessionManagerFactory: (hooks) => {
+        const mgr = new FakeSessionManager(hooks);
+        managers.push(mgr);
+        return mgr;
+      },
+      now: () => Date.now(),
+      envInspector: () => envSnapshot,
+      memoryStore,
+    });
+
+    await host.createSession({ agentSetKey: 'demo' });
+    const manager = managers[0]!;
+    expect(manager.sentEvents.some((ev) => ev?.metadata?.source === 'persistent_memory')).toBe(true);
+
+    manager.emit('history_added', {
+      type: 'message',
+      role: 'user',
+      content: [{ type: 'input_text', text: '新しい発話' }],
+      itemId: 'item-new',
+    });
+
+    const stored = await memoryStore.read('demo');
+    expect(stored.some((entry) => entry.text === '新しい発話')).toBe(true);
+    expect(stored.find((entry) => entry.text === '以前の会話')?.createdAt).toBe(seededAt);
   });
 
   it('broadcasts SSE messages to subscribers', async () => {

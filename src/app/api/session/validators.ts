@@ -4,6 +4,8 @@ export const createSessionSchema = z.object({
   agentSetKey: z.string().min(1),
   preferredAgentName: z.string().min(1).optional(),
   sessionLabel: z.string().min(1).optional(),
+  memoryKey: z.string().min(1).optional(),
+  memoryEnabled: z.boolean().optional(),
   clientCapabilities: z
     .object({
       audio: z.boolean().optional(),
