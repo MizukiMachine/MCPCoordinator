@@ -42,6 +42,7 @@ OpenAI Realtime API + Agents SDK デモです。
 ### Google カレンダー MCP（scheduleCoordinator シナリオ）
 - サーバー設定例は `config/mcp.servers.yaml.example` の `google-calendar` エントリを参照。`config/mcp.servers.yaml` にコピーして利用します。
 - デフォルトは OSS 版 `nspady/google-calendar-mcp` を `./scripts/run-google-calendar-mcp.sh` 経由で STDIO 起動する構成です。`.env` の `GOOGLE_OAUTH_CREDENTIALS` にデスクトップアプリ用OAuth JSONを、`GOOGLE_CALENDAR_MCP_TOKEN_PATH` にトークン保存先を指定してください。
+- リポジトリにサブモジュールとして同梱された `external/google-calendar-mcp` を利用し、スクリプト内で `npm ci` / `npm run build` を自動実行してローカル起動します。ネットワーク依存を最小化したい場合や npm パッケージ版を避けたい場合に有効です。
 - シナリオキーは `scheduleCoordinator`。`src/app/agentConfigs/index.ts` の `scenarioMcpBindings` で `requiredMcpServers: ['google-calendar']` を指定済み。
 - ブラウザで初回のみ Google 同意ポップアップを許可するとトークンが保存され、以降は音声主体でも予定取得・作成が可能です。
 - 詳細な手順とトラブルシュートは `doc/google-calendar-mcp.md` を参照してください。

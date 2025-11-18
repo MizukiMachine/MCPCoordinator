@@ -1,4 +1,4 @@
-# nspady/google-calendar-mcp (OSS) を npx 経由で STDIO 接続する設定例
+# nspady/google-calendar-mcp (OSS) をサブモジュールから STDIO 接続する設定例
 # 事前に Google Cloud で「デスクトップ アプリ」OAuth クレデンシャルを発行し、
 # その JSON のパスを `GOOGLE_OAUTH_CREDENTIALS` に設定してください。
 - id: google-calendar
