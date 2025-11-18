@@ -37,22 +37,6 @@ const SERVER_VAD_TEMPLATE = {
   silence_duration_ms: 500,
 };
 
-const scenarioAliases: Record<string, string> = {
-  kate: 'kate',
-  'kateシナリオ': 'kate',
-  'ケイト': 'kate',
-  'ケイトシナリオ': 'kate',
-  'ｹｲﾄ': 'kate',
-  'けいと': 'kate',
-};
-
-function normalizeScenarioKey(rawKey: string): string {
-  if (!rawKey) return rawKey;
-  const trimmed = rawKey.trim();
-  const lower = trimmed.toLowerCase();
-  return scenarioAliases[lower] ?? scenarioAliases[trimmed] ?? lower;
-}
-
 function resolveBffKeyForClient(): string | undefined {
   if (typeof window !== 'undefined' && (window as any).__MCPC_BFF_KEY) {
     return (window as any).__MCPC_BFF_KEY;
@@ -74,6 +58,20 @@ function App() {
   const router = useRouter();
   const pathname = usePathname();
   const shouldAutoConnect = searchParams.get("autoConnect") === "true";
+  const scenarioAliases: Record<string, string> = {
+    kate: 'kate',
+    'kateシナリオ': 'kate',
+    'ケイト': 'kate',
+    'ケイトシナリオ': 'kate',
+    'ｹｲﾄ': 'kate',
+    'けいと': 'kate',
+  };
+  const normalizeScenarioKey = (rawKey: string): string => {
+    if (!rawKey) return rawKey;
+    const trimmed = rawKey.trim();
+    const lower = trimmed.toLowerCase();
+    return scenarioAliases[lower] ?? scenarioAliases[trimmed] ?? lower;
+  };
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -345,8 +343,8 @@ function App() {
       });
     } catch (err) {
       console.error("Error connecting via SDK:", err);
-      setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
       setSessionStatus("DISCONNECTED");
+      setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
     }
   }, [addTranscriptBreadcrumb, agentSetKey, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 

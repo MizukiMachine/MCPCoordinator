@@ -191,7 +191,7 @@ describe('SessionHost', () => {
   });
 
   it('rehydrates and persists persistent memory', async () => {
-    const seededAt = new Date().toISOString();
+    const seededAt = new Date('2025-01-01T00:00:00.000Z').toISOString();
     const memoryStore = new InMemoryMemoryStore({
       demo: [{ role: 'assistant', text: '以前の会話', createdAt: seededAt }],
     });
@@ -221,6 +221,7 @@ describe('SessionHost', () => {
 
     const stored = await memoryStore.read('demo');
     expect(stored.some((entry) => entry.text === '新しい発話')).toBe(true);
+    expect(stored.find((entry) => entry.text === '以前の会話')?.createdAt).toBe(seededAt);
   });
 
   it('broadcasts SSE messages to subscribers', async () => {

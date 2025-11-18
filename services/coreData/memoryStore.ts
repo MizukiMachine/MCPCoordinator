@@ -52,8 +52,10 @@ export class FileMemoryStore implements MemoryStore {
       const payload = await this.load();
       const list = payload.memories[key] ? [...payload.memories[key]!] : [];
       const idx =
-        entry.itemId && list.findIndex((item) => item.itemId === entry.itemId);
-      if (typeof idx === 'number' && idx >= 0) {
+        entry.itemId !== undefined && entry.itemId !== null
+          ? list.findIndex((item) => item.itemId === entry.itemId)
+          : -1;
+      if (idx >= 0) {
         const createdAt = list[idx].createdAt ?? entry.createdAt;
         list.splice(idx, 1);
         list.push({ ...entry, createdAt });
@@ -81,10 +83,10 @@ export class FileMemoryStore implements MemoryStore {
   }
 
   private async exclusive<T>(fn: () => Promise<T>): Promise<T> {
-    const next = this.mutex.then(fn, fn);
-    // Ensure mutex is always resolved to avoid lock-ups after errors
-    this.mutex = next.then(() => undefined, () => undefined);
-    return next;
+    const run = this.mutex.then(fn, fn);
+    // Ensure mutex is always released even when fn throws
+    this.mutex = run.finally(() => undefined);
+    return run;
   }
 
   private async load(): Promise<PersistedPayload> {

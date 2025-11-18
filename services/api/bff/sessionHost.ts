@@ -251,6 +251,37 @@ export class SessionHost {
     return new OpenAIAgentSetResolver(this.scenarioMap);
   }
 
+  private createSessionHooks(
+    sessionId: string,
+    contextRef: { current: SessionContext | null },
+  ): SessionManagerHooks {
+    const sessionLogger = createStructuredLogger({
+      component: 'bff.session',
+      defaultContext: { sessionId },
+    });
+    const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
+    return {
+      logger: sessionLogger,
+      metrics: sessionMetrics,
+      onStatusChange: (status) => {
+        if (contextRef.current) {
+          contextRef.current.status = status;
+          if (status === 'CONNECTED') {
+            contextRef.current.connectedAt = this.now();
+          }
+        }
+        this.broadcast(sessionId, 'status', { status });
+      },
+      // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
+      // （音声チャンクが二重再生されるのを防ぐため）。
+      onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
+      guardrail: {
+        onGuardrailTripped: (payload) =>
+          this.broadcast(sessionId, 'guardrail_tripped', payload ?? {}),
+      },
+    };
+  }
+
   async createSession(options: CreateSessionOptions): Promise<CreateSessionResult> {
     return getOrCreateTrace(() => this.createSessionImpl(options), {
       name: `session:create:${options.agentSetKey}`,
@@ -273,9 +304,11 @@ export class SessionHost {
     Promise.all(list.map((id) => this.mcpRegistry!.ensureServer(id)))
       .then(() => {
         this.logger.info('Eager MCP connect completed', { servers: list });
+        this.metrics.increment('bff.session.mcp_eager_success_total', 1, { servers: list.join(',') });
       })
       .catch((error) => {
         this.logger.warn('Eager MCP connect failed (non-fatal)', { servers: list, error });
+        this.metrics.increment('bff.session.mcp_eager_failure_total', 1, { servers: list.join(',') });
       });
   }
 
@@ -286,34 +319,8 @@ export class SessionHost {
     }
 
     const sessionId = this.generateSessionId();
-    const sessionLogger = createStructuredLogger({
-      component: 'bff.session',
-      defaultContext: { sessionId },
-    });
-
-    const sessionMetrics = createConsoleMetricEmitter(`bff.session.${sessionId}`);
-    let contextRef: SessionContext | null = null;
-
-    const hooks: SessionManagerHooks = {
-      logger: sessionLogger,
-      metrics: sessionMetrics,
-      onStatusChange: (status) => {
-        if (contextRef) {
-          contextRef.status = status;
-          if (status === 'CONNECTED') {
-            contextRef.connectedAt = this.now();
-          }
-        }
-        this.broadcast(sessionId, 'status', { status });
-      },
-      // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
-      // （音声チャンクが二重再生されるのを防ぐため）。
-      onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
-      guardrail: {
-        onGuardrailTripped: (payload) =>
-          this.broadcast(sessionId, 'guardrail_tripped', payload ?? {}),
-      },
-    };
+    const contextRef: { current: SessionContext | null } = { current: null };
+    const hooks = this.createSessionHooks(sessionId, contextRef);
 
     const companyName = agentSetMetadata[options.agentSetKey]?.companyName ?? 'DefaultCo';
     const guardrail = createModerationGuardrail(companyName);
@@ -327,41 +334,15 @@ export class SessionHost {
       : null;
 
     const manager = this.sessionManagerFactory(hooks);
-    const now = this.now();
-    const context: SessionContext = {
-      id: sessionId,
-      createdAt: now,
-      expiresAt: now + SESSION_TTL_MS,
-      maxLifetimeAt: now + SESSION_MAX_LIFETIME_MS,
-      status: 'DISCONNECTED',
-      agentSetKey: options.agentSetKey,
-      preferredAgentName: options.preferredAgentName,
-      manager,
-      subscribers: new Map(),
-      emitter: new EventEmitter(),
-      destroy: async (destroyOptions: DestroySessionOptions = {}) => {
-        this.clearTimers(context);
-        this.sessions.delete(sessionId);
-        try {
-          manager.disconnect();
-        } catch (error) {
-          this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
-        }
-        const reason = destroyOptions.reason ?? 'unspecified';
-        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
-        this.logger.info('Session destroyed', { sessionId, reason, initiatedBy });
-        this.metrics.increment('bff.session.closed_total', 1, {
-          initiatedBy,
-          reason,
-        });
-      },
-      rateLimiter: { hits: [] },
-      lastCommandAt: now,
-      allowedModalities: reportedModalities,
+    const context = this.buildSessionContext({
+      sessionId,
+      options,
+      reportedModalities,
       textOutputEnabled,
+      manager,
       memoryKey,
-    };
-    contextRef = context;
+    });
+    contextRef.current = context;
 
     this.sessions.set(sessionId, context);
     const voiceControlHandlers = this.createVoiceControlHandlers(sessionId);
@@ -420,6 +401,52 @@ export class SessionHost {
     };
   }
 
+  private buildSessionContext(params: {
+    sessionId: string;
+    options: CreateSessionOptions;
+    reportedModalities: Array<'text' | 'audio'>;
+    textOutputEnabled: boolean;
+    manager: ISessionManager<RealtimeAgent>;
+    memoryKey: string | null;
+  }): SessionContext {
+    const { sessionId, options, reportedModalities, textOutputEnabled, manager, memoryKey } = params;
+    const now = this.now();
+    const context: SessionContext = {
+      id: sessionId,
+      createdAt: now,
+      expiresAt: now + SESSION_TTL_MS,
+      maxLifetimeAt: now + SESSION_MAX_LIFETIME_MS,
+      status: 'DISCONNECTED',
+      agentSetKey: options.agentSetKey,
+      preferredAgentName: options.preferredAgentName,
+      manager,
+      subscribers: new Map(),
+      emitter: new EventEmitter(),
+      destroy: async (destroyOptions: DestroySessionOptions = {}) => {
+        this.clearTimers(context);
+        this.sessions.delete(sessionId);
+        try {
+          manager.disconnect();
+        } catch (error) {
+          this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
+        }
+        const reason = destroyOptions.reason ?? 'unspecified';
+        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
+        this.logger.info('Session destroyed', { sessionId, reason, initiatedBy });
+        this.metrics.increment('bff.session.closed_total', 1, {
+          initiatedBy,
+          reason,
+        });
+      },
+      rateLimiter: { hits: [] },
+      lastCommandAt: now,
+      allowedModalities: reportedModalities,
+      textOutputEnabled,
+      memoryKey,
+    };
+    return context;
+  }
+
   async destroySession(sessionId: string, options: DestroySessionOptions = {}): Promise<boolean> {
     const context = this.sessions.get(sessionId);
     if (!context) {
@@ -457,74 +484,16 @@ export class SessionHost {
 
     switch (command.kind) {
       case 'input_text':
-        context.manager.sendEvent({
-          type: 'conversation.item.create',
-          item: {
-            type: 'message',
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: command.text,
-              },
-            ],
-          },
-        });
-        if (command.triggerResponse !== false) {
-          context.manager.sendEvent({
-            type: 'response.create',
-            response: { metadata: command.metadata ?? {} },
-          });
-        }
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+        this.handleInputText(context, command);
         break;
       case 'input_audio':
-        context.manager.sendEvent({
-          type: 'input_audio_buffer.append',
-          audio: command.audio,
-        });
-        if (command.commit !== false) {
-          context.manager.sendEvent({ type: 'input_audio_buffer.commit' });
-        }
-        if (command.response !== false) {
-          context.manager.sendEvent({ type: 'response.create' });
-        }
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
+        this.handleInputAudio(context, command);
         break;
       case 'input_image':
-        // Realtime API expects `image_url` (data URL or remote URL). Persisted images are stored as
-        // raw base64, so convert to a data URL if not already provided.
-        {
-          const imageUrl =
-            command.mimeType && command.data && command.data.startsWith('data:')
-              ? command.data
-              : `data:${command.mimeType ?? 'image/png'};base64,${command.data}`;
-          context.manager.sendEvent({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: command.text ?? '[Image uploaded]',
-                },
-                {
-                  type: 'input_image',
-                  image_url: imageUrl,
-                },
-              ],
-            },
-          });
-        }
-        if (command.triggerResponse !== false) {
-          context.manager.sendEvent({ type: 'response.create' });
-        }
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_image' });
+        this.handleInputImage(context, command);
         break;
       case 'event':
-        context.manager.sendEvent(command.event);
-        this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'raw_event' });
+        this.handleRawEvent(context, command);
         break;
       case 'control':
         this.handleControlCommand(context, command);
@@ -534,6 +503,76 @@ export class SessionHost {
     }
 
     return context.manager.getStatus();
+  }
+
+  private handleInputText(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_text' }>) {
+    context.manager.sendEvent({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: command.text,
+          },
+        ],
+      },
+    });
+    if (command.triggerResponse !== false) {
+      context.manager.sendEvent({
+        type: 'response.create',
+        response: { metadata: command.metadata ?? {} },
+      });
+    }
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+  }
+
+  private handleInputAudio(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_audio' }>) {
+    context.manager.sendEvent({
+      type: 'input_audio_buffer.append',
+      audio: command.audio,
+    });
+    if (command.commit !== false) {
+      context.manager.sendEvent({ type: 'input_audio_buffer.commit' });
+    }
+    if (command.response !== false) {
+      context.manager.sendEvent({ type: 'response.create' });
+    }
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
+  }
+
+  private handleInputImage(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_image' }>) {
+    const imageUrl =
+      command.mimeType && command.data && command.data.startsWith('data:')
+        ? command.data
+        : `data:${command.mimeType ?? 'image/png'};base64,${command.data}`;
+    context.manager.sendEvent({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: command.text ?? '[Image uploaded]',
+          },
+          {
+            type: 'input_image',
+            image_url: imageUrl,
+          },
+        ],
+      },
+    });
+    if (command.triggerResponse !== false) {
+      context.manager.sendEvent({ type: 'response.create' });
+    }
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_image' });
+  }
+
+  private handleRawEvent(context: SessionContext, command: Extract<SessionCommand, { kind: 'event' }>) {
+    context.manager.sendEvent(command.event);
+    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'raw_event' });
   }
 
   subscribe(sessionId: string, subscriber: SessionSubscriber): () => void {
@@ -905,12 +944,11 @@ const AUDIO_REQUIREMENT_KEYS = [
   'OPENAI_REALTIME_VOICE',
 ] as const;
 
-const PLACEHOLDER_KEY_PATTERN = /^sk[-_]?your/i;
-
 export function inspectRealtimeEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): RealtimeEnvironmentSnapshot {
   const warnings: string[] = [];
+  const PLACEHOLDER_KEY_PATTERN = /^sk[-_]?your/i;
 
   const apiKey =
     env.OPENAI_API_KEY ?? env.OPENAI_REALTIME_API_KEY ?? env.OPENAI_API_KEY_VOICE ?? '';
