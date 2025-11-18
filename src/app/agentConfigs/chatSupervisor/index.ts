@@ -1,13 +1,14 @@
 import { RealtimeAgent } from '@openai/agents/realtime'
 import { getNextResponseFromSupervisor } from './supervisorAgent';
 import { switchScenarioTool, switchAgentTool } from '../voiceControlTools';
-import { japaneseLanguagePreamble } from '../languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules } from '../languagePolicy';
 
 export const chatAgent = new RealtimeAgent({
   name: 'chatAgent',
   voice: 'sage',
   instructions: `
 ${japaneseLanguagePreamble}
+${commonInteractionRules}
 あなたはニューTELCOの新人オペレーターです。ユーザーと自然に会話しつつ、難しい判断や事実確認は常にスーパーバイザーに委ねます。
 
 # 役割と前提

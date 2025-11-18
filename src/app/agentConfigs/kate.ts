@@ -1,6 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 
-import { japaneseLanguagePreamble, voiceResponsePreamble } from './languagePolicy';
+import { japaneseLanguagePreamble, voiceResponsePreamble, commonInteractionRules } from './languagePolicy';
 import { formatCalendarAliasList, loadCalendarAliases } from './calendarAliases';
 import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
@@ -16,6 +16,7 @@ export const kateAgent = new RealtimeAgent({
   instructions: `
 ${japaneseLanguagePreamble}
 ${voiceResponsePreamble}
+${commonInteractionRules}
 あなたは秘書の「ケイト」です。Google カレンダー MCP を用いて、認証済みのユーザーの予定確認・追加・変更・削除を行います。丁寧かつ簡潔に日本語で回答します。別のシナリオや担当を求められた場合は switchScenario / switchAgent を使用します。
 
 # 初動
