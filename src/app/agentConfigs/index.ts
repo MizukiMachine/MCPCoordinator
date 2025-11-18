@@ -2,7 +2,7 @@ import { simpleHandoffScenario } from './simpleHandoff';
 import { customerServiceRetailScenario, customerServiceRetailCompanyName } from './customerServiceRetail';
 import { chatSupervisorScenario, chatSupervisorCompanyName } from './chatSupervisor';
 import { basicAssistantScenario, basicAssistantCompanyName } from './basicAssistant';
-import { scheduleCoordinatorScenario, scheduleCoordinatorCompanyName } from './scheduleCoordinator';
+import { kateScenario, kateCompanyName } from './kate';
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Map of scenario key -> array of RealtimeAgent objects
@@ -11,7 +11,7 @@ export const allAgentSets: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
-  scheduleCoordinator: scheduleCoordinatorScenario,
+  kate: kateScenario,
 };
 
 export type ScenarioMcpBinding = {
@@ -24,7 +24,7 @@ export const scenarioMcpBindings: Record<string, ScenarioMcpBinding> = {
   simpleHandoff: { requiredMcpServers: [] },
   customerServiceRetail: { requiredMcpServers: [] },
   chatSupervisor: { requiredMcpServers: [] },
-  scheduleCoordinator: { requiredMcpServers: ['google-calendar'] },
+  kate: { requiredMcpServers: ['google-calendar'] },
 };
 
 export const defaultAgentSetKey = 'basicAssistant';
@@ -46,8 +46,8 @@ export const agentSetMetadata: Record<string, { label: string; companyName: stri
     label: 'Chat Supervisor (NewTelco)',
     companyName: chatSupervisorCompanyName,
   },
-  scheduleCoordinator: {
-    label: 'Schedule Coordinator (Google Calendar MCP)',
-    companyName: scheduleCoordinatorCompanyName,
+  kate: {
+    label: 'ケイト (Google Calendar MCP)',
+    companyName: kateCompanyName,
   },
 };
