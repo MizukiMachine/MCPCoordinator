@@ -1,4 +1,4 @@
-import { simpleHandoffScenario } from './simpleHandoff';
+import { bashoScenario, bashoCompanyName } from './basho';
 import { customerServiceRetailScenario, customerServiceRetailCompanyName } from './customerServiceRetail';
 import { chatSupervisorScenario, chatSupervisorCompanyName } from './chatSupervisor';
 import { kateScenario, kateCompanyName } from './kate';
@@ -8,7 +8,7 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 // Map of scenario key -> array of RealtimeAgent objects
 export const allAgentSets: Record<string, RealtimeAgent[]> = {
   graffity: graffityScenario,
-  simpleHandoff: simpleHandoffScenario,
+  basho: bashoScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   kate: kateScenario,
@@ -20,7 +20,7 @@ export type ScenarioMcpBinding = {
 
 // 各シナリオが要求するMCPサーバーのキー（config.jsonの id と一致させる）
 export const scenarioMcpBindings: Record<string, ScenarioMcpBinding> = {
-  simpleHandoff: { requiredMcpServers: [] },
+  basho: { requiredMcpServers: [] },
   customerServiceRetail: { requiredMcpServers: [] },
   chatSupervisor: { requiredMcpServers: [] },
   graffity: { requiredMcpServers: [] },
@@ -34,9 +34,9 @@ export const agentSetMetadata: Record<string, { label: string; companyName: stri
     label: 'Graffity (Default)',
     companyName: graffityCompanyName,
   },
-  simpleHandoff: {
-    label: 'Simple Handoff Demo',
-    companyName: 'OpenAI Studio',
+  basho: {
+    label: 'バショウ (Haiku)',
+    companyName: bashoCompanyName,
   },
   customerServiceRetail: {
     label: 'Retail Support (Snowy Peak)',

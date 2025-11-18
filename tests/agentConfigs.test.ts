@@ -8,7 +8,7 @@ import {
 
 const EXPECTED_SCENARIOS = [
   'graffity',
-  'simpleHandoff',
+  'basho',
   'customerServiceRetail',
   'chatSupervisor',
   'kate',

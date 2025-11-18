@@ -7,7 +7,7 @@ export const japaneseLanguagePreamble = `
 
 export const commonInteractionRules = `
 # 共通ルール
-- 別シナリオや別担当への切替要望があったら、必ず switchScenario / switchAgent を使い、実行前にユーザーの意思を一言で確認する。
+- 別シナリオや別担当への切替要望があったら、必ず switchScenario / switchAgent を使う。
 - ツール・ハンドオフの利用可否が不明な場合は確認質問を1回挟んでから実行する。`;
 
 export const voiceResponsePreamble = `
