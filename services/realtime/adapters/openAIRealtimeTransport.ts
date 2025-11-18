@@ -138,6 +138,7 @@ export class OpenAIRealtimeTransport
       }),
       model: this.model,
       config: {
+        tracing: false,
         outputModalities: outputModalities ?? this.defaultOutputModalities,
         audio: {
           input: {
