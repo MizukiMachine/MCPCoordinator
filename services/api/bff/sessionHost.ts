@@ -27,6 +27,7 @@ import { createOpenAIServerSessionManager } from '../../realtime/adapters/create
 import { McpEnabledAgentSetResolver } from '../../realtime/adapters/mcpEnabledAgentSetResolver';
 import { loadMcpServersFromEnv } from '../../mcp/config';
 import { McpServerRegistry } from '../../mcp/mcpServerRegistry';
+import { getOrCreateTrace } from '@openai/agents-core';
 import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
 import { ServiceManager } from '../../../framework/di/ServiceManager';
 
@@ -234,6 +235,12 @@ export class SessionHost {
   }
 
   async createSession(options: CreateSessionOptions): Promise<CreateSessionResult> {
+    return getOrCreateTrace(() => this.createSessionImpl(options), {
+      name: `session:create:${options.agentSetKey}`,
+    });
+  }
+
+  private async createSessionImpl(options: CreateSessionOptions): Promise<CreateSessionResult> {
     const agentSet = this.scenarioMap[options.agentSetKey];
     if (!agentSet) {
       throw new SessionHostError('Unknown agentSetKey', 'invalid_agent_set', 400);
