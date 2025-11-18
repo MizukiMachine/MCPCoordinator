@@ -37,6 +37,22 @@ const SERVER_VAD_TEMPLATE = {
   silence_duration_ms: 500,
 };
 
+const scenarioAliases: Record<string, string> = {
+  kate: 'kate',
+  'kateシナリオ': 'kate',
+  'ケイト': 'kate',
+  'ケイトシナリオ': 'kate',
+  'ｹｲﾄ': 'kate',
+  'けいと': 'kate',
+};
+
+function normalizeScenarioKey(rawKey: string): string {
+  if (!rawKey) return rawKey;
+  const trimmed = rawKey.trim();
+  const lower = trimmed.toLowerCase();
+  return scenarioAliases[lower] ?? scenarioAliases[trimmed] ?? lower;
+}
+
 function App() {
   const searchParams = useSearchParams()!;
   const router = useRouter();
@@ -194,14 +210,15 @@ function App() {
   );
 
   const requestScenarioChange = useCallback(async (scenarioKey: string) => {
+    const normalizedKey = normalizeScenarioKey(scenarioKey);
     addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
-    if (!allAgentSets[scenarioKey]) {
+    if (!allAgentSets[normalizedKey]) {
       return {
         success: false,
         message: formatUiText(uiText.voiceControl.unknownScenario, { scenarioKey }),
       };
     }
-    if (scenarioKey === agentSetKey) {
+    if (normalizedKey === agentSetKey) {
       return {
         success: true,
         message: formatUiText(uiText.voiceControl.alreadyInScenario, { scenarioKey }),
@@ -209,7 +226,7 @@ function App() {
     }
 
     schedulePostToolAction(() => {
-      setAgentSetKey(scenarioKey);
+      setAgentSetKey(normalizedKey);
       pendingVoiceReconnectRef.current = true;
       disconnectFromRealtime();
     });
