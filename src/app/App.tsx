@@ -351,10 +351,15 @@ function App() {
 
   useEffect(() => {
     if (pendingVoiceReconnectRef.current && sessionStatus === 'DISCONNECTED') {
-      pendingVoiceReconnectRef.current = false;
       connectToRealtime('auto');
     }
   }, [connectToRealtime, sessionStatus]);
+
+  useEffect(() => {
+    if (pendingVoiceReconnectRef.current && sessionStatus === 'CONNECTED') {
+      pendingVoiceReconnectRef.current = false;
+    }
+  }, [sessionStatus]);
 
   // セッション切断時のシナリオリセットは、音声のシナリオ切替による再接続を邪魔しないよう
   // pendingVoiceReconnectRef が立っていない場合のみ行う
@@ -468,6 +473,7 @@ function App() {
     const newAgentConfig = e.target.value;
     if (!allAgentSets[newAgentConfig]) return;
 
+    pendingVoiceReconnectRef.current = true;
     disconnectFromRealtime();
     setAgentSetKey(newAgentConfig);
   };
@@ -478,6 +484,7 @@ function App() {
     const newAgentName = e.target.value;
     // Reconnect session with the newly selected agent as root so that tool
     // execution works correctly.
+    pendingVoiceReconnectRef.current = true;
     disconnectFromRealtime();
     setSelectedAgentName(newAgentName);
     // connectToRealtime will be triggered by effect watching selectedAgentName
