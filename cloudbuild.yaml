@@ -17,7 +17,6 @@ substitutions:
   _GOOGLE_CALENDAR_MCP_TOKEN_PATH: /var/secrets/google/token/google-oauth-token.json
   _GOOGLE_OAUTH_SCOPES: https://www.googleapis.com/auth/calendar
   _MCP_EAGER_SERVERS: google-calendar
-  _GOOGLE_CLOUD_PROJECT_ID: $PROJECT_ID
   _GOOGLE_APPLICATION_CREDENTIALS: ./secrets/file-search-admin.json
   _GEMINI_FILE_SEARCH_DATA_STORE: projects/your-gcp-project-id/locations/us/fileStores/default-store
   _RAG_SOURCE_DRIVE_ID: drive-folder-or-shared-drive-id
@@ -28,9 +27,15 @@ substitutions:
   _IMAGE_UPLOAD_GCS_BUCKET: ai-conversation-engine-uploads
   _IMAGE_UPLOAD_GCS_PREFIX: uploads
 steps:
-  # 0) Fetch submodules (google-calendar-mcp) so Docker build context includes MCP server
+  # 0) Fetch google-calendar-mcp into external/ so Docker build context includes MCP server
   - name: "gcr.io/cloud-builders/git"
-    args: ["submodule", "update", "--init", "--recursive"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        rm -rf external/google-calendar-mcp
+        git clone --depth 1 https://github.com/nspady/google-calendar-mcp.git external/google-calendar-mcp
 
   # 1) Build container image
   - name: "gcr.io/cloud-builders/docker"

@@ -2,8 +2,17 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MCP_DIR="$ROOT_DIR/external/google-calendar-mcp"
+DEFAULT_SECRET_DIR="/var/secrets/google"
 CRED_FILE_DEFAULT="$ROOT_DIR/secrets/google-oauth-desktop.json"
 TOKEN_FILE_DEFAULT="$ROOT_DIR/secrets/google-oauth-token.json"
+
+# Cloud Run の Secret マウント（/var/secrets/google/credentials など）を自動検出
+if [[ -z "${GOOGLE_OAUTH_CREDENTIALS:-}" && -f "$DEFAULT_SECRET_DIR/credentials/google-oauth-desktop.json" ]]; then
+  export GOOGLE_OAUTH_CREDENTIALS="$DEFAULT_SECRET_DIR/credentials/google-oauth-desktop.json"
+fi
+if [[ -z "${GOOGLE_CALENDAR_MCP_TOKEN_PATH:-}" && -f "$DEFAULT_SECRET_DIR/token/google-oauth-token.json" ]]; then
+  export GOOGLE_CALENDAR_MCP_TOKEN_PATH="$DEFAULT_SECRET_DIR/token/google-oauth-token.json"
+fi
 
 export GOOGLE_OAUTH_CREDENTIALS="${GOOGLE_OAUTH_CREDENTIALS:-$CRED_FILE_DEFAULT}"
 export GOOGLE_CALENDAR_MCP_TOKEN_PATH="${GOOGLE_CALENDAR_MCP_TOKEN_PATH:-$TOKEN_FILE_DEFAULT}"

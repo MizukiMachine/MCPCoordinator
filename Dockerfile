@@ -26,9 +26,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Create non-root user
+# Create non-root user with writable home for npm cache
 RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs
+  && adduser --system --uid 1001 --home /home/nextjs nextjs \
+  && mkdir -p /home/nextjs \
+  && chown -R nextjs:nodejs /home/nextjs
 
 # Copy the minimal standalone build
 COPY --from=builder /app/public ./public
@@ -39,7 +41,11 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/external ./external
 
 # Prepare upload directory (default: IMAGE_UPLOAD_DIR=./var/uploads/images)
-RUN mkdir -p /app/var/uploads/images && chown -R nextjs:nodejs /app/var
+RUN mkdir -p /app/var/uploads/images && \
+  chown -R nextjs:nodejs /app/var && \
+  chown -R nextjs:nodejs /app/external
+
+ENV HOME=/home/nextjs
 
 USER nextjs
 EXPOSE 3000
