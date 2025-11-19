@@ -3,6 +3,9 @@ import path from 'node:path';
 import type { MemoryEntry, MemoryStore } from './memoryStore';
 import { FileMemoryStore } from './memoryStore';
 
+// 外部からも型を利用できるように再エクスポート
+export type { MemoryEntry, MemoryStore } from './memoryStore';
+
 const DEFAULT_MEMORY_FILE =
   process.env.PERSISTENT_MEMORY_FILE ?? path.join(process.cwd(), 'var', 'memory', 'persistent-memory.json');
 const DEFAULT_MAX_ENTRIES =
