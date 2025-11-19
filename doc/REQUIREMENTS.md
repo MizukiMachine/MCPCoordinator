@@ -63,7 +63,7 @@
     - gpt-realtim
         - **gpt-4o-transcribe**（音声入力の文字起こし）
     - **gpt-5-mini**（モデレーション／ガードレール）
-    - **gpt-5**（Chat Supervisor の上司モデル）
+    - **gpt-5**（Schedule Coordinator / Kate の上位判断モデル）
     - **gpt-5**（返品エージェントの推論チェック）
 
 ## ■ 今後のオリジナルシナリオ例（アプリMCP）

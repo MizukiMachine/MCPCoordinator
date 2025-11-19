@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import {
-  allAgentSets,
-  agentSetMetadata,
-  scenarioMcpBindings,
-} from '../index';
+import { allAgentSets, agentSetMetadata, scenarioMcpBindings } from '../index';
 
 describe('takuboku scenario', () => {
   it('registers the scenario with a single agent named タクボク', () => {

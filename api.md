@@ -38,7 +38,7 @@
         ```bash
         curl -H "x-bff-key: $NEXT_PUBLIC_BFF_KEY" \\
              -X POST <http://localhost:3000/api/session> \\
-             -d '{"agentSetKey":"chatSupervisor"}'
+             -d '{"agentSetKey":"graffity"}'
         
         ```
         
@@ -53,7 +53,7 @@
           "allowedModalities": ["audio","text"],
           "textOutputEnabled": true,
           "capabilityWarnings": [],
-          "agentSet": { "key": "chatSupervisor", "primary": "SupervisorAgent" }
+          "agentSet": { "key": "graffity", "primary": "Graffity" }
         }
         
         ```

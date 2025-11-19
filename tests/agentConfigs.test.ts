@@ -6,14 +6,7 @@ import {
   defaultAgentSetKey,
 } from '@/app/agentConfigs';
 
-const EXPECTED_SCENARIOS = [
-  'graffity',
-  'basho',
-  'customerServiceRetail',
-  'chatSupervisor',
-  'kate',
-  'takuboku',
-];
+const EXPECTED_SCENARIOS = ['graffity', 'kate', 'basho', 'takuboku'];
 
 describe('agentConfigs', () => {
   it('公開シナリオをMed/Tech抜きの許可リストに限定する', () => {

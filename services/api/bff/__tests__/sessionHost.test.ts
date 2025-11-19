@@ -402,13 +402,13 @@ describe('SessionHost', () => {
     const handler = managers[0]!.lastConnectOptions?.extraContext?.requestScenarioChange;
     expect(typeof handler).toBe('function');
 
-    await handler?.('basho');
+    await handler?.('kate');
 
     const directive = received.find((msg) => msg.event === 'voice_control')
       ?.data as VoiceControlDirective | undefined;
     expect(directive).toEqual({
       action: 'switchScenario',
-      scenarioKey: 'basho',
+      scenarioKey: 'kate',
     });
 
     unsubscribe();

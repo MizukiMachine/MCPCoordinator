@@ -24,7 +24,7 @@
 - **リクエストBody** (`application/json`)
 ```jsonc
 {
-  "agentSetKey": "chatSupervisor",      // 必須: `allAgentSets` に存在するキー
+  "agentSetKey": "graffity",            // 必須: `allAgentSets` に存在するキー
   "preferredAgentName": "Alice",        // 任意: シナリオ内の優先エージェント
   "sessionLabel": "web-client:abc",     // 任意: ログ分離用ラベル
   "clientCapabilities": {
@@ -49,8 +49,8 @@
   "textOutputEnabled": true,
   "capabilityWarnings": [],
   "agentSet": {
-    "key": "chatSupervisor",
-    "primary": "SupervisorAgent"
+    "key": "graffity",
+    "primary": "Graffity"
   }
 }
 ```
