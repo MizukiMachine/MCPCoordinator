@@ -35,6 +35,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/external ./external
 
 # Prepare upload directory (default: IMAGE_UPLOAD_DIR=./var/uploads/images)
 RUN mkdir -p /app/var/uploads/images && chown -R nextjs:nodejs /app/var
