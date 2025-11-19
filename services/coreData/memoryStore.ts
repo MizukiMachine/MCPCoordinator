@@ -85,7 +85,10 @@ export class FileMemoryStore implements MemoryStore {
   private async exclusive<T>(fn: () => Promise<T>): Promise<T> {
     const run = this.mutex.then(fn, fn);
     // Ensure mutex is always released even when fn throws
-    this.mutex = run.finally(() => undefined);
+    this.mutex = run.then(
+      () => undefined,
+      () => undefined,
+    );
     return run;
   }
 
