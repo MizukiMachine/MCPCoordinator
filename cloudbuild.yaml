@@ -28,6 +28,7 @@ substitutions:
   _IMAGE_UPLOAD_GCS_BUCKET: ai-conversation-engine-uploads
   _IMAGE_UPLOAD_GCS_PREFIX: uploads
   _MCP_MEMORY: 512Mi
+  _DEPLOY_MCP: "false"
 steps:
   # 0) Fetch google-calendar-mcp into external/ so Docker build context includes MCP server
   - name: "gcr.io/cloud-builders/git"
@@ -76,6 +77,18 @@ steps:
       - -c
       - |
         set -euo pipefail
+        if [[ "${_DEPLOY_MCP}" != "true" ]]; then
+          echo "[cloudbuild] Skipping MCP deploy (_DEPLOY_MCP=${_DEPLOY_MCP})"
+          existing_url=$(gcloud run services describe "${_MCP_SERVICE_NAME}" --region="${_REGION}" --platform=managed --format='value(status.url)' || true)
+          if [[ -n "$existing_url" ]]; then
+            printf '%s' "$existing_url" > /workspace/mcp_url.txt
+            echo "[cloudbuild] Reusing existing MCP URL: $existing_url"
+          else
+            echo "[cloudbuild] No existing google-calendar-mcp service found. Set _DEPLOY_MCP=true to deploy." >&2
+          fi
+          exit 0
+        fi
+
         MCP_URL=$(gcloud run deploy "${_MCP_SERVICE_NAME}" \
           --image="gcr.io/$PROJECT_ID/${_MCP_SERVICE_NAME}:$SHORT_SHA" \
           --region="${_REGION}" \
@@ -85,7 +98,7 @@ steps:
           --memory="${_MCP_MEMORY}" \
           --quiet \
           --set-secrets=GOOGLE_CALENDAR_MCP_SHARED_SECRET=GOOGLE_CALENDAR_MCP_SHARED_SECRET:latest,/var/secrets/google/credentials/google-oauth-desktop.json=google-oauth-desktop-json:latest,/var/secrets/google/token/google-oauth-token.json=google-oauth-token-json:latest \
-          --update-env-vars=TRANSPORT=http,HOST=0.0.0.0,PORT=8080,XDG_CONFIG_HOME=/home/nodejs/.config \
+          --update-env-vars=TRANSPORT=http,HOST=0.0.0.0,XDG_CONFIG_HOME=/home/nodejs/.config \
           --format='value(status.url)')
         if [[ -z "$$MCP_URL" ]]; then
           echo "Failed to retrieve MCP service URL" >&2

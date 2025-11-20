@@ -21,6 +21,5 @@ RUN addgroup --system --gid 1001 nodejs \
   && chown -R nodejs:nodejs /home/nodejs
 USER nodejs
 ENV XDG_CONFIG_HOME=/home/nodejs/.config
-ENV PORT=8080
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/google-calendar-mcp-entrypoint.sh"]
