@@ -90,6 +90,7 @@ function App() {
   const initialResponseTriggeredRef = useRef(false);
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const pendingVoiceReconnectRef = useRef(false);
   const pendingInitialCommandRef = useRef<string | null>(null);
   const sendUserTextRef = useRef<((text: string) => void) | null>(null);
@@ -311,6 +312,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
         setSelectedAgentName(agentName);
       },
       onVoiceControlDirective: handleVoiceControlDirective,
+      onReady: () => setIsSessionReady(true),
     },
     {},
     { defaultCapabilities: { images: true } },
@@ -384,12 +386,22 @@ const requestAgentChange = useCallback(async (agentName: string) => {
   }, [sessionStatus]);
 
   useEffect(() => {
-    if (sessionStatus === 'CONNECTED' && pendingInitialCommandRef.current) {
+    if (sessionStatus !== 'CONNECTED') {
+      setIsSessionReady(false);
+    }
+  }, [sessionStatus]);
+
+  useEffect(() => {
+    if (
+      sessionStatus === 'CONNECTED' &&
+      isSessionReady &&
+      pendingInitialCommandRef.current
+    ) {
       const initialCommand = pendingInitialCommandRef.current;
       pendingInitialCommandRef.current = null;
       sendUserText(initialCommand);
     }
-  }, [sessionStatus, sendUserText]);
+  }, [isSessionReady, sessionStatus, sendUserText]);
 
   // セッション切断時のシナリオリセットは、音声のシナリオ切替による再接続を邪魔しないよう
   // pendingVoiceReconnectRef が立っていない場合のみ行う
