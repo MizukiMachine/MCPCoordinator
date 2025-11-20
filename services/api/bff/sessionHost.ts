@@ -184,6 +184,7 @@ interface SessionContext {
   hotwordListener?: HotwordListener;
   scenarioRouter?: ScenarioRouter;
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
+  hotwordCuePlayedItems: Set<string>;
 }
 
 interface DestroySessionOptions {
@@ -398,23 +399,28 @@ export class SessionHost {
     const hotwordListener = new HotwordListener({
       dictionary: this.scenarioRegistry.getHotwordDictionary(),
       reminderTimeoutMs: HOTWORD_TIMEOUT_MS,
+      onDetection: async (detection) => {
+        this.logger.debug('Hotword prefix detected', {
+          sessionId,
+          scenarioKey: detection.scenarioKey,
+          stage: detection.stage,
+        });
+        await this.emitHotwordCue(context, {
+          scenarioKey: detection.scenarioKey,
+          transcript: detection.transcript,
+          itemId: detection.itemId,
+        });
+      },
       onMatch: async (match) => {
         this.logger.info('Hotword matched', {
           sessionId,
           scenarioKey: match.scenarioKey,
           commandPreview: match.commandText.slice(0, 60),
         });
-        const cueResult = await this.hotwordCueService.playCue({
-          sessionId,
+        await this.emitHotwordCue(context, {
           scenarioKey: match.scenarioKey,
           transcript: match.transcript,
-        });
-        this.broadcast(sessionId, 'hotword_cue', {
-          cueId: cueResult.cueId,
-          scenarioKey: match.scenarioKey,
-          status: cueResult.status,
-          reason: cueResult.reason,
-          audio: cueResult.audio,
+          itemId: match.itemId,
         });
         await scenarioRouter.handleHotwordMatch(match);
       },
@@ -506,6 +512,7 @@ export class SessionHost {
       manager,
       subscribers: new Map(),
       emitter: new EventEmitter(),
+      hotwordCuePlayedItems: new Set(),
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
         this.clearTimers(context);
         this.sessions.delete(sessionId);
@@ -704,6 +711,30 @@ export class SessionHost {
         this.logger.warn('Failed to destroy session after hotword timeout', { sessionId: context.id, error });
       });
     }, HOTWORD_REMINDER_DISCONNECT_DELAY_MS);
+  }
+
+  private async emitHotwordCue(
+    context: SessionContext,
+    payload: { scenarioKey: string; transcript: string; itemId?: string },
+  ): Promise<void> {
+    if (payload.itemId && context.hotwordCuePlayedItems.has(payload.itemId)) {
+      return;
+    }
+    const cueResult = await this.hotwordCueService.playCue({
+      sessionId: context.id,
+      scenarioKey: payload.scenarioKey,
+      transcript: payload.transcript,
+    });
+    if (payload.itemId) {
+      context.hotwordCuePlayedItems.add(payload.itemId);
+    }
+    this.broadcast(context.id, 'hotword_cue', {
+      cueId: cueResult.cueId,
+      scenarioKey: payload.scenarioKey,
+      status: cueResult.status,
+      reason: cueResult.reason,
+      audio: cueResult.audio,
+    });
   }
 
   private sendHotwordReminder(context: SessionContext) {

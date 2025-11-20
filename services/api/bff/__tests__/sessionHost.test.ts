@@ -312,6 +312,32 @@ describe('SessionHost', () => {
     unsubscribe();
   });
 
+  it('streams a hotword cue when the prefix is detected in a delta event', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'hotword_cue_delta',
+      send: (msg) => received.push(msg),
+    });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.delta',
+      item_id: 'conv_item_delta',
+      delta: 'Hey demo,',
+    });
+
+    await vi.waitFor(() => {
+      expect(hotwordCueService.playCue).toHaveBeenCalled();
+      const cueEvent = received.find((msg) => msg.event === 'hotword_cue');
+      expect(cueEvent?.data).toMatchObject({
+        scenarioKey: 'demo',
+        status: 'streamed',
+      });
+    });
+    unsubscribe();
+  });
+
   it('broadcasts fallback status when the cue service reports failure', async () => {
     hotwordCueService.playCue.mockResolvedValueOnce({
       cueId: 'cue_fail',
