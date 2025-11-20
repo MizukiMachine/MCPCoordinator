@@ -383,7 +383,11 @@ export function useRealtimeSession(
       });
       addListener('hotword_cue', (payload) => {
         callbacks.onHotwordCue?.(payload);
-        if (payload?.status === 'fallback') {
+        if (payload?.audio && payload?.status === 'streamed') {
+          if (!audioMutedRef.current) {
+            void ensureAudioPlayer().enqueue(payload.audio);
+          }
+        } else if (payload?.status === 'fallback') {
           void playLocalHotwordCue();
         }
       });
@@ -409,6 +413,7 @@ export function useRealtimeSession(
       createEventSource,
       updateStatus,
       playLocalHotwordCue,
+      ensureAudioPlayer,
     ],
   );
 

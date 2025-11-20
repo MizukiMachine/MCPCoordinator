@@ -2,28 +2,8 @@
 import path from 'node:path';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RealtimeAgent } from '@openai/agents/realtime';
 
-import type { ISessionManager } from '../../../realtime/types';
 import { ServerHotwordCueService, type HotwordCueRequest } from '../hotwordCueService';
-
-const createStubManager = () => {
-  const stub: Partial<ISessionManager<RealtimeAgent>> = {
-    getStatus: vi.fn(() => 'CONNECTED'),
-    updateHooks: vi.fn(),
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    sendUserText: vi.fn(),
-    sendEvent: vi.fn(),
-    interrupt: vi.fn(),
-    mute: vi.fn(),
-    pushToTalkStart: vi.fn(),
-    pushToTalkStop: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-  };
-  return stub as ISessionManager<RealtimeAgent>;
-};
 
 const logger = {
   debug: vi.fn(),
@@ -40,22 +20,19 @@ const metrics = {
 
 describe('ServerHotwordCueService', () => {
   const audioPath = path.join(process.cwd(), 'public', 'audio', 'hotword-chime.wav');
-  let manager: ISessionManager<RealtimeAgent>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    manager = createStubManager();
   });
 
   const buildRequest = (overrides: Partial<HotwordCueRequest> = {}): HotwordCueRequest => ({
     sessionId: 'sess_test',
     scenarioKey: 'demo',
     transcript: 'Hey demo, 在庫を確認して',
-    manager,
     ...overrides,
   });
 
-  it('sends cancel and response events with metadata when the cue is available', async () => {
+  it('returns a streamed cue with base64 audio when the asset exists', async () => {
     const service = new ServerHotwordCueService({
       audioFilePath: audioPath,
       logger,
@@ -65,14 +42,7 @@ describe('ServerHotwordCueService', () => {
     const result = await service.playCue(buildRequest());
 
     expect(result.status).toBe('streamed');
-    expect(manager.sendEvent).toHaveBeenCalledWith({ type: 'response.cancel' });
-    const responseCall = vi.mocked(manager.sendEvent).mock.calls.find(
-      ([event]) => event?.type === 'response.create',
-    );
-    expect(responseCall?.[0]?.response?.metadata).toMatchObject({
-      tags: ['hotword-chime'],
-      scenarioKey: 'demo',
-    });
+    expect(result.audio).toMatch(/^[A-Za-z0-9+/=]+$/);
     expect(metrics.increment).toHaveBeenCalledWith(
       'bff.session.hotword_cue_emitted_total',
       1,
@@ -80,7 +50,7 @@ describe('ServerHotwordCueService', () => {
     );
   });
 
-  it('returns a fallback status when the audio file is missing', async () => {
+  it('falls back when the audio file is missing', async () => {
     const service = new ServerHotwordCueService({
       audioFilePath: path.join(process.cwd(), 'public', 'audio', 'missing.wav'),
       logger,
@@ -90,7 +60,7 @@ describe('ServerHotwordCueService', () => {
     const result = await service.playCue(buildRequest());
 
     expect(result.status).toBe('fallback');
-    expect(manager.sendEvent).not.toHaveBeenCalled();
+    expect(result.audio).toBeUndefined();
     expect(metrics.increment).toHaveBeenCalledWith(
       'bff.session.hotword_cue_failed_total',
       1,

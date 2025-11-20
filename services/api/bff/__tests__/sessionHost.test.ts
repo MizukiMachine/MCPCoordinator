@@ -122,6 +122,7 @@ class StubHotwordCueService implements HotwordCueService {
     async (_request: HotwordCueRequest): Promise<HotwordCueResult> => ({
       cueId: 'cue_test',
       status: 'streamed',
+      audio: 'BASE64_AUDIO',
     }),
   );
 }
@@ -305,6 +306,7 @@ describe('SessionHost', () => {
       expect(cueEvent?.data).toMatchObject({
         status: 'streamed',
         scenarioKey: 'demo',
+        audio: 'BASE64_AUDIO',
       });
     });
     unsubscribe();
@@ -336,6 +338,7 @@ describe('SessionHost', () => {
         status: 'fallback',
         reason: 'missing audio',
       });
+      expect(cueEvent?.data?.audio).toBeUndefined();
     });
     unsubscribe();
   });

@@ -336,11 +336,12 @@ describe('useRealtimeSession', () => {
 
     await act(async () => {
       listener?.({
-        data: JSON.stringify({ status: 'streamed', scenarioKey: 'demo' }),
+        data: JSON.stringify({ status: 'streamed', scenarioKey: 'demo', audio: 'SERVER_PCM' }),
       } as MessageEvent<string>);
     });
 
-    expect(cueCallback).toHaveBeenCalledWith({ status: 'streamed', scenarioKey: 'demo' });
+    expect(cueCallback).toHaveBeenCalledWith({ status: 'streamed', scenarioKey: 'demo', audio: 'SERVER_PCM' });
+    expect(audioPlayerMock.enqueue).toHaveBeenCalledWith('SERVER_PCM');
   });
 
   it('plays a fallback cue locally when the server requests fallback playback', async () => {

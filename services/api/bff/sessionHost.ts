@@ -408,13 +408,13 @@ export class SessionHost {
           sessionId,
           scenarioKey: match.scenarioKey,
           transcript: match.transcript,
-          manager: context.manager,
         });
         this.broadcast(sessionId, 'hotword_cue', {
           cueId: cueResult.cueId,
           scenarioKey: match.scenarioKey,
           status: cueResult.status,
           reason: cueResult.reason,
+          audio: cueResult.audio,
         });
         await scenarioRouter.handleHotwordMatch(match);
       },
