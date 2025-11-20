@@ -409,7 +409,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
       ? null
       : {
           ...SERVER_VAD_TEMPLATE,
-          create_response: true,
+          create_response: false,
         };
 
     sendEvent({

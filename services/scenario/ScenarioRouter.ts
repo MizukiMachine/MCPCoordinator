@@ -58,6 +58,7 @@ export class ScenarioRouter {
     await this.voiceControl.requestScenarioChange(match.scenarioKey, {
       initialCommand: commandText,
     });
+    this.currentScenarioKey = match.scenarioKey;
   }
 
   private normalize(value: string): string {

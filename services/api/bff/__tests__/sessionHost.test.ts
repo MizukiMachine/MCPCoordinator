@@ -130,6 +130,12 @@ describe('SessionHost', () => {
         instructions: 'kate',
       } as RealtimeAgent,
     ],
+    basho: [
+      {
+        name: 'basho-agent',
+        instructions: 'haiku',
+      } as RealtimeAgent,
+    ],
   };
 
   let host: SessionHost;
@@ -235,6 +241,29 @@ describe('SessionHost', () => {
         action: 'switchScenario',
         scenarioKey: 'kate',
         initialCommand: '今日の予定を教えて',
+      });
+    });
+    unsubscribe();
+  });
+
+  it('handles hotwords with punctuation when switching scenarios', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, { id: 'hotword_listener_punct', send: (msg) => received.push(msg) });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_3',
+      transcript: 'Hey!バショウ 秋の一句を読んで',
+    });
+
+    await vi.waitFor(() => {
+      const directive = received.find((msg) => msg.event === 'voice_control')?.data as VoiceControlDirective | undefined;
+      expect(directive).toEqual({
+        action: 'switchScenario',
+        scenarioKey: 'basho',
+        initialCommand: '秋の一句を読んで',
       });
     });
     unsubscribe();

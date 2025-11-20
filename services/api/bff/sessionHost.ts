@@ -290,9 +290,10 @@ export class SessionHost {
       // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
       // （音声チャンクが二重再生されるのを防ぐため）。
       onServerEvent: (event, payload) => {
+        let consumed = false;
         if (event === 'transport_event') {
           try {
-            contextRef.current?.hotwordListener?.handleTranscriptionEvent(payload);
+            consumed = contextRef.current?.hotwordListener?.handleTranscriptionEvent(payload) ?? false;
           } catch (error) {
             this.logger.warn('Hotword listener failed to process event', {
               sessionId,
@@ -300,7 +301,9 @@ export class SessionHost {
             });
           }
         }
-        this.broadcast(sessionId, event, payload);
+        if (!consumed) {
+          this.broadcast(sessionId, event, payload);
+        }
       },
       guardrail: {
         onGuardrailTripped: (payload) =>

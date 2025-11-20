@@ -10,6 +10,7 @@ const baseDictionary: HotwordDictionary = {
   entries: [
     { scenarioKey: 'graffity', aliases: ['graffity', 'グラフィティ'] },
     { scenarioKey: 'kate', aliases: ['kate', 'ケイト'] },
+    { scenarioKey: 'basho', aliases: ['basho', 'バショウ'] },
   ],
 };
 
@@ -90,6 +91,20 @@ describe('HotwordListener', () => {
     listener.handleTranscriptionEvent(completedEvent('msg_5', 'Another attempt without prefix'));
     expect(timeoutTriggered).toBe(true);
     expect(invalidItemIds).toEqual(['msg_3', 'msg_4', 'msg_5']);
+  });
+
+  it('allows punctuation between the hotword prefix and alias', () => {
+    const listener = buildListener();
+    listener.handleTranscriptionEvent(completedEvent('msg_9', 'Hey!バショウ 秋の一句を読んで'));
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toEqual(
+      expect.objectContaining({
+        scenarioKey: 'basho',
+        commandText: '秋の一句を読んで',
+        itemId: 'msg_9',
+      }),
+    );
   });
 
   it('resets timeout window after a successful hotword match', () => {

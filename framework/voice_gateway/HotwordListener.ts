@@ -1,6 +1,7 @@
 const DEFAULT_HOTWORD_TIMEOUT_MS = 8000;
 const HOTWORD_PREFIXES = ['hey', 'ﾍｲ', 'ヘイ'];
-const LEADING_PUNCTUATION = /^[\s,、。.]+/u;
+const HOTWORD_DELIMITER_PATTERN = '[\\s,、。!！?？:：;；-]*';
+const LEADING_PUNCTUATION = /^[\s,、。!！?？:：;；-]+/u;
 
 export interface HotwordDictionaryEntry {
   scenarioKey: string;
@@ -61,14 +62,14 @@ export class HotwordListener {
     this.matchers = this.buildMatchers(options.dictionary);
   }
 
-  handleTranscriptionEvent(event: any): void {
+  handleTranscriptionEvent(event: any): boolean {
     if (!event || event.type !== 'conversation.item.input_audio_transcription.completed') {
-      return;
+      return false;
     }
 
     const transcript = String(event.transcript ?? '').trim();
     if (!transcript) {
-      return;
+      return true;
     }
 
     const itemId = typeof event.item_id === 'string' ? event.item_id : '';
@@ -78,9 +79,8 @@ export class HotwordListener {
       const commandText = this.extractCommand(transcript, matched.consumedLength);
       if (!commandText) {
         this.onInvalidTranscript?.({ itemId, transcript });
-        // Treat as invalid if there is no command body after the hotword.
         this.maybeTriggerTimeout();
-        return;
+        return true;
       }
       this.lastHotwordAt = null;
       this.reminderSentAt = null;
@@ -90,11 +90,12 @@ export class HotwordListener {
         itemId,
         transcript,
       });
-      return;
+      return true;
     }
 
     this.onInvalidTranscript?.({ itemId, transcript });
     this.maybeTriggerTimeout();
+    return true;
   }
 
   private extractCommand(transcript: string, consumedLength: number): string {
@@ -110,7 +111,7 @@ export class HotwordListener {
         const normalizedAlias = sanitizeAlias(alias);
         if (!normalizedAlias) continue;
         const regexp = new RegExp(
-          `^\\s*${prefixPattern}[\\s,、。]+(${escapeForRegExp(normalizedAlias)})`,
+          `^\\s*${prefixPattern}${HOTWORD_DELIMITER_PATTERN}(${escapeForRegExp(normalizedAlias)})`,
           'iu',
         );
         matchers.push({ scenarioKey: entry.scenarioKey, regexp });
