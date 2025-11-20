@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo } from "react";
-import { notFound } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 
 import { useSessionSpectator } from "@/app/hooks/useSessionSpectator";
 
@@ -11,11 +11,27 @@ export default function SingleViewer({ params }: { params: { clientTag: string }
   const tag = params.clientTag;
   const isValid = VALID_TAGS.has(tag);
   const spectator = useSessionSpectator();
+  const searchParams = useSearchParams();
+
+  const resolvedBffKey = (() => {
+    const qp = searchParams?.get("bffKey");
+    if (qp) return qp;
+    if (typeof window !== "undefined" && (window as any).__MCPC_BFF_KEY) {
+      return (window as any).__MCPC_BFF_KEY as string;
+    }
+    return process.env.NEXT_PUBLIC_BFF_KEY;
+  })();
+
+  const baseUrl = searchParams?.get("baseUrl") ?? undefined;
 
   useEffect(() => {
     if (!isValid) return;
-    void spectator.connect({ clientTag: tag });
-  }, [isValid, spectator, tag]);
+    void spectator.connect({
+      clientTag: tag,
+      bffKey: resolvedBffKey ?? undefined,
+      baseUrl,
+    });
+  }, [baseUrl, isValid, resolvedBffKey, spectator, tag]);
 
   const badge = useMemo(
     () => ({
@@ -39,6 +55,7 @@ export default function SingleViewer({ params }: { params: { clientTag: string }
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
             <p className="text-slate-200/80 text-sm mt-2">
               クライアントタグ「{tag}」に紐づく最新セッションを自動追従します。セッションが切り替わっても再解決して購読し直します。
+              必要ならクエリに <code>?bffKey=xxx&baseUrl=https://host</code> を付けてください。
             </p>
           </div>
           <div className="text-xs px-3 py-1 rounded-full bg-slate-800/60 border border-white/10">
