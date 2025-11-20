@@ -11,6 +11,7 @@ const baseDictionary: HotwordDictionary = {
     { scenarioKey: 'graffity', aliases: ['graffity', 'グラフィティ'] },
     { scenarioKey: 'kate', aliases: ['kate', 'ケイト'] },
     { scenarioKey: 'basho', aliases: ['basho', 'バショウ'] },
+    { scenarioKey: 'patricia', aliases: ['patricia', 'パトリシア', 'ﾊﾟﾄﾘｼｱ'] },
   ],
 };
 
@@ -91,6 +92,23 @@ describe('HotwordListener', () => {
     listener.handleTranscriptionEvent(completedEvent('msg_5', 'Another attempt without prefix'));
     expect(timeoutTriggered).toBe(true);
     expect(invalidItemIds).toEqual(['msg_3', 'msg_4', 'msg_5']);
+  });
+
+
+  it('detects Patricia hotword with Japanese alias', () => {
+    const listener = buildListener();
+    listener.handleTranscriptionEvent(
+      completedEvent('msg_10', 'Hey パトリシア、カロリー教えて'),
+    );
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toEqual(
+      expect.objectContaining({
+        scenarioKey: 'patricia',
+        commandText: 'カロリー教えて',
+        itemId: 'msg_10',
+      }),
+    );
   });
 
   it('allows punctuation between the hotword prefix and alias', () => {
