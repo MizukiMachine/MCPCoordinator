@@ -28,7 +28,7 @@ substitutions:
   _IMAGE_UPLOAD_GCS_BUCKET: ai-conversation-engine-uploads
   _IMAGE_UPLOAD_GCS_PREFIX: uploads
   _MCP_MEMORY: 512Mi
-  _DEPLOY_MCP: "true"
+  _DEPLOY_MCP: "false"
 steps:
   # 0) Fetch google-calendar-mcp into external/ so Docker build context includes MCP server
   - name: "gcr.io/cloud-builders/git"
