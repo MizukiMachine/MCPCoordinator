@@ -43,11 +43,13 @@ describe('ServerHotwordCueService', () => {
 
     expect(result.status).toBe('streamed');
     expect(result.audio).toMatch(/^[A-Za-z0-9+/=]+$/);
+    expect(result.audio?.length ?? 0).toBeGreaterThan(100);
     expect(metrics.increment).toHaveBeenCalledWith(
       'bff.session.hotword_cue_emitted_total',
       1,
       expect.objectContaining({ scenario: 'demo' }),
     );
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it('falls back when the audio file is missing', async () => {
@@ -65,6 +67,10 @@ describe('ServerHotwordCueService', () => {
       'bff.session.hotword_cue_failed_total',
       1,
       expect.objectContaining({ scenario: 'demo' }),
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Failed to emit hotword cue',
+      expect.objectContaining({ sessionId: 'sess_test', scenarioKey: 'demo' }),
     );
   });
 });
