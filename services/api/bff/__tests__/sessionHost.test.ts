@@ -167,6 +167,24 @@ describe('SessionHost', () => {
     );
   });
 
+  it('omits response metadata when not provided', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    await host.handleCommand(sessionId, { kind: 'input_text', text: 'no metadata' });
+    const responseEvent = managers[0]!.sentEvents.find((event) => event?.type === 'response.create');
+    expect(responseEvent).toEqual({ type: 'response.create' });
+  });
+
+  it('forwards response metadata when provided', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const metadata = { source: 'unit-test' };
+    await host.handleCommand(sessionId, { kind: 'input_text', text: 'with metadata', metadata });
+    const responseEvent = managers[0]!.sentEvents.find((event) => event?.type === 'response.create');
+    expect(responseEvent).toMatchObject({
+      type: 'response.create',
+      response: { metadata },
+    });
+  });
+
   it('allows disabling text output when requested by the client', async () => {
     const result = await host.createSession({
       agentSetKey: 'demo',

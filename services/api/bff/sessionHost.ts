@@ -520,10 +520,11 @@ export class SessionHost {
       },
     });
     if (command.triggerResponse !== false) {
-      context.manager.sendEvent({
-        type: 'response.create',
-        response: { metadata: command.metadata ?? {} },
-      });
+      const responseEvent: Record<string, any> = { type: 'response.create' };
+      if (command.metadata && Object.keys(command.metadata).length > 0) {
+        responseEvent.response = { metadata: command.metadata };
+      }
+      context.manager.sendEvent(responseEvent);
     }
     this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
   }

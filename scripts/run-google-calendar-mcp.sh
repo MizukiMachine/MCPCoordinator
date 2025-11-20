@@ -18,6 +18,17 @@ export GOOGLE_OAUTH_CREDENTIALS="${GOOGLE_OAUTH_CREDENTIALS:-$CRED_FILE_DEFAULT}
 export GOOGLE_CALENDAR_MCP_TOKEN_PATH="${GOOGLE_CALENDAR_MCP_TOKEN_PATH:-$TOKEN_FILE_DEFAULT}"
 export GOOGLE_OAUTH_SCOPES="${GOOGLE_OAUTH_SCOPES:-https://www.googleapis.com/auth/calendar}"
 
+if [[ -z "${XDG_CONFIG_HOME:-}" ]]; then
+  export XDG_CONFIG_HOME="${HOME:-/home/nextjs}/.config"
+fi
+TOKEN_DEST="$XDG_CONFIG_HOME/google-calendar-mcp/tokens.json"
+if [[ -n "${GOOGLE_CALENDAR_MCP_TOKEN_PATH:-}" && -f "$GOOGLE_CALENDAR_MCP_TOKEN_PATH" ]]; then
+  mkdir -p "$(dirname "$TOKEN_DEST")"
+  if [[ "$GOOGLE_CALENDAR_MCP_TOKEN_PATH" != "$TOKEN_DEST" ]]; then
+    cp "$GOOGLE_CALENDAR_MCP_TOKEN_PATH" "$TOKEN_DEST"
+  fi
+fi
+
 if [[ ! -d "$MCP_DIR" ]]; then
   echo "[run-google-calendar-mcp] Submodule not found: $MCP_DIR" >&2
   exit 1
