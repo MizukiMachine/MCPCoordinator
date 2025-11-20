@@ -87,12 +87,12 @@ steps:
           --set-secrets=GOOGLE_CALENDAR_MCP_SHARED_SECRET=GOOGLE_CALENDAR_MCP_SHARED_SECRET:latest,/var/secrets/google/credentials/google-oauth-desktop.json=google-oauth-desktop-json:latest,/var/secrets/google/token/google-oauth-token.json=google-oauth-token-json:latest \
           --update-env-vars=TRANSPORT=http,HOST=0.0.0.0,PORT=8080,XDG_CONFIG_HOME=/home/nodejs/.config \
           --format='value(status.url)')
-        if [[ -z "${MCP_URL}" ]]; then
+        if [[ -z "$$MCP_URL" ]]; then
           echo "Failed to retrieve MCP service URL" >&2
           exit 1
         fi
-        printf '%s' "${MCP_URL}" > /workspace/mcp_url.txt
-        echo "[cloudbuild] Deployed ${_MCP_SERVICE_NAME} at ${MCP_URL}"
+        printf '%s' "$$MCP_URL" > /workspace/mcp_url.txt
+        echo "[cloudbuild] Deployed ${_MCP_SERVICE_NAME} at $$MCP_URL"
 
   # 6) Deploy main service to Cloud Run
   - name: "gcr.io/cloud-builders/gcloud"
@@ -106,7 +106,7 @@ steps:
         else
           MCP_URL=$(gcloud run services describe "${_MCP_SERVICE_NAME}" --region="${_REGION}" --platform=managed --format='value(status.url)')
         fi
-        if [[ -z "${MCP_URL}" ]]; then
+        if [[ -z "$$MCP_URL" ]]; then
           echo "Failed to determine MCP URL" >&2
           exit 1
         fi
