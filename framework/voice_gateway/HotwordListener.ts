@@ -1,5 +1,5 @@
 const DEFAULT_HOTWORD_TIMEOUT_MS = 8000;
-const HOTWORD_PREFIXES = ['hey', 'ﾍｲ', 'ヘイ', 'へい', 'ねえ', 'へえ'];
+const HOTWORD_PREFIXES = ['hey', 'ﾍｲ', 'ヘイ', 'へい', 'はい', 'ハイ', 'ﾊｲ', 'ねえ', 'へえ'];
 const HOTWORD_DELIMITER_PATTERN = '[\\s,、。!！?？:：;；-]*';
 const LEADING_PUNCTUATION = /^[\s,、。!！?？:：;；-]+/u;
 
