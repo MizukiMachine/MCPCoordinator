@@ -581,6 +581,8 @@ const requestAgentChange = useCallback(async (agentName: string) => {
         memoryKey: resolvedMemoryKey ?? requestBody.memoryKey ?? 'unknown',
       });
       setSessionError(null);
+      // リセット直後はセッションを切断し、次回接続を完全に空の状態で開始させる
+      disconnectFromRealtime();
     } catch (error) {
       const message = (error as Error)?.message ?? 'unknown';
       setSessionError(`${uiText.memory.resetFailedPrefix}${message}`);
@@ -592,6 +594,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
     addTranscriptBreadcrumb,
     agentSetKey,
     memoryKeysByScenario,
+    disconnectFromRealtime,
     uiText.memory.resetDoneBreadcrumb,
     uiText.memory.resetFailedPrefix,
   ]);
