@@ -13,7 +13,7 @@ describe('mark scenario', () => {
     expect(scenario?.[0]?.voice).toBeDefined();
     expect(scenario?.[0]?.instructions).toContain('想定カロリー');
     expect(scenario?.[0]?.instructions).toContain('今日の最適ランチは');
-    expect(scenario?.[0]?.instructions).toContain('もっと詳しく聞きますか？');
+    expect(scenario?.[0]?.instructions).toContain('追加質問は行わない');
   });
 
   it('exposes metadata, does not require MCP servers, and normalizes aliases', () => {

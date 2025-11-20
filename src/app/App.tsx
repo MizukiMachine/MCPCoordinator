@@ -84,6 +84,8 @@ function App() {
   >(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isResettingMemory, setIsResettingMemory] = useState<boolean>(false);
+  const [memoryKeysByScenario, setMemoryKeysByScenario] = useState<Record<string, string>>({});
+  const [activeMemoryKey, setActiveMemoryKey] = useState<string | null>(null);
 
   // Ref to identify whether the latest agent switch came from an automatic handoff
   const handoffTriggeredRef = useRef(false);
@@ -339,7 +341,8 @@ const requestAgentChange = useCallback(async (agentName: string) => {
     try {
       setSessionError(null);
       initialResponseTriggeredRef.current = false;
-      await connect({
+      const normalizedAgentKey = normalizeScenarioKey(agentSetKey);
+      const sessionInfo = await connect({
         agentSetKey,
         preferredAgentName: selectedAgentName,
         extraContext: {
@@ -350,6 +353,12 @@ const requestAgentChange = useCallback(async (agentName: string) => {
         },
         clientCapabilities: { outputText: isTextOutputEnabled },
       });
+      const resolvedMemoryKey = sessionInfo?.memoryKey ?? normalizedAgentKey;
+      setActiveMemoryKey(resolvedMemoryKey);
+      setMemoryKeysByScenario((prev) => ({
+        ...prev,
+        [normalizedAgentKey]: resolvedMemoryKey,
+      }));
     } catch (err) {
       console.error("Error connecting via SDK:", err);
       setSessionStatus("DISCONNECTED");
@@ -408,6 +417,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
   useEffect(() => {
     if (sessionStatus === 'DISCONNECTED' && !pendingVoiceReconnectRef.current) {
       setAgentSetKey(defaultAgentSetKey);
+      setActiveMemoryKey(null);
     }
   }, [sessionStatus]);
 
@@ -541,20 +551,35 @@ const requestAgentChange = useCallback(async (agentName: string) => {
 
   const handleResetMemory = useCallback(async () => {
     setIsResettingMemory(true);
+    const normalizedKey = normalizeScenarioKey(agentSetKey);
+    const storedKey = memoryKeysByScenario[normalizedKey] ?? activeMemoryKey ?? null;
+    const requestBody: Record<string, string> = { agentSetKey: normalizedKey };
+    if (storedKey) {
+      requestBody.memoryKey = storedKey;
+    }
     try {
       const response = await fetch('/api/memory', {
         method: 'DELETE',
         headers: buildBffHeaders(),
-        body: JSON.stringify({
-          agentSetKey: normalizeScenarioKey(agentSetKey),
-        }),
+        body: JSON.stringify(requestBody),
       });
+      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
         const reason = payload?.message ?? payload?.error ?? 'unknown';
         throw new Error(reason);
       }
-      addTranscriptBreadcrumb(uiText.memory.resetDoneBreadcrumb, { agentSetKey });
+      const resolvedMemoryKey =
+        typeof payload?.memoryKey === 'string' ? payload.memoryKey : requestBody.memoryKey;
+      if (resolvedMemoryKey) {
+        setMemoryKeysByScenario((prev) => ({
+          ...prev,
+          [normalizedKey]: resolvedMemoryKey,
+        }));
+      }
+      addTranscriptBreadcrumb(uiText.memory.resetDoneBreadcrumb, {
+        agentSetKey: normalizedKey,
+        memoryKey: resolvedMemoryKey ?? requestBody.memoryKey ?? 'unknown',
+      });
       setSessionError(null);
     } catch (error) {
       const message = (error as Error)?.message ?? 'unknown';
@@ -563,8 +588,10 @@ const requestAgentChange = useCallback(async (agentName: string) => {
       setIsResettingMemory(false);
     }
   }, [
+    activeMemoryKey,
     addTranscriptBreadcrumb,
     agentSetKey,
+    memoryKeysByScenario,
     uiText.memory.resetDoneBreadcrumb,
     uiText.memory.resetFailedPrefix,
   ]);

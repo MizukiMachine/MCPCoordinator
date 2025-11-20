@@ -111,6 +111,7 @@ export interface CreateSessionResult {
   heartbeatIntervalMs: number;
   allowedModalities: Array<'text' | 'audio'>;
   textOutputEnabled: boolean;
+  memoryKey: string | null;
   agentSet: {
     key: string;
     primary: string;
@@ -484,6 +485,7 @@ export class SessionHost {
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
       allowedModalities: reportedModalities,
       textOutputEnabled,
+      memoryKey,
       capabilityWarnings: envSnapshot.warnings,
       agentSet: {
         key: options.agentSetKey,
