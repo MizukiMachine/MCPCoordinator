@@ -5,7 +5,7 @@ import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
 export const graffityAgent = new RealtimeAgent({
   name: 'Graffity',
-  voice: 'sage',
+  voice: 'coral',
   instructions: `
 ${japaneseLanguagePreamble}
 ${commonInteractionRules}

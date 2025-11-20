@@ -12,7 +12,7 @@ const calendarAliasList = formatCalendarAliasList(calendarAliases);
 
 export const kateAgent = new RealtimeAgent({
   name: 'kate',
-  voice: 'verse',
+  voice: 'ballad',
   instructions: `
 ${japaneseLanguagePreamble}
 ${voiceResponsePreamble}

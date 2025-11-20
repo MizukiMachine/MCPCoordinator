@@ -5,7 +5,7 @@ import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
 export const patriciaAgent = new RealtimeAgent({
   name: 'Patricia',
-  voice: 'verse',
+  voice: 'shimmer',
   instructions: `
 ${japaneseLanguagePreamble}
 ${voiceResponsePreamble}
