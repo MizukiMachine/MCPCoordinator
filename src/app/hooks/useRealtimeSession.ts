@@ -11,6 +11,7 @@ import { isVoiceControlDirective, type VoiceControlDirective } from '@/shared/vo
 
 const BUILD_TIME_BFF_KEY = process.env.NEXT_PUBLIC_BFF_KEY;
 const CLIENT_DISCONNECT_REASON = 'client_request';
+const HOTWORD_CUE_ASSET_PATH = '/audio/hotword-chime.wav';
 
 function addFallbackItemId(event: any) {
   if (!event || typeof event !== 'object') return event;
@@ -43,10 +44,18 @@ function safeJsonParse<T = any>(input: string): T {
   }
 }
 
+export interface HotwordCueEventPayload {
+  cueId?: string;
+  scenarioKey?: string;
+  status: 'streamed' | 'fallback';
+  reason?: string;
+}
+
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
   onAgentHandoff?: (agentName: string) => void;
   onVoiceControlDirective?: (directive: VoiceControlDirective) => void;
+  onHotwordCue?: (event: HotwordCueEventPayload) => void;
 }
 
 export interface ClientCapabilityOverrides {
@@ -132,6 +141,43 @@ export function createTransportEventHandler({
   };
 }
 
+function extractPcmFromWav(buffer: ArrayBuffer): ArrayBuffer {
+  const view = new DataView(buffer);
+  const readChunkId = (offset: number) =>
+    String.fromCharCode(
+      view.getUint8(offset),
+      view.getUint8(offset + 1),
+      view.getUint8(offset + 2),
+      view.getUint8(offset + 3),
+    );
+
+  if (readChunkId(0) !== 'RIFF' || readChunkId(8) !== 'WAVE') {
+    throw new Error('Invalid WAV header');
+  }
+
+  let offset = 12;
+  while (offset + 8 <= buffer.byteLength) {
+    const chunkId = readChunkId(offset);
+    const chunkSize = view.getUint32(offset + 4, true);
+    offset += 8;
+    if (chunkId === 'data') {
+      return buffer.slice(offset, offset + chunkSize);
+    }
+    offset += chunkSize + (chunkSize % 2);
+  }
+
+  throw new Error('WAV data chunk not found');
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export function useRealtimeSession(
   callbacks: RealtimeSessionCallbacks = {},
   overrides: RealtimeSessionHookOverrides = {},
@@ -154,6 +200,8 @@ export function useRealtimeSession(
   const metricEmitterRef = useRef(createConsoleMetricEmitter('client.session_manager'));
   const audioPlayerRef = useRef<PcmAudioPlayer | null>(null);
   const audioMutedRef = useRef(false);
+  const hotwordCueBase64Ref = useRef<string | null>(null);
+  const hotwordCueFetchPromiseRef = useRef<Promise<string> | null>(null);
 
   const { logClientEvent, logServerEvent, setSessionMetadata, generateRequestId } = useEvent();
   const historyHandlers = useHandleSessionHistory().current;
@@ -189,6 +237,36 @@ export function useRealtimeSession(
   const stopAudioPlayback = useCallback(() => {
     audioPlayerRef.current?.stop();
   }, []);
+
+  const fetchHotwordCueBase64 = useCallback(async () => {
+    if (hotwordCueBase64Ref.current) {
+      return hotwordCueBase64Ref.current;
+    }
+    if (!hotwordCueFetchPromiseRef.current) {
+      hotwordCueFetchPromiseRef.current = fetch(HOTWORD_CUE_ASSET_PATH)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Failed to load hotword cue asset');
+          }
+          return response.arrayBuffer();
+        })
+        .then((buffer) => arrayBufferToBase64(extractPcmFromWav(buffer)));
+    }
+    const base64 = await hotwordCueFetchPromiseRef.current;
+    hotwordCueBase64Ref.current = base64;
+    return base64;
+  }, []);
+
+  const playLocalHotwordCue = useCallback(async () => {
+    try {
+      const base64 = await fetchHotwordCueBase64();
+      if (!audioMutedRef.current) {
+        void ensureAudioPlayer().enqueue(base64);
+      }
+    } catch (error) {
+      console.warn('Failed to play local hotword cue', error);
+    }
+  }, [fetchHotwordCueBase64, ensureAudioPlayer]);
 
   const transportEventHandler = useMemo(
     () =>
@@ -303,6 +381,16 @@ export function useRealtimeSession(
           callbacks.onVoiceControlDirective?.(payload);
         }
       });
+      addListener('hotword_cue', (payload) => {
+        callbacks.onHotwordCue?.(payload);
+        if (payload?.audio && payload?.status === 'streamed') {
+          if (!audioMutedRef.current) {
+            void ensureAudioPlayer().enqueue(payload.audio);
+          }
+        } else if (payload?.status === 'fallback') {
+          void playLocalHotwordCue();
+        }
+      });
 
       source.onerror = (event) => {
         console.error('SSE error from BFF session stream', event);
@@ -324,6 +412,8 @@ export function useRealtimeSession(
       transportEventHandler,
       createEventSource,
       updateStatus,
+      playLocalHotwordCue,
+      ensureAudioPlayer,
     ],
   );
 

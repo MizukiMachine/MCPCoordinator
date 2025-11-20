@@ -19,6 +19,7 @@ import {
 } from '../sessionHost';
 import type { VoiceControlDirective } from '@/shared/voiceControl';
 import type { MemoryEntry, MemoryStore } from '../../../coreData/persistentMemory';
+import type { HotwordCueService, HotwordCueRequest, HotwordCueResult } from '../hotwordCueService';
 
 vi.mock('@openai/agents-core', () => ({
   getOrCreateTrace: vi.fn((fn: () => any, _options?: unknown) => fn()),
@@ -116,6 +117,16 @@ class InMemoryMemoryStore implements MemoryStore {
   }
 }
 
+class StubHotwordCueService implements HotwordCueService {
+  public playCue = vi.fn(
+    async (_request: HotwordCueRequest): Promise<HotwordCueResult> => ({
+      cueId: 'cue_test',
+      status: 'streamed',
+      audio: 'BASE64_AUDIO',
+    }),
+  );
+}
+
 describe('SessionHost', () => {
   const scenarioMap: Record<string, RealtimeAgent[]> = {
     demo: [
@@ -141,6 +152,7 @@ describe('SessionHost', () => {
   let host: SessionHost;
   let managers: FakeSessionManager[];
   let envSnapshot: RealtimeEnvironmentSnapshot;
+  let hotwordCueService: StubHotwordCueService;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -149,6 +161,7 @@ describe('SessionHost', () => {
       warnings: [],
       audio: { enabled: true },
     };
+    hotwordCueService = new StubHotwordCueService();
     host = new SessionHost({
       scenarioMap,
       sessionManagerFactory: (hooks) => {
@@ -158,6 +171,7 @@ describe('SessionHost', () => {
       },
       now: () => Date.now(),
       envInspector: () => envSnapshot,
+      hotwordCueService,
     });
   });
 
@@ -217,10 +231,12 @@ describe('SessionHost', () => {
       transcript: 'Hey demo, 在庫を確認して',
     });
 
-    const deleteEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.delete');
-    expect(deleteEvent).toMatchObject({ item_id: 'conv_item_1' });
-    const textEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.create');
-    expect(textEvent?.item?.content?.[0]?.text).toBe('在庫を確認して');
+    await vi.waitFor(() => {
+      const deleteEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.delete');
+      expect(deleteEvent).toMatchObject({ item_id: 'conv_item_1' });
+      const textEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.create');
+      expect(textEvent?.item?.content?.[0]?.text).toBe('在庫を確認して');
+    });
   });
 
   it('requests a scenario switch when a different hotword is detected', async () => {
@@ -265,6 +281,90 @@ describe('SessionHost', () => {
         scenarioKey: 'basho',
         initialCommand: '秋の一句を読んで',
       });
+    });
+    unsubscribe();
+  });
+
+  it('emits hotword cue SSE events when a cue is streamed successfully', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'hotword_cue_stream',
+      send: (msg) => received.push(msg),
+    });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_4',
+      transcript: 'Hey demo, 状態を教えて',
+    });
+
+    await vi.waitFor(() => {
+      expect(hotwordCueService.playCue).toHaveBeenCalled();
+      const cueEvent = received.find((msg) => msg.event === 'hotword_cue');
+      expect(cueEvent?.data).toMatchObject({
+        status: 'streamed',
+        scenarioKey: 'demo',
+        audio: 'BASE64_AUDIO',
+      });
+    });
+    unsubscribe();
+  });
+
+  it('streams a hotword cue when the prefix is detected in a delta event', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'hotword_cue_delta',
+      send: (msg) => received.push(msg),
+    });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.delta',
+      item_id: 'conv_item_delta',
+      delta: 'Hey demo,',
+    });
+
+    await vi.waitFor(() => {
+      expect(hotwordCueService.playCue).toHaveBeenCalled();
+      const cueEvent = received.find((msg) => msg.event === 'hotword_cue');
+      expect(cueEvent?.data).toMatchObject({
+        scenarioKey: 'demo',
+        status: 'streamed',
+      });
+    });
+    unsubscribe();
+  });
+
+  it('broadcasts fallback status when the cue service reports failure', async () => {
+    hotwordCueService.playCue.mockResolvedValueOnce({
+      cueId: 'cue_fail',
+      status: 'fallback',
+      reason: 'missing audio',
+    });
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'hotword_cue_fallback',
+      send: (msg) => received.push(msg),
+    });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_5',
+      transcript: 'Hey demo, 明日の予定を教えて',
+    });
+
+    await vi.waitFor(() => {
+      const cueEvent = received.find((msg) => msg.event === 'hotword_cue');
+      expect(cueEvent?.data).toMatchObject({
+        status: 'fallback',
+        reason: 'missing audio',
+      });
+      expect(cueEvent?.data?.audio).toBeUndefined();
     });
     unsubscribe();
   });

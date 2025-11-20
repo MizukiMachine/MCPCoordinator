@@ -301,6 +301,103 @@ describe('useRealtimeSession', () => {
     });
   });
 
+  it('invokes onHotwordCue when SSE event arrives', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        createMockResponse({
+          sessionId: 'sess_hotword',
+          streamUrl: '/api/session/sess_hotword/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      );
+    const stubEventSource = createStubEventSource();
+    const cueCallback = vi.fn();
+
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        { onHotwordCue: cueCallback },
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const listener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'hotword_cue',
+    )?.[1];
+    expect(listener).toBeInstanceOf(Function);
+
+    await act(async () => {
+      listener?.({
+        data: JSON.stringify({ status: 'streamed', scenarioKey: 'demo', audio: 'SERVER_PCM' }),
+      } as MessageEvent<string>);
+    });
+
+    expect(cueCallback).toHaveBeenCalledWith({ status: 'streamed', scenarioKey: 'demo', audio: 'SERVER_PCM' });
+    expect(audioPlayerMock.enqueue).toHaveBeenCalledWith('SERVER_PCM');
+  });
+
+  it('plays a fallback cue locally when the server requests fallback playback', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        createMockResponse({
+          sessionId: 'sess_hotword_fallback',
+          streamUrl: '/api/session/sess_hotword_fallback/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      );
+    const stubEventSource = createStubEventSource();
+    const fallbackResponse = {
+      ok: true,
+      arrayBuffer: async () => createTestWavBuffer(),
+    } as Response;
+    const originalFetch = (globalThis as any).fetch;
+    (globalThis as any).fetch = vi.fn().mockResolvedValue(fallbackResponse);
+
+    try {
+      const { result } = renderHook(() =>
+        useRealtimeSession(
+          {},
+          {
+            fetchImpl,
+            createEventSource: () => stubEventSource,
+          },
+        ),
+      );
+
+      await act(async () => {
+        await result.current.connect({ agentSetKey: 'demo' });
+      });
+
+      const listener = stubEventSource.addEventListener.mock.calls.find(
+        ([eventName]) => eventName === 'hotword_cue',
+      )?.[1];
+      expect(listener).toBeInstanceOf(Function);
+
+      await act(async () => {
+        listener?.({
+          data: JSON.stringify({ status: 'fallback', cueId: 'cue_fail' }),
+        } as MessageEvent<string>);
+      });
+
+      await vi.waitFor(() => {
+        expect((globalThis as any).fetch).toHaveBeenCalledWith('/audio/hotword-chime.wav');
+        expect(audioPlayerMock.enqueue).toHaveBeenCalled();
+      });
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+  });
+
   it('keeps the session status when a recoverable session_error arrives', async () => {
     const fetchImpl = vi
       .fn()
@@ -572,4 +669,36 @@ function createStubEventSource(): EventSource {
     emit: (event: string, payload: any) => void;
     triggerError: () => void;
   };
+}
+
+function createTestWavBuffer(): ArrayBuffer {
+  const headerSize = 44;
+  const sampleCount = 16;
+  const dataSize = sampleCount * 2;
+  const buffer = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(buffer);
+  const writeString = (offset: number, value: string) => {
+    for (let i = 0; i < value.length; i += 1) {
+      view.setUint8(offset + i, value.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 24000, true);
+  view.setUint32(28, 24000 * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  const pcm = new Int16Array(buffer, headerSize, sampleCount);
+  for (let i = 0; i < sampleCount; i += 1) {
+    pcm[i] = i % 2 === 0 ? 4000 : -4000;
+  }
+  return buffer;
 }

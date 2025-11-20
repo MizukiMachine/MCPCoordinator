@@ -4,6 +4,7 @@ import {
   HotwordListener,
   type HotwordDictionary,
   type HotwordMatch,
+  type HotwordDetection,
 } from '../HotwordListener';
 
 const baseDictionary: HotwordDictionary = {
@@ -17,12 +18,14 @@ const baseDictionary: HotwordDictionary = {
 
 describe('HotwordListener', () => {
   let matches: HotwordMatch[];
+  let detections: HotwordDetection[];
   let invalidItemIds: string[];
   let timeoutTriggered: boolean;
   let now: number;
 
   beforeEach(() => {
     matches = [];
+    detections = [];
     invalidItemIds = [];
     timeoutTriggered = false;
     now = 0;
@@ -34,6 +37,7 @@ describe('HotwordListener', () => {
       reminderTimeoutMs: 5000,
       clock: () => now,
       onMatch: (match) => matches.push(match),
+      onDetection: (payload) => detections.push(payload),
       onInvalidTranscript: (payload) => invalidItemIds.push(payload.itemId),
       onTimeout: () => {
         timeoutTriggered = true;
@@ -45,6 +49,12 @@ describe('HotwordListener', () => {
     type: 'conversation.item.input_audio_transcription.completed',
     item_id: itemId,
     transcript,
+  });
+
+  const deltaEvent = (itemId: string, delta: string) => ({
+    type: 'conversation.item.input_audio_transcription.delta',
+    item_id: itemId,
+    delta,
   });
 
   it('detects a hotword and extracts the scenario key and command text', () => {
@@ -59,6 +69,8 @@ describe('HotwordListener', () => {
         itemId: 'msg_1',
       }),
     );
+    expect(detections).toHaveLength(1);
+    expect(detections[0]).toMatchObject({ scenarioKey: 'graffity', stage: 'completed' });
     expect(invalidItemIds).toHaveLength(0);
   });
 
@@ -74,6 +86,24 @@ describe('HotwordListener', () => {
         itemId: 'msg_2',
       }),
     );
+  });
+
+  it('emits onDetection as soon as a delta transcript contains the hotword prefix', () => {
+    const listener = buildListener();
+
+    listener.handleTranscriptionEvent(deltaEvent('msg_delta', 'Hey Gra'));
+    expect(detections).toHaveLength(0);
+
+    listener.handleTranscriptionEvent(deltaEvent('msg_delta', 'ffity,'));
+    expect(detections).toHaveLength(1);
+    expect(detections[0]).toMatchObject({
+      scenarioKey: 'graffity',
+      itemId: 'msg_delta',
+      stage: 'delta',
+    });
+
+    listener.handleTranscriptionEvent(deltaEvent('msg_delta', ' what can you do?'));
+    expect(detections).toHaveLength(1);
   });
 
   it('marks transcripts without hotwords as invalid and triggers timeout only once', () => {
@@ -93,7 +123,6 @@ describe('HotwordListener', () => {
     expect(timeoutTriggered).toBe(true);
     expect(invalidItemIds).toEqual(['msg_3', 'msg_4', 'msg_5']);
   });
-
 
   it('detects Patricia hotword with Japanese alias', () => {
     const listener = buildListener();
@@ -139,6 +168,14 @@ describe('HotwordListener', () => {
     expect(timeoutTriggered).toBe(false);
   });
 
+  it('falls back to detection on completed transcripts when no delta was seen', () => {
+    const listener = buildListener();
+
+    listener.handleTranscriptionEvent(completedEvent('msg_full', 'Hey Graffity, hello'));
+    expect(detections).toHaveLength(1);
+    expect(detections[0]).toMatchObject({ itemId: 'msg_full', stage: 'completed' });
+  });
+
   it('ignores non-transcription transport events', () => {
     const listener = buildListener();
 
@@ -149,5 +186,6 @@ describe('HotwordListener', () => {
 
     expect(matches).toHaveLength(0);
     expect(invalidItemIds).toHaveLength(0);
+    expect(detections).toHaveLength(0);
   });
 });

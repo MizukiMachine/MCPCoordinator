@@ -33,6 +33,7 @@ import { ServiceManager } from '../../../framework/di/ServiceManager';
 import { HotwordListener, type HotwordMatch } from '../../../framework/voice_gateway/HotwordListener';
 import { ScenarioRouter, type ScenarioCommandForwarder } from '../../scenario/ScenarioRouter';
 import { ScenarioRegistry } from '../../scenario/ScenarioRegistry';
+import { ServerHotwordCueService, type HotwordCueService } from './hotwordCueService';
 import {
   buildReplayEvents,
   getPersistentMemoryStore,
@@ -183,6 +184,7 @@ interface SessionContext {
   hotwordListener?: HotwordListener;
   scenarioRouter?: ScenarioRouter;
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
+  hotwordCuePlayedItems: Set<string>;
 }
 
 interface DestroySessionOptions {
@@ -201,6 +203,8 @@ interface SessionHostDeps {
   mcpRegistry?: McpServerRegistry;
   serviceManager?: ServiceManager;
   memoryStore?: MemoryStore;
+  hotwordCueService?: HotwordCueService;
+  hotwordCueAudioPath?: string;
 }
 
 export class SessionHost {
@@ -216,6 +220,7 @@ export class SessionHost {
   private readonly registryServiceManager?: ServiceManager;
   private readonly memoryStore: MemoryStore;
   private readonly scenarioRegistry: ScenarioRegistry;
+  private readonly hotwordCueService: HotwordCueService;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -225,6 +230,14 @@ export class SessionHost {
     this.scenarioMcpBindings = deps.scenarioMcpBindings ?? scenarioMcpBindings;
     this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
     this.memoryStore = deps.memoryStore ?? getPersistentMemoryStore();
+
+    this.hotwordCueService =
+      deps.hotwordCueService ??
+      new ServerHotwordCueService({
+        audioFilePath: deps.hotwordCueAudioPath,
+        logger: this.logger,
+        metrics: this.metrics,
+      });
 
     this.scenarioRegistry = new ScenarioRegistry({ scenarioMap: this.scenarioMap });
 
@@ -386,13 +399,30 @@ export class SessionHost {
     const hotwordListener = new HotwordListener({
       dictionary: this.scenarioRegistry.getHotwordDictionary(),
       reminderTimeoutMs: HOTWORD_TIMEOUT_MS,
-      onMatch: (match) => {
+      onDetection: async (detection) => {
+        this.logger.debug('Hotword prefix detected', {
+          sessionId,
+          scenarioKey: detection.scenarioKey,
+          stage: detection.stage,
+        });
+        await this.emitHotwordCue(context, {
+          scenarioKey: detection.scenarioKey,
+          transcript: detection.transcript,
+          itemId: detection.itemId,
+        });
+      },
+      onMatch: async (match) => {
         this.logger.info('Hotword matched', {
           sessionId,
           scenarioKey: match.scenarioKey,
           commandPreview: match.commandText.slice(0, 60),
         });
-        return scenarioRouter.handleHotwordMatch(match);
+        await this.emitHotwordCue(context, {
+          scenarioKey: match.scenarioKey,
+          transcript: match.transcript,
+          itemId: match.itemId,
+        });
+        await scenarioRouter.handleHotwordMatch(match);
       },
       onInvalidTranscript: ({ itemId, transcript }) => {
         this.logger.debug('Hotword miss; deleting transcript item', {
@@ -482,6 +512,7 @@ export class SessionHost {
       manager,
       subscribers: new Map(),
       emitter: new EventEmitter(),
+      hotwordCuePlayedItems: new Set(),
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
         this.clearTimers(context);
         this.sessions.delete(sessionId);
@@ -680,6 +711,30 @@ export class SessionHost {
         this.logger.warn('Failed to destroy session after hotword timeout', { sessionId: context.id, error });
       });
     }, HOTWORD_REMINDER_DISCONNECT_DELAY_MS);
+  }
+
+  private async emitHotwordCue(
+    context: SessionContext,
+    payload: { scenarioKey: string; transcript: string; itemId?: string },
+  ): Promise<void> {
+    if (payload.itemId && context.hotwordCuePlayedItems.has(payload.itemId)) {
+      return;
+    }
+    const cueResult = await this.hotwordCueService.playCue({
+      sessionId: context.id,
+      scenarioKey: payload.scenarioKey,
+      transcript: payload.transcript,
+    });
+    if (payload.itemId) {
+      context.hotwordCuePlayedItems.add(payload.itemId);
+    }
+    this.broadcast(context.id, 'hotword_cue', {
+      cueId: cueResult.cueId,
+      scenarioKey: payload.scenarioKey,
+      status: cueResult.status,
+      reason: cueResult.reason,
+      audio: cueResult.audio,
+    });
   }
 
   private sendHotwordReminder(context: SessionContext) {
