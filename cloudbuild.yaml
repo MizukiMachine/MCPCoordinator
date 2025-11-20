@@ -23,7 +23,7 @@ substitutions:
   _IMAGE_UPLOAD_DIR: ./var/uploads/images
   _IMAGE_UPLOAD_MAX_BYTES: "8388608"
   _IMAGE_UPLOAD_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp,application/pdf
-  _IMAGE_UPLOAD_TARGET: gcs
+  _IMAGE_UPLOAD_TARGET: local
   _IMAGE_UPLOAD_GCS_BUCKET: ai-conversation-engine-uploads
   _IMAGE_UPLOAD_GCS_PREFIX: uploads
 steps:
