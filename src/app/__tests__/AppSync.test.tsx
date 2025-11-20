@@ -100,10 +100,10 @@ describe("App scenario/agent synchronization", () => {
     await waitFor(() => expect(connectMock).toHaveBeenCalledTimes(1));
 
     const scenarioSelect = screen.getAllByRole("combobox")[0];
-    fireEvent.change(scenarioSelect, { target: { value: "basho" } });
+    fireEvent.change(scenarioSelect, { target: { value: "takuboku" } });
 
     await waitFor(() => expect(disconnectMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(connectMock).toHaveBeenCalledTimes(2));
-    expect((scenarioSelect as HTMLSelectElement).value).toBe("basho");
+    expect((scenarioSelect as HTMLSelectElement).value).toBe("takuboku");
   });
 });

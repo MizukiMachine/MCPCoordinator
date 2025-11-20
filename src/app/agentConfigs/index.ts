@@ -1,6 +1,5 @@
 import { kateScenario, kateCompanyName } from './kate';
 import { graffityScenario, graffityCompanyName } from './graffity';
-import { bashoScenario, bashoCompanyName } from './basho';
 import { takubokuScenario, takubokuCompanyName } from './takuboku';
 import { patriciaScenario, patriciaCompanyName } from './patricia';
 import type { RealtimeAgent } from '@openai/agents/realtime';
@@ -9,7 +8,6 @@ import type { RealtimeAgent } from '@openai/agents/realtime';
 export const allAgentSets: Record<string, RealtimeAgent[]> = {
   graffity: graffityScenario,
   kate: kateScenario,
-  basho: bashoScenario,
   takuboku: takubokuScenario,
   patricia: patriciaScenario,
 };
@@ -22,7 +20,6 @@ export type ScenarioMcpBinding = {
 export const scenarioMcpBindings: Record<string, ScenarioMcpBinding> = {
   graffity: { requiredMcpServers: [] },
   kate: { requiredMcpServers: ['google-calendar'] },
-  basho: { requiredMcpServers: [] },
   takuboku: { requiredMcpServers: [] },
   patricia: { requiredMcpServers: [] },
 };
@@ -37,10 +34,6 @@ export const agentSetMetadata: Record<string, { label: string; companyName: stri
   kate: {
     label: 'ケイト (Google Calendar MCP)',
     companyName: kateCompanyName,
-  },
-  basho: {
-    label: 'バショウ (Haiku)',
-    companyName: bashoCompanyName,
   },
   takuboku: {
     label: 'タクボク (Tanka)',

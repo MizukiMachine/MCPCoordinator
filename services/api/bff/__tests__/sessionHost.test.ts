@@ -141,9 +141,9 @@ describe('SessionHost', () => {
         instructions: 'kate',
       } as RealtimeAgent,
     ],
-    basho: [
+    takuboku: [
       {
-        name: 'basho-agent',
+        name: 'takuboku-agent',
         instructions: 'haiku',
       } as RealtimeAgent,
     ],
@@ -271,14 +271,14 @@ describe('SessionHost', () => {
     manager.hooks.onServerEvent?.('transport_event', {
       type: 'conversation.item.input_audio_transcription.completed',
       item_id: 'conv_item_3',
-      transcript: 'Hey!バショウ 秋の一句を読んで',
+      transcript: 'Hey!タクボク 秋の一句を読んで',
     });
 
     await vi.waitFor(() => {
       const directive = received.find((msg) => msg.event === 'voice_control')?.data as VoiceControlDirective | undefined;
       expect(directive).toEqual({
         action: 'switchScenario',
-        scenarioKey: 'basho',
+        scenarioKey: 'takuboku',
         initialCommand: '秋の一句を読んで',
       });
     });
