@@ -17,7 +17,15 @@ TOKEN_DEST="${XDG_CONFIG_HOME}/google-calendar-mcp/tokens.json"
 if [[ -n "${GOOGLE_CALENDAR_MCP_TOKEN_PATH:-}" && -f "${GOOGLE_CALENDAR_MCP_TOKEN_PATH}" ]]; then
   mkdir -p "$(dirname "${TOKEN_DEST}")"
   if [[ "${GOOGLE_CALENDAR_MCP_TOKEN_PATH}" != "${TOKEN_DEST}" ]]; then
-    cp "${GOOGLE_CALENDAR_MCP_TOKEN_PATH}" "${TOKEN_DEST}"
+    TMP_DEST="${TOKEN_DEST}.tmp"
+    if cat "${GOOGLE_CALENDAR_MCP_TOKEN_PATH}" > "${TMP_DEST}"; then
+      mv "${TMP_DEST}" "${TOKEN_DEST}"
+      chmod 600 "${TOKEN_DEST}"
+    else
+      echo "[google-calendar-mcp] warning: failed to copy token file" >&2
+      rm -f "${TMP_DEST}"
+    fi
+  else
     chmod 600 "${TOKEN_DEST}"
   fi
 fi
