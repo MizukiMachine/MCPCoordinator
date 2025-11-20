@@ -115,8 +115,8 @@ function App() {
     return stored ? stored === 'true' : true;
   });
   const [clientTag, setClientTag] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'glasses01';
-    return localStorage.getItem('clientTag') ?? 'glasses01';
+    if (typeof window === 'undefined') return 'develop';
+    return localStorage.getItem('clientTag') ?? 'develop';
   });
 
   const schedulePostToolAction = useCallback((action: () => void) => {
@@ -762,7 +762,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
             <input
               value={clientTag}
               onChange={(e) => setClientTag(e.target.value)}
-              placeholder="glasses01"
+              placeholder="develop / glasses01 / glasses02"
               className="border border-gray-300 rounded-lg text-base px-2 py-1 w-36 focus:outline-none focus:ring-2 focus:ring-sky-400"
             />
           </div>

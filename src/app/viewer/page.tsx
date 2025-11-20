@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import { useSessionSpectator } from "../hooks/useSessionSpectator";
@@ -265,6 +266,30 @@ export default function ViewerPage() {
             2つのクライアント端末のセッションSSEを並列購読し、リアルタイム文字起こしとシナリオ配信イベントをモニタリングします。
             BFFキーを1回入力するだけで、複数デバイスの進捗を読み取り専用で追跡できます。
           </p>
+          <div className="flex flex-wrap gap-2 text-xs text-slate-200/80">
+            <span className="px-2 py-1 rounded-full bg-slate-800/60 border border-slate-600/60">想定タグ: develop / glasses01 / glasses02</span>
+            <span className="px-2 py-1 rounded-full bg-slate-800/60 border border-slate-600/60">下のプリセットリンクで即接続</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/viewer/develop"
+              className="text-xs px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition"
+            >
+              develop 用ビュー
+            </Link>
+            <Link
+              href="/viewer/glasses01"
+              className="text-xs px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition"
+            >
+              glasses01 用ビュー
+            </Link>
+            <Link
+              href="/viewer/glasses02"
+              className="text-xs px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition"
+            >
+              glasses02 用ビュー
+            </Link>
+          </div>
           <div className="flex flex-wrap gap-3 items-center">
             <label className="text-sm text-slate-200/80">
               BFF Key
@@ -301,7 +326,7 @@ export default function ViewerPage() {
 
         <section className="grid gap-6 md:grid-cols-2">
           <SessionPanel
-            title="端末A"
+            title="端末A (glasses01デフォルト)"
             placeholder="sess_xxxxx"
             onConnect={connectA}
             onDisconnect={spectatorA.disconnect}
@@ -312,7 +337,7 @@ export default function ViewerPage() {
             state={spectatorA}
           />
           <SessionPanel
-            title="端末B"
+            title="端末B (glasses02デフォルト)"
             placeholder="sess_yyyyy"
             onConnect={connectB}
             onDisconnect={spectatorB.disconnect}
