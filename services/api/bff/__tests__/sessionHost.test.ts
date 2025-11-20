@@ -124,6 +124,18 @@ describe('SessionHost', () => {
         instructions: 'demo',
       } as RealtimeAgent,
     ],
+    kate: [
+      {
+        name: 'kate-agent',
+        instructions: 'kate',
+      } as RealtimeAgent,
+    ],
+    basho: [
+      {
+        name: 'basho-agent',
+        instructions: 'haiku',
+      } as RealtimeAgent,
+    ],
   };
 
   let host: SessionHost;
@@ -193,6 +205,68 @@ describe('SessionHost', () => {
 
     expect(result.allowedModalities).toEqual(['audio']);
     expect(result.textOutputEnabled).toBe(false);
+  });
+
+  it('injects user text when a hotword transcription is completed', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_1',
+      transcript: 'Hey demo, 在庫を確認して',
+    });
+
+    const deleteEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.delete');
+    expect(deleteEvent).toMatchObject({ item_id: 'conv_item_1' });
+    const textEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.create');
+    expect(textEvent?.item?.content?.[0]?.text).toBe('在庫を確認して');
+  });
+
+  it('requests a scenario switch when a different hotword is detected', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, { id: 'hotword_listener', send: (msg) => received.push(msg) });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_2',
+      transcript: 'Hey kate, 今日の予定を教えて',
+    });
+
+    await vi.waitFor(() => {
+      const directive = received.find((msg) => msg.event === 'voice_control')?.data as VoiceControlDirective | undefined;
+      expect(directive).toEqual({
+        action: 'switchScenario',
+        scenarioKey: 'kate',
+        initialCommand: '今日の予定を教えて',
+      });
+    });
+    unsubscribe();
+  });
+
+  it('handles hotwords with punctuation when switching scenarios', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, { id: 'hotword_listener_punct', send: (msg) => received.push(msg) });
+    const manager = managers[0]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_3',
+      transcript: 'Hey!バショウ 秋の一句を読んで',
+    });
+
+    await vi.waitFor(() => {
+      const directive = received.find((msg) => msg.event === 'voice_control')?.data as VoiceControlDirective | undefined;
+      expect(directive).toEqual({
+        action: 'switchScenario',
+        scenarioKey: 'basho',
+        initialCommand: '秋の一句を読んで',
+      });
+    });
+    unsubscribe();
   });
 
   it('enforces rate limiting', async () => {

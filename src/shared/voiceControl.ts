@@ -2,6 +2,7 @@ export type VoiceControlDirective =
   | {
       action: 'switchScenario';
       scenarioKey: string;
+      initialCommand?: string;
     }
   | {
       action: 'switchAgent';
@@ -13,8 +14,15 @@ export interface VoiceControlResult {
   message?: string;
 }
 
+export interface ScenarioChangeOptions {
+  initialCommand?: string;
+}
+
 export interface VoiceControlHandlers {
-  requestScenarioChange: (scenarioKey: string) => Promise<VoiceControlResult>;
+  requestScenarioChange: (
+    scenarioKey: string,
+    options?: ScenarioChangeOptions,
+  ) => Promise<VoiceControlResult>;
   requestAgentChange: (agentName: string) => Promise<VoiceControlResult>;
 }
 
