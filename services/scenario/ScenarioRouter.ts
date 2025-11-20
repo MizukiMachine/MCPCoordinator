@@ -53,6 +53,7 @@ export class ScenarioRouter {
     this.logger?.info?.('Hotword detected for different scenario. Requesting switch.', {
       currentScenario: this.currentScenarioKey,
       requestedScenario: match.scenarioKey,
+      commandPreview: commandText.slice(0, 60),
     });
     await this.forwarder.interruptActiveResponse();
     await this.voiceControl.requestScenarioChange(match.scenarioKey, {

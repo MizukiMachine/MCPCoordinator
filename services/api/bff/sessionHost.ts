@@ -386,8 +386,22 @@ export class SessionHost {
     const hotwordListener = new HotwordListener({
       dictionary: this.scenarioRegistry.getHotwordDictionary(),
       reminderTimeoutMs: HOTWORD_TIMEOUT_MS,
-      onMatch: (match) => scenarioRouter.handleHotwordMatch(match),
-      onInvalidTranscript: ({ itemId }) => this.deleteTranscriptItem(context, itemId),
+      onMatch: (match) => {
+        this.logger.info('Hotword matched', {
+          sessionId,
+          scenarioKey: match.scenarioKey,
+          commandPreview: match.commandText.slice(0, 60),
+        });
+        return scenarioRouter.handleHotwordMatch(match);
+      },
+      onInvalidTranscript: ({ itemId, transcript }) => {
+        this.logger.debug('Hotword miss; deleting transcript item', {
+          sessionId,
+          itemId,
+          transcriptPreview: String(transcript ?? '').slice(0, 60),
+        });
+        this.deleteTranscriptItem(context, itemId);
+      },
       onTimeout: () => this.handleHotwordTimeout(context),
     });
     context.scenarioRouter = scenarioRouter;

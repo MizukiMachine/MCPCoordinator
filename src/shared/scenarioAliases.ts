@@ -1,8 +1,28 @@
 export const scenarioAliasMap: Record<string, string[]> = {
-  graffity: ['graffity', 'graffiti', 'グラフィティ', 'グラフィティー', 'グラフティ', 'ぐらふぃてぃ', 'graffityシナリオ'],
-  kate: ['kate', 'ケイト', 'ｹｲﾄ', 'けいと', 'kateシナリオ', 'ケイトシナリオ'],
-  basho: ['basho', '芭蕉', 'ばしょう', 'バショウ', '芭蕉シナリオ'],
-  takuboku: ['takuboku', '啄木', 'たくぼく', 'タクボク', '啄木シナリオ'],
+  graffity: [
+    'graffity',
+    'graffiti',
+    'グラフィティ',
+    'グラフィティー',
+    'グラフティ',
+    'グラフティー',
+    'ぐらふぃてぃ',
+    'グラビティ', // よくある誤転写
+    'graffityシナリオ',
+  ],
+  kate: ['kate', 'ケイト', 'ｹｲﾄ', 'けいと', 'けーと', 'ケイトさん', 'kateシナリオ', 'ケイトシナリオ'],
+  basho: ['basho', '芭蕉', 'ばしょう', 'バショウ', '芭蕉さん', '芭蕉シナリオ'],
+  takuboku: [
+    'takuboku',
+    '啄木',
+    '拓木',
+    'たくぼく',
+    'たくぼくう',
+    'タクボク',
+    'タクボクさん',
+    '啄木さん',
+    '啄木シナリオ',
+  ],
 };
 
 const aliasLookup = Object.entries(scenarioAliasMap).reduce<Record<string, string>>((acc, [key, aliases]) => {
