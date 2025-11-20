@@ -1,6 +1,7 @@
 substitutions:
   _REGION: asia-northeast1
   _SERVICE_NAME: ai-conversation-engine
+  _MCP_SERVICE_NAME: google-calendar-mcp
   _OPENAI_REALTIME_MODEL: gpt-realtime
   _OPENAI_REALTIME_TRANSCRIPTION_MODEL: gpt-4o-transcribe
   _OPENAI_REALTIME_VOICE: marin
@@ -11,7 +12,7 @@ substitutions:
   _NEXT_PUBLIC_CLIENT_LOG_ENDPOINT: /api/client-logs
   _NEXT_PUBLIC_CLIENT_LOG_MIRROR: "true"
   _CORS_ALLOW_ORIGIN: ""
-  _MCP_SERVERS_FILE: ""
+  _MCP_SERVERS_FILE: /app/config/mcp.servers.yaml
   _MCP_SERVERS: "[]"
   _GOOGLE_OAUTH_CREDENTIALS: /var/secrets/google/credentials/google-oauth-desktop.json
   _GOOGLE_CALENDAR_MCP_TOKEN_PATH: /var/secrets/google/token/google-oauth-token.json
@@ -26,6 +27,7 @@ substitutions:
   _IMAGE_UPLOAD_TARGET: local
   _IMAGE_UPLOAD_GCS_BUCKET: ai-conversation-engine-uploads
   _IMAGE_UPLOAD_GCS_PREFIX: uploads
+  _MCP_MEMORY: 512Mi
 steps:
   # 0) Fetch google-calendar-mcp into external/ so Docker build context includes MCP server
   - name: "gcr.io/cloud-builders/git"
@@ -37,7 +39,7 @@ steps:
         rm -rf external/google-calendar-mcp
         git clone --depth 1 https://github.com/nspady/google-calendar-mcp.git external/google-calendar-mcp
 
-  # 1) Build container image
+  # 1) Build main container image
   - name: "gcr.io/cloud-builders/docker"
     args:
       - build
@@ -45,34 +47,86 @@ steps:
       - "gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
       - "."
 
-  # 2) Push image so Cloud Run can pull it in the same build
+  # 2) Build Google Calendar MCP image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - build
+      - "-f"
+      - "docker/google-calendar-mcp.Dockerfile"
+      - "-t"
+      - "gcr.io/$PROJECT_ID/${_MCP_SERVICE_NAME}:$SHORT_SHA"
+      - "."
+
+  # 3) Push main image so Cloud Run can pull it
   - name: "gcr.io/cloud-builders/docker"
     args:
       - push
       - "gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
 
-  # 3) Deploy to Cloud Run
-  - name: "gcr.io/cloud-builders/gcloud"
+  # 4) Push MCP image
+  - name: "gcr.io/cloud-builders/docker"
     args:
-      - run
-      - deploy
-      - "${_SERVICE_NAME}"
-      - "--image=gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
-      - "--region=${_REGION}"
-      - "--platform=managed"
-      - "--allow-unauthenticated"
-      - "--port=3000"
-      - "--memory=1Gi"
-      - "--quiet"
-      - "--set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,BFF_SERVICE_SHARED_SECRET=BFF_SERVICE_SHARED_SECRET:latest,NEXT_PUBLIC_BFF_KEY=NEXT_PUBLIC_BFF_KEY:latest,/var/secrets/google/credentials/google-oauth-desktop.json=google-oauth-desktop-json:latest,/var/secrets/google/token/google-oauth-token.json=google-oauth-token-json:latest"
-      # gcloud run deploy は環境変数関連フラグを同時指定できないため --update-env-vars に統一
-      - "--update-env-vars=OPENAI_REALTIME_MODEL=${_OPENAI_REALTIME_MODEL},OPENAI_REALTIME_TRANSCRIPTION_MODEL=${_OPENAI_REALTIME_TRANSCRIPTION_MODEL},OPENAI_REALTIME_VOICE=${_OPENAI_REALTIME_VOICE},NEXT_PUBLIC_REALTIME_MODEL=${_NEXT_PUBLIC_REALTIME_MODEL},NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL=${_NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL},NEXT_PUBLIC_REALTIME_VOICE=${_NEXT_PUBLIC_REALTIME_VOICE},NEXT_PUBLIC_CLIENT_LOG_ENDPOINT=${_NEXT_PUBLIC_CLIENT_LOG_ENDPOINT},GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID"
-      - "--update-env-vars=OPENAI_REALTIME_AUDIO_DISABLED=${_OPENAI_REALTIME_AUDIO_DISABLED},NEXT_PUBLIC_CLIENT_LOG_MIRROR=${_NEXT_PUBLIC_CLIENT_LOG_MIRROR},CORS_ALLOW_ORIGIN=${_CORS_ALLOW_ORIGIN},MCP_SERVERS_FILE=${_MCP_SERVERS_FILE},MCP_SERVERS=${_MCP_SERVERS},GOOGLE_OAUTH_CREDENTIALS=${_GOOGLE_OAUTH_CREDENTIALS},GOOGLE_CALENDAR_MCP_TOKEN_PATH=${_GOOGLE_CALENDAR_MCP_TOKEN_PATH},GOOGLE_OAUTH_SCOPES=${_GOOGLE_OAUTH_SCOPES},MCP_EAGER_SERVERS=${_MCP_EAGER_SERVERS},GOOGLE_APPLICATION_CREDENTIALS=${_GOOGLE_APPLICATION_CREDENTIALS},GEMINI_FILE_SEARCH_DATA_STORE=${_GEMINI_FILE_SEARCH_DATA_STORE},RAG_SOURCE_DRIVE_ID=${_RAG_SOURCE_DRIVE_ID},IMAGE_UPLOAD_DIR=${_IMAGE_UPLOAD_DIR},IMAGE_UPLOAD_MAX_BYTES=${_IMAGE_UPLOAD_MAX_BYTES},IMAGE_UPLOAD_TARGET=${_IMAGE_UPLOAD_TARGET},IMAGE_UPLOAD_GCS_BUCKET=${_IMAGE_UPLOAD_GCS_BUCKET},IMAGE_UPLOAD_GCS_PREFIX=${_IMAGE_UPLOAD_GCS_PREFIX}"
-      # IMAGE_UPLOAD_ALLOWED_MIME_TYPES 含め値にカンマがあるため、区切り文字を ^:^ に変更
-      - "--update-env-vars=^:^IMAGE_UPLOAD_ALLOWED_MIME_TYPES=${_IMAGE_UPLOAD_ALLOWED_MIME_TYPES}"
+      - push
+      - "gcr.io/$PROJECT_ID/${_MCP_SERVICE_NAME}:$SHORT_SHA"
+
+  # 5) Deploy Google Calendar MCP to Cloud Run (streamable_http)
+  - name: "gcr.io/cloud-builders/gcloud"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        MCP_URL=$(gcloud run deploy "${_MCP_SERVICE_NAME}" \
+          --image="gcr.io/$PROJECT_ID/${_MCP_SERVICE_NAME}:$SHORT_SHA" \
+          --region="${_REGION}" \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8080 \
+          --memory="${_MCP_MEMORY}" \
+          --quiet \
+          --set-secrets=GOOGLE_CALENDAR_MCP_SHARED_SECRET=GOOGLE_CALENDAR_MCP_SHARED_SECRET:latest,/var/secrets/google/credentials/google-oauth-desktop.json=google-oauth-desktop-json:latest,/var/secrets/google/token/google-oauth-token.json=google-oauth-token-json:latest \
+          --update-env-vars=TRANSPORT=http,HOST=0.0.0.0,PORT=8080,XDG_CONFIG_HOME=/home/nodejs/.config \
+          --format='value(status.url)')
+        if [[ -z "${MCP_URL}" ]]; then
+          echo "Failed to retrieve MCP service URL" >&2
+          exit 1
+        fi
+        printf '%s' "${MCP_URL}" > /workspace/mcp_url.txt
+        echo "[cloudbuild] Deployed ${_MCP_SERVICE_NAME} at ${MCP_URL}"
+
+  # 6) Deploy main service to Cloud Run
+  - name: "gcr.io/cloud-builders/gcloud"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        if [[ -s /workspace/mcp_url.txt ]]; then
+          MCP_URL=$(cat /workspace/mcp_url.txt)
+        else
+          MCP_URL=$(gcloud run services describe "${_MCP_SERVICE_NAME}" --region="${_REGION}" --platform=managed --format='value(status.url)')
+        fi
+        if [[ -z "${MCP_URL}" ]]; then
+          echo "Failed to determine MCP URL" >&2
+          exit 1
+        fi
+        gcloud run deploy "${_SERVICE_NAME}" \
+          --image="gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA" \
+          --region="${_REGION}" \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=3000 \
+          --memory=1Gi \
+          --quiet \
+          --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,BFF_SERVICE_SHARED_SECRET=BFF_SERVICE_SHARED_SECRET:latest,NEXT_PUBLIC_BFF_KEY=NEXT_PUBLIC_BFF_KEY:latest,/var/secrets/google/credentials/google-oauth-desktop.json=google-oauth-desktop-json:latest,/var/secrets/google/token/google-oauth-token.json=google-oauth-token-json:latest,GOOGLE_CALENDAR_MCP_SHARED_SECRET=GOOGLE_CALENDAR_MCP_SHARED_SECRET:latest \
+          --update-env-vars=OPENAI_REALTIME_MODEL=${_OPENAI_REALTIME_MODEL},OPENAI_REALTIME_TRANSCRIPTION_MODEL=${_OPENAI_REALTIME_TRANSCRIPTION_MODEL},OPENAI_REALTIME_VOICE=${_OPENAI_REALTIME_VOICE},NEXT_PUBLIC_REALTIME_MODEL=${_NEXT_PUBLIC_REALTIME_MODEL},NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL=${_NEXT_PUBLIC_REALTIME_TRANSCRIPTION_MODEL},NEXT_PUBLIC_REALTIME_VOICE=${_NEXT_PUBLIC_REALTIME_VOICE},NEXT_PUBLIC_CLIENT_LOG_ENDPOINT=${_NEXT_PUBLIC_CLIENT_LOG_ENDPOINT},GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID \
+          --update-env-vars=OPENAI_REALTIME_AUDIO_DISABLED=${_OPENAI_REALTIME_AUDIO_DISABLED},NEXT_PUBLIC_CLIENT_LOG_MIRROR=${_NEXT_PUBLIC_CLIENT_LOG_MIRROR},CORS_ALLOW_ORIGIN=${_CORS_ALLOW_ORIGIN},MCP_SERVERS_FILE=${_MCP_SERVERS_FILE},MCP_SERVERS=${_MCP_SERVERS},GOOGLE_OAUTH_CREDENTIALS=${_GOOGLE_OAUTH_CREDENTIALS},GOOGLE_CALENDAR_MCP_TOKEN_PATH=${_GOOGLE_CALENDAR_MCP_TOKEN_PATH},GOOGLE_OAUTH_SCOPES=${_GOOGLE_OAUTH_SCOPES},MCP_EAGER_SERVERS=${_MCP_EAGER_SERVERS},GOOGLE_APPLICATION_CREDENTIALS=${_GOOGLE_APPLICATION_CREDENTIALS},GEMINI_FILE_SEARCH_DATA_STORE=${_GEMINI_FILE_SEARCH_DATA_STORE},RAG_SOURCE_DRIVE_ID=${_RAG_SOURCE_DRIVE_ID},IMAGE_UPLOAD_DIR=${_IMAGE_UPLOAD_DIR},IMAGE_UPLOAD_MAX_BYTES=${_IMAGE_UPLOAD_MAX_BYTES},IMAGE_UPLOAD_TARGET=${_IMAGE_UPLOAD_TARGET},IMAGE_UPLOAD_GCS_BUCKET=${_IMAGE_UPLOAD_GCS_BUCKET},IMAGE_UPLOAD_GCS_PREFIX=${_IMAGE_UPLOAD_GCS_PREFIX} \
+          --update-env-vars=^:^IMAGE_UPLOAD_ALLOWED_MIME_TYPES=${_IMAGE_UPLOAD_ALLOWED_MIME_TYPES} \
+          --set-env-vars=GOOGLE_CALENDAR_MCP_URL=${MCP_URL}
 
 images:
   - "gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
+  - "gcr.io/$PROJECT_ID/${_MCP_SERVICE_NAME}:$SHORT_SHA"
 
 options:
   logging: CLOUD_LOGGING_ONLY

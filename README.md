@@ -44,8 +44,8 @@ OpenAI Realtime API + Agents SDK デモです。
 
 ### Google カレンダー MCP（シナリオ: ケイト）
 - サーバー設定例は `config/mcp.servers.yaml.example` の `google-calendar` エントリを参照。`config/mcp.servers.yaml` にコピーして利用します。
-- デフォルトは OSS 版 `nspady/google-calendar-mcp` を `./scripts/run-google-calendar-mcp.sh` 経由で STDIO 起動する構成です。`.env` の `GOOGLE_OAUTH_CREDENTIALS` にデスクトップアプリ用OAuth JSONを、`GOOGLE_CALENDAR_MCP_TOKEN_PATH` にトークン保存先を指定してください。
-- リポジトリにサブモジュールとして同梱された `external/google-calendar-mcp` を利用し、スクリプト内で `npm ci` / `npm run build` を自動実行してローカル起動します。ネットワーク依存を最小化したい場合や npm パッケージ版を避けたい場合に有効です。
+- デフォルト構成では Cloud Build が `external/google-calendar-mcp` を専用イメージにまとめ、`google-calendar-mcp` という Cloud Run サービスとして streamable_http でホストします。メインサービスは `GOOGLE_CALENDAR_MCP_URL` と `GOOGLE_CALENDAR_MCP_SHARED_SECRET` を通じて HTTPS 経由で接続します。
+- ローカル開発のみ STDIO で直接起動したい場合は `config/mcp.servers.yaml.example` の `google-calendar-local` を参考にし、`./scripts/run-google-calendar-mcp.sh` を使って同梱サブモジュールを立ち上げてください（OAuth JSON / トークンパスの扱いは従来通り）。
 - シナリオキーは `kate`。`src/app/agentConfigs/index.ts` の `scenarioMcpBindings` で `requiredMcpServers: ['google-calendar']` を指定済み。
 - ブラウザで初回のみ Google 同意ポップアップを許可するとトークンが保存され、以降は予定取得・作成・変更・削除が可能です。
 - 初回遅延を避けたい場合は `.env` の `MCP_EAGER_SERVERS=google-calendar` を設定しておくと、BFF起動時にバックグラウンドで MCP 接続をウォームアップします（失敗しても起動は継続）。

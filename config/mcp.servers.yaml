@@ -1,9 +1,10 @@
-# nspady/google-calendar-mcp (OSS) をサブモジュールから STDIO 接続する設定例
-# 事前に Google Cloud で「デスクトップ アプリ」OAuth クレデンシャルを発行し、
-# その JSON のパスを `GOOGLE_OAUTH_CREDENTIALS` に設定してください。
+# Google Calendar MCP を Cloud Run (streamable_http) 経由で接続する設定
+# GOOGLE_CALENDAR_MCP_URL / GOOGLE_CALENDAR_MCP_SHARED_SECRET は Cloud Run デプロイ時に注入
 - id: google-calendar
-  transport: stdio
-  command: ./scripts/run-google-calendar-mcp.sh
+  transport: streamable_http
+  url: ${GOOGLE_CALENDAR_MCP_URL}
+  headers:
+    x-mcp-shared-secret: ${GOOGLE_CALENDAR_MCP_SHARED_SECRET}
   cacheToolsList: true
   timeoutMs: 15000
-  name: Google Calendar (OSS)
+  name: Google Calendar (Cloud Run)

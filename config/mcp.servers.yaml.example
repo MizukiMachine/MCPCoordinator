@@ -6,7 +6,7 @@
 # - transport: sse | streamable_http | stdio
 # - url: SSE / Streamable HTTP のエンドポイント
 # - command / args: STDIO を使う場合のプロセスコマンド
-# - headers: 任意ヘッダー（例: Authorization）
+# - headers: 任意ヘッダー（例: Authorization, x-mcp-shared-secret）
 - id: local-tools
   transport: sse
   url: http://localhost:5173/mcp
@@ -18,14 +18,24 @@
   url: https://mcp.example.com/api
   cacheToolsList: true
 
-# Google カレンダー（OSS: nspady/google-calendar-mcp）
-# - transport: stdio でローカルプロセス起動。リポジトリ配下のサブモジュール
-#   `external/google-calendar-mcp` を ./scripts/run-google-calendar-mcp.sh で起動します。
-# - 事前に GCP で「デスクトップ アプリ」OAuth クライアントを作成し、
-#   JSON をダウンロードして `GOOGLE_OAUTH_CREDENTIALS` で指すようにしてください。
+# Google カレンダー（Cloud Run で streamable_http 運用する例）
+# - `_GOOGLE_CALENDAR_MCP_URL` substitution などで URL を注入
+# - `GOOGLE_CALENDAR_MCP_SHARED_SECRET` は Secret Manager 経由で設定
 - id: google-calendar
-  transport: stdio
-  command: ./scripts/run-google-calendar-mcp.sh
-  name: Google Calendar (OSS)
+  transport: streamable_http
+  url: ${GOOGLE_CALENDAR_MCP_URL}
+  headers:
+    x-mcp-shared-secret: ${GOOGLE_CALENDAR_MCP_SHARED_SECRET}
   cacheToolsList: true
   timeoutMs: 15000
+  name: Google Calendar (Cloud Run)
+
+# ローカル開発のみ：STDIO で OSS MCP を直接起動する方法
+# - transport を stdio にし、`./scripts/run-google-calendar-mcp.sh` を実行
+# - ローカルで試したい場合のみ ID を重複しないように変更してください
+# - id: google-calendar-local
+#   transport: stdio
+#   command: ./scripts/run-google-calendar-mcp.sh
+#   name: Google Calendar (OSS / Local)
+#   cacheToolsList: true
+#   timeoutMs: 15000
