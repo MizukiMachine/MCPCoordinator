@@ -14,7 +14,7 @@ import { ImageUploadPanel } from "./components/ImageUploadPanel";
 // Types
 import { SessionStatus } from "@/app/types";
 import type { RealtimeAgent } from '@openai/agents/realtime';
-import type { VoiceControlDirective } from '@/shared/voiceControl';
+import type { VoiceControlDirective, ScenarioChangeOptions } from '@/shared/voiceControl';
 
 // Context providers & hooks
 import { useTranscript } from "@/app/contexts/TranscriptContext";
@@ -24,6 +24,7 @@ import { useMicrophoneStream } from "./hooks/useMicrophoneStream";
 
 // Agent configs
 import { allAgentSets, agentSetMetadata, defaultAgentSetKey } from "@/app/agentConfigs";
+import { normalizeScenarioKey } from "@/shared/scenarioAliases";
 
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -58,21 +59,6 @@ function App() {
   const router = useRouter();
   const pathname = usePathname();
   const shouldAutoConnect = searchParams.get("autoConnect") === "true";
-  const scenarioAliases: Record<string, string> = {
-    kate: 'kate',
-    'kateシナリオ': 'kate',
-    'ケイト': 'kate',
-    'ケイトシナリオ': 'kate',
-    'ｹｲﾄ': 'kate',
-    'けいと': 'kate',
-  };
-  const normalizeScenarioKey = (rawKey: string): string => {
-    if (!rawKey) return rawKey;
-    const trimmed = rawKey.trim();
-    const lower = trimmed.toLowerCase();
-    return scenarioAliases[lower] ?? scenarioAliases[trimmed] ?? lower;
-  };
-
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
   // and narrow-band PCMU/PCMA (8 kHz) to hear what the agent sounds like on
@@ -105,6 +91,8 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
   const pendingVoiceReconnectRef = useRef(false);
+  const pendingInitialCommandRef = useRef<string | null>(null);
+  const sendUserTextRef = useRef<(text: string) => void>();
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
@@ -224,35 +212,50 @@ function App() {
     [disconnectFromRealtime, sessionStatus],
   );
 
-  const requestScenarioChange = useCallback(async (scenarioKey: string) => {
-    const normalizedKey = normalizeScenarioKey(scenarioKey);
-    addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
-    if (!allAgentSets[normalizedKey]) {
-      return {
-        success: false,
-        message: formatUiText(uiText.voiceControl.unknownScenario, { scenarioKey }),
-      };
-    }
-    if (normalizedKey === agentSetKey) {
+    const requestScenarioChange = useCallback(
+    async (scenarioKey: string, options?: ScenarioChangeOptions) => {
+      const normalizedKey = normalizeScenarioKey(scenarioKey);
+      addTranscriptBreadcrumb('Voice scenario switch request', { scenarioKey });
+      if (!allAgentSets[normalizedKey]) {
+        return {
+          success: false,
+          message: formatUiText(uiText.voiceControl.unknownScenario, { scenarioKey }),
+        };
+      }
+      if (options?.initialCommand) {
+        pendingInitialCommandRef.current = options.initialCommand;
+      }
+      if (normalizedKey === agentSetKey) {
+        if (options?.initialCommand && sessionStatus === 'CONNECTED') {
+          sendUserTextRef.current?.(options.initialCommand);
+          pendingInitialCommandRef.current = null;
+        }
+        return {
+          success: true,
+          message: formatUiText(uiText.voiceControl.alreadyInScenario, { scenarioKey }),
+        };
+      }
+      schedulePostToolAction(() => {
+        setAgentSetKey(normalizedKey);
+        pendingVoiceReconnectRef.current = true;
+        disconnectFromRealtime();
+      });
       return {
         success: true,
-        message: formatUiText(uiText.voiceControl.alreadyInScenario, { scenarioKey }),
+        message: formatUiText(uiText.voiceControl.switchingScenario, { scenarioKey }),
       };
-    }
+    },
+    [
+      addTranscriptBreadcrumb,
+      agentSetKey,
+      disconnectFromRealtime,
+      schedulePostToolAction,
+      sessionStatus,
+      normalizeScenarioKey,
+    ],
+  );
 
-    schedulePostToolAction(() => {
-      setAgentSetKey(normalizedKey);
-      pendingVoiceReconnectRef.current = true;
-      disconnectFromRealtime();
-    });
-
-    return {
-      success: true,
-      message: formatUiText(uiText.voiceControl.switchingScenario, { scenarioKey }),
-    };
-  }, [addTranscriptBreadcrumb, agentSetKey, disconnectFromRealtime, schedulePostToolAction]);
-
-  const requestAgentChange = useCallback(async (agentName: string) => {
+const requestAgentChange = useCallback(async (agentName: string) => {
     addTranscriptBreadcrumb('Voice agent switch request', { agentName });
     const agents = selectedAgentConfigSet ?? [];
     if (!agents.some((agent) => agent.name === agentName)) {
@@ -283,7 +286,7 @@ function App() {
     (directive: VoiceControlDirective) => {
       if (!directive) return;
       if (directive.action === 'switchScenario') {
-        void requestScenarioChange(directive.scenarioKey);
+        void requestScenarioChange(directive.scenarioKey, { initialCommand: directive.initialCommand });
       } else if (directive.action === 'switchAgent') {
         void requestAgentChange(directive.agentName);
       }
@@ -312,6 +315,10 @@ function App() {
     {},
     { defaultCapabilities: { images: true } },
   );
+
+  useEffect(() => {
+    sendUserTextRef.current = sendUserText;
+  }, [sendUserText]);
 
   const connectToRealtime = useCallback(async (source: "auto" | "manual" = "manual") => {
     if (!allAgentSets[agentSetKey]) {
@@ -375,6 +382,14 @@ function App() {
       pendingVoiceReconnectRef.current = false;
     }
   }, [sessionStatus]);
+
+  useEffect(() => {
+    if (sessionStatus === 'CONNECTED' && pendingInitialCommandRef.current) {
+      const initialCommand = pendingInitialCommandRef.current;
+      pendingInitialCommandRef.current = null;
+      sendUserText(initialCommand);
+    }
+  }, [sessionStatus, sendUserText]);
 
   // セッション切断時のシナリオリセットは、音声のシナリオ切替による再接続を邪魔しないよう
   // pendingVoiceReconnectRef が立っていない場合のみ行う

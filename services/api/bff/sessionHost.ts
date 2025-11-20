@@ -15,7 +15,7 @@ import {
   type ScenarioMcpBinding,
 } from '../../../src/app/agentConfigs';
 import { isRealtimeTranscriptionEventPayload } from '../../../src/shared/realtimeTranscriptionEvents';
-import type { VoiceControlDirective, VoiceControlHandlers } from '../../../src/shared/voiceControl';
+import type { VoiceControlDirective, VoiceControlHandlers, ScenarioChangeOptions } from '../../../src/shared/voiceControl';
 import type {
   ISessionManager,
   SessionEventName,
@@ -30,6 +30,9 @@ import { McpServerRegistry } from '../../mcp/mcpServerRegistry';
 import { getOrCreateTrace } from '@openai/agents-core';
 import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
 import { ServiceManager } from '../../../framework/di/ServiceManager';
+import { HotwordListener, type HotwordMatch } from '../../../framework/voice_gateway/HotwordListener';
+import { ScenarioRouter, type ScenarioCommandForwarder } from '../../scenario/ScenarioRouter';
+import { ScenarioRegistry } from '../../scenario/ScenarioRegistry';
 import {
   buildReplayEvents,
   getPersistentMemoryStore,
@@ -47,6 +50,12 @@ const RATE_LIMIT_MAX_EVENTS = 10;
 const PERSISTENT_MEMORY_ENABLED = process.env.PERSISTENT_MEMORY_ENABLED !== 'false';
 const PERSISTENT_MEMORY_REPLAY_LIMIT =
   Number(process.env.PERSISTENT_MEMORY_REPLAY_LIMIT ?? '') || 30;
+
+const HOTWORD_TIMEOUT_MS = Number(process.env.HOTWORD_TIMEOUT_MS ?? '') || 8000;
+const HOTWORD_REMINDER_DISCONNECT_DELAY_MS =
+  Number(process.env.HOTWORD_REMINDER_DISCONNECT_DELAY_MS ?? '') || 2000;
+const HOTWORD_REMINDER_TEXT =
+  process.env.HOTWORD_REMINDER_TEXT ?? 'ホットワード「Hey + シナリオ名」で話しかけてください。';
 
 export type SessionCommand =
   | {
@@ -171,6 +180,9 @@ interface SessionContext {
   allowedModalities: Array<'text' | 'audio'>;
   textOutputEnabled: boolean;
   memoryKey?: string | null;
+  hotwordListener?: HotwordListener;
+  scenarioRouter?: ScenarioRouter;
+  hotwordReminderTimer?: ReturnType<typeof setTimeout>;
 }
 
 interface DestroySessionOptions {
@@ -203,6 +215,7 @@ export class SessionHost {
   private readonly mcpRegistry?: McpServerRegistry;
   private readonly registryServiceManager?: ServiceManager;
   private readonly memoryStore: MemoryStore;
+  private readonly scenarioRegistry: ScenarioRegistry;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -212,6 +225,8 @@ export class SessionHost {
     this.scenarioMcpBindings = deps.scenarioMcpBindings ?? scenarioMcpBindings;
     this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
     this.memoryStore = deps.memoryStore ?? getPersistentMemoryStore();
+
+    this.scenarioRegistry = new ScenarioRegistry({ scenarioMap: this.scenarioMap });
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
@@ -274,7 +289,19 @@ export class SessionHost {
       },
       // transport_event は onServerEvent 経由でのみ forward し、EventEmitter 側とは二重登録しない
       // （音声チャンクが二重再生されるのを防ぐため）。
-      onServerEvent: (event, payload) => this.broadcast(sessionId, event, payload),
+      onServerEvent: (event, payload) => {
+        if (event === 'transport_event') {
+          try {
+            contextRef.current?.hotwordListener?.handleTranscriptionEvent(payload);
+          } catch (error) {
+            this.logger.warn('Hotword listener failed to process event', {
+              sessionId,
+              error,
+            });
+          }
+        }
+        this.broadcast(sessionId, event, payload);
+      },
       guardrail: {
         onGuardrailTripped: (payload) =>
           this.broadcast(sessionId, 'guardrail_tripped', payload ?? {}),
@@ -346,6 +373,22 @@ export class SessionHost {
 
     this.sessions.set(sessionId, context);
     const voiceControlHandlers = this.createVoiceControlHandlers(sessionId);
+
+    const scenarioRouter = new ScenarioRouter({
+      currentScenarioKey: options.agentSetKey,
+      voiceControl: voiceControlHandlers,
+      forwarder: this.buildScenarioCommandForwarder(context),
+      logger: this.logger,
+    });
+    const hotwordListener = new HotwordListener({
+      dictionary: this.scenarioRegistry.getHotwordDictionary(),
+      reminderTimeoutMs: HOTWORD_TIMEOUT_MS,
+      onMatch: (match) => scenarioRouter.handleHotwordMatch(match),
+      onInvalidTranscript: ({ itemId }) => this.deleteTranscriptItem(context, itemId),
+      onTimeout: () => this.handleHotwordTimeout(context),
+    });
+    context.scenarioRouter = scenarioRouter;
+    context.hotwordListener = hotwordListener;
 
     if (options.clientCapabilities?.audio !== false && !envSnapshot.audio.enabled) {
       this.logger.warn('Audio requested but disabled. Falling back to text-only session.', {
@@ -447,6 +490,27 @@ export class SessionHost {
     return context;
   }
 
+  private buildScenarioCommandForwarder(context: SessionContext): ScenarioCommandForwarder {
+    return {
+      replaceTranscriptWithText: async (match) => {
+        if (match.itemId) {
+          this.deleteTranscriptItem(context, match.itemId);
+        }
+        this.sendUserTextCommand(context, match.commandText);
+      },
+      interruptActiveResponse: async () => {
+        try {
+          context.manager.interrupt();
+        } catch (error) {
+          this.logger.warn('Failed to interrupt active response during scenario switch', {
+            sessionId: context.id,
+            error,
+          });
+        }
+      },
+    };
+  }
+
   async destroySession(sessionId: string, options: DestroySessionOptions = {}): Promise<boolean> {
     const context = this.sessions.get(sessionId);
     if (!context) {
@@ -505,7 +569,25 @@ export class SessionHost {
     return context.manager.getStatus();
   }
 
-  private handleInputText(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_text' }>) {
+  private deleteTranscriptItem(context: SessionContext, itemId?: string) {
+    if (!itemId) return;
+    try {
+      context.manager.sendEvent({ type: 'conversation.item.delete', item_id: itemId });
+    } catch (error) {
+      this.logger.warn('Failed to delete conversation item', {
+        sessionId: context.id,
+        itemId,
+        error,
+      });
+    }
+  }
+
+  private sendUserTextCommand(
+    context: SessionContext,
+    text: string,
+    metadata?: Record<string, any>,
+  ) {
+    if (!text || text.trim().length === 0) return;
     context.manager.sendEvent({
       type: 'conversation.item.create',
       item: {
@@ -514,19 +596,21 @@ export class SessionHost {
         content: [
           {
             type: 'input_text',
-            text: command.text,
+            text,
           },
         ],
       },
     });
-    if (command.triggerResponse !== false) {
-      const responseEvent: Record<string, any> = { type: 'response.create' };
-      if (command.metadata && Object.keys(command.metadata).length > 0) {
-        responseEvent.response = { metadata: command.metadata };
-      }
-      context.manager.sendEvent(responseEvent);
+    const responseEvent: Record<string, any> = { type: 'response.create' };
+    if (metadata && Object.keys(metadata).length > 0) {
+      responseEvent.response = { metadata };
     }
+    context.manager.sendEvent(responseEvent);
     this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+  }
+
+  private handleInputText(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_text' }>) {
+    this.sendUserTextCommand(context, command.text, command.metadata);
   }
 
   private handleInputAudio(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_audio' }>) {
@@ -536,9 +620,6 @@ export class SessionHost {
     });
     if (command.commit !== false) {
       context.manager.sendEvent({ type: 'input_audio_buffer.commit' });
-    }
-    if (command.response !== false) {
-      context.manager.sendEvent({ type: 'response.create' });
     }
     this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_audio' });
   }
@@ -569,6 +650,42 @@ export class SessionHost {
       context.manager.sendEvent({ type: 'response.create' });
     }
     this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_image' });
+  }
+
+  private handleHotwordTimeout(context: SessionContext) {
+    if (context.hotwordReminderTimer) {
+      return;
+    }
+    this.logger.info('Hotword timeout reached; issuing reminder', { sessionId: context.id });
+    this.sendHotwordReminder(context);
+    context.hotwordReminderTimer = setTimeout(() => {
+      this.destroySession(context.id, { reason: 'hotword_timeout', initiatedBy: 'system' }).catch((error) => {
+        this.logger.warn('Failed to destroy session after hotword timeout', { sessionId: context.id, error });
+      });
+    }, HOTWORD_REMINDER_DISCONNECT_DELAY_MS);
+  }
+
+  private sendHotwordReminder(context: SessionContext) {
+    try {
+      context.manager.interrupt();
+    } catch (error) {
+      this.logger.debug('Interrupt failed during hotword reminder', { sessionId: context.id, error });
+    }
+    const reminderPrompt = `システム通知: ユーザーがホットワードなしで話しました。次の回答では「${HOTWORD_REMINDER_TEXT}」と丁寧に伝えてください。`;
+    context.manager.sendEvent({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: reminderPrompt,
+          },
+        ],
+      },
+    });
+    context.manager.sendEvent({ type: 'response.create' });
   }
 
   private handleRawEvent(context: SessionContext, command: Extract<SessionCommand, { kind: 'event' }>) {
@@ -882,6 +999,10 @@ export class SessionHost {
       clearTimeout(context.streamIdleTimer);
       context.streamIdleTimer = undefined;
     }
+    if (context.hotwordReminderTimer) {
+      clearTimeout(context.hotwordReminderTimer);
+      context.hotwordReminderTimer = undefined;
+    }
     context.emitter.emit('cleanup');
     context.emitter.removeAllListeners();
   }
@@ -896,11 +1017,11 @@ export class SessionHost {
     };
 
     return {
-      requestScenarioChange: async (scenarioKey: string) => {
+      requestScenarioChange: async (scenarioKey: string, options?: ScenarioChangeOptions) => {
         if (!scenarioKey) {
           return { success: false, message: '有効なシナリオキーを指定してください。' };
         }
-        emitDirective({ action: 'switchScenario', scenarioKey });
+        emitDirective({ action: 'switchScenario', scenarioKey, initialCommand: options?.initialCommand });
         return { success: true, message: `シナリオ「${scenarioKey}」へ切り替えます。` };
       },
       requestAgentChange: async (agentName: string) => {

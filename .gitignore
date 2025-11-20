@@ -44,3 +44,5 @@ todo.md
 usage.sqlite
 terminallog.log
 secrets/*.json
+var/
+

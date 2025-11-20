@@ -2,6 +2,9 @@ import { File as NodeFile, Blob as NodeBlob } from 'node:buffer';
 import { TextEncoder, TextDecoder } from 'util';
 import React from 'react';
 
+process.env.GOOGLE_CALENDAR_MCP_URL = process.env.GOOGLE_CALENDAR_MCP_URL ?? 'http://localhost:3999';
+process.env.GOOGLE_CALENDAR_MCP_SHARED_SECRET = process.env.GOOGLE_CALENDAR_MCP_SHARED_SECRET ?? 'test-shared-secret';
+
 if (!globalThis.TextEncoder) {
   // @ts-ignore
   globalThis.TextEncoder = TextEncoder;
