@@ -41,14 +41,12 @@ fi
 
 cd "$MCP_DIR"
 
-npm_common_flags=(--install-strategy=hoisted --install-links=false)
-
 if [[ ! -d "node_modules" ]]; then
   echo "[run-google-calendar-mcp] Installing dependencies via npm ci..." >&2
-  if ! npm ci "${npm_common_flags[@]}"; then
+  if ! npm ci; then
     echo "[run-google-calendar-mcp] npm ci failed, retrying with npm install --package-lock=false (will resolve latest compatible versions)" >&2
     rm -rf node_modules
-    npm install --package-lock=false "${npm_common_flags[@]}"
+    npm install --package-lock=false
   fi
 fi
 

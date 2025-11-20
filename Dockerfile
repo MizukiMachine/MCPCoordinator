@@ -19,7 +19,7 @@ COPY . .
 RUN npm run build
 RUN rm -rf external/google-calendar-mcp/node_modules \
   && cd external/google-calendar-mcp \
-  && npm ci --install-strategy=hoisted --install-links=false \
+  && npm ci \
   && npm run build
 
 # Runtime image
