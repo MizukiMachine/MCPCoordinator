@@ -92,7 +92,7 @@ function App() {
     useState<SessionStatus>("DISCONNECTED");
   const pendingVoiceReconnectRef = useRef(false);
   const pendingInitialCommandRef = useRef<string | null>(null);
-  const sendUserTextRef = useRef<(text: string) => void>();
+  const sendUserTextRef = useRef<((text: string) => void) | null>(null);
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
 
   const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
