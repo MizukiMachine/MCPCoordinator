@@ -57,6 +57,7 @@ const HOTWORD_REMINDER_DISCONNECT_DELAY_MS =
   Number(process.env.HOTWORD_REMINDER_DISCONNECT_DELAY_MS ?? '') || 2000;
 const HOTWORD_REMINDER_TEXT =
   process.env.HOTWORD_REMINDER_TEXT ?? 'ホットワード「Hey + シナリオ名」で話しかけてください。';
+const HOTWORD_REMINDER_ENABLED = (process.env.HOTWORD_REMINDER_ENABLED ?? 'false') === 'true';
 
 export type SessionCommand =
   | {
@@ -398,7 +399,7 @@ export class SessionHost {
     });
     const hotwordListener = new HotwordListener({
       dictionary: this.scenarioRegistry.getHotwordDictionary(),
-      reminderTimeoutMs: HOTWORD_TIMEOUT_MS,
+      reminderTimeoutMs: HOTWORD_REMINDER_ENABLED ? HOTWORD_TIMEOUT_MS : Number.MAX_SAFE_INTEGER,
       onDetection: async (detection) => {
         this.logger.debug('Hotword prefix detected', {
           sessionId,
@@ -701,6 +702,9 @@ export class SessionHost {
   }
 
   private handleHotwordTimeout(context: SessionContext) {
+    if (!HOTWORD_REMINDER_ENABLED) {
+      return;
+    }
     if (context.hotwordReminderTimer) {
       return;
     }
