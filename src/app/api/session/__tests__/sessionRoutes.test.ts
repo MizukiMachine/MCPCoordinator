@@ -2,12 +2,14 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { POST as createSession } from '../route';
 import { POST as forwardEvent } from '../[sessionId]/event/route';
 import { DELETE as deleteSession } from '../[sessionId]/route';
+import { GET as resolveSession } from '../resolve/route';
 
 const sessionHostMock = vi.hoisted(() => ({
   createSession: vi.fn(),
   handleCommand: vi.fn(),
   destroySession: vi.fn(),
   subscribe: vi.fn(),
+  resolveSessionByClientTag: vi.fn(),
 }));
 
 vi.mock('../../../../../services/api/bff/sessionHost', async () => {
@@ -132,5 +134,27 @@ describe('session API routes', () => {
       reason: 'client_request',
       initiatedBy: 'client',
     });
+  });
+
+  it('resolves session by clientTag via GET /api/session/resolve', async () => {
+    sessionHostMock.resolveSessionByClientTag.mockReturnValue({
+      sessionId: 'sess_from_tag',
+      streamUrl: '/api/session/sess_from_tag/stream',
+      expiresAt: new Date().toISOString(),
+      status: 'CONNECTED',
+      agentSetKey: 'demo',
+      preferredAgentName: 'agent1',
+    });
+
+    const request = new Request('http://localhost/api/session/resolve?clientTag=tag1', {
+      method: 'GET',
+    });
+
+    const response = await resolveSession(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.sessionId).toBe('sess_from_tag');
+    expect(sessionHostMock.resolveSessionByClientTag).toHaveBeenCalledWith('tag1');
   });
 });

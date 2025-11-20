@@ -94,6 +94,7 @@ export interface CreateSessionOptions {
   agentSetKey: string;
   preferredAgentName?: string;
   sessionLabel?: string;
+  clientTag?: string;
   clientCapabilities?: {
     audio?: boolean;
     images?: boolean;
@@ -117,6 +118,15 @@ export interface CreateSessionResult {
     primary: string;
   };
   capabilityWarnings: string[];
+}
+
+export interface ResolveSessionResult {
+  sessionId: string;
+  streamUrl: string;
+  expiresAt: string;
+  status: SessionLifecycleStatus;
+  agentSetKey: string;
+  preferredAgentName?: string | null;
 }
 
 export interface SessionStreamMessage {
@@ -188,6 +198,7 @@ interface SessionContext {
   scenarioRouter?: ScenarioRouter;
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
   hotwordCuePlayedItems: Set<string>;
+  clientTag?: string;
 }
 
 interface DestroySessionOptions {
@@ -212,6 +223,7 @@ interface SessionHostDeps {
 
 export class SessionHost {
   private readonly sessions = new Map<string, SessionContext>();
+  private readonly clientTagIndex = new Map<string, string>();
   private readonly logger: StructuredLogger;
   private readonly metrics: MetricEmitter;
   private readonly now: () => number;
@@ -334,6 +346,33 @@ export class SessionHost {
     });
   }
 
+  resolveSessionByClientTag(clientTag: string): ResolveSessionResult {
+    const sessionId = this.clientTagIndex.get(clientTag);
+    if (!sessionId) {
+      throw new SessionHostError('Session not found for clientTag', 'session_not_found', 404);
+    }
+    try {
+      const context = this.ensureSession(sessionId);
+      return {
+        sessionId,
+        streamUrl: `/api/session/${sessionId}/stream`,
+        expiresAt: new Date(context.expiresAt).toISOString(),
+        status: context.status,
+        agentSetKey: context.agentSetKey,
+        preferredAgentName: context.preferredAgentName ?? null,
+      };
+    } catch (error) {
+      if (error instanceof SessionHostError) {
+        if (['session_expired', 'session_not_found'].includes(error.code)) {
+          if (this.clientTagIndex.get(clientTag) === sessionId) {
+            this.clientTagIndex.delete(clientTag);
+          }
+        }
+      }
+      throw error;
+    }
+  }
+
   /**
    * Optional eager MCP接続。環境変数 MCP_EAGER_SERVERS="google-calendar,foo"
    * のように指定すると、BFF起動時にバックグラウンドで connect を開始する。
@@ -391,6 +430,14 @@ export class SessionHost {
     contextRef.current = context;
 
     this.sessions.set(sessionId, context);
+    if (options.clientTag) {
+      this.clientTagIndex.set(options.clientTag, sessionId);
+      this.logger.info('Client tag bound to session', {
+        sessionId,
+        clientTag: options.clientTag,
+        agentSetKey: options.agentSetKey,
+      });
+    }
     const voiceControlHandlers = this.createVoiceControlHandlers(sessionId, context);
 
     const scenarioRouter = new ScenarioRouter({
@@ -520,6 +567,9 @@ export class SessionHost {
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
         this.clearTimers(context);
         this.sessions.delete(sessionId);
+        if (context.clientTag && this.clientTagIndex.get(context.clientTag) === sessionId) {
+          this.clientTagIndex.delete(context.clientTag);
+        }
         try {
           manager.disconnect();
         } catch (error) {
@@ -539,6 +589,7 @@ export class SessionHost {
       textOutputEnabled,
       memoryKey,
       hasUserContent: false,
+      clientTag: options.clientTag,
     };
     return context;
   }

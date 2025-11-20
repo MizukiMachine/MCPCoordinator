@@ -80,6 +80,7 @@ export interface ConnectOptions {
   preferredAgentName?: string;
   extraContext?: Record<string, any>;
   clientCapabilities?: ClientCapabilityOverrides;
+  clientTag?: string;
 }
 
 export interface RealtimeSessionHookOverrides {
@@ -444,7 +445,7 @@ export function useRealtimeSession(
   }, [clearSessionId, detachStreamListeners, fetchImpl, updateStatus]);
 
   const connect = useCallback(
-    async ({ agentSetKey, preferredAgentName, extraContext, clientCapabilities }: ConnectOptions) => {
+    async ({ agentSetKey, preferredAgentName, extraContext, clientCapabilities, clientTag }: ConnectOptions) => {
       if (sessionStateRef.current) {
         console.info('Session already active, ignoring connect request');
         return;
@@ -478,6 +479,7 @@ export function useRealtimeSession(
           preferredAgentName,
           metadata: extraContext ?? {},
           clientCapabilities: clientCapabilitiesPayload,
+          clientTag,
         }),
       });
 

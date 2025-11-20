@@ -98,6 +98,8 @@ interface PanelProps {
   onDisconnect: () => void;
   sessionValue: string;
   onSessionChange: (value: string) => void;
+  clientTagValue: string;
+  onClientTagChange: (value: string) => void;
   state: ReturnType<typeof useSessionSpectator>;
 }
 
@@ -108,6 +110,8 @@ function SessionPanel({
   onDisconnect,
   sessionValue,
   onSessionChange,
+  clientTagValue,
+  onClientTagChange,
   state,
 }: PanelProps) {
   return (
@@ -122,7 +126,17 @@ function SessionPanel({
 
       <div className="flex flex-col gap-3">
         <label className="text-sm text-slate-200/80">
-          セッションID
+          クライアントタグ（推奨）
+          <input
+            value={clientTagValue}
+            onChange={(e) => onClientTagChange(e.target.value)}
+            placeholder="glasses01"
+            className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400"
+          />
+          <span className="text-xs text-slate-400">タグが一致する最新セッションに自動追従します</span>
+        </label>
+        <label className="text-sm text-slate-200/80">
+          セッションID（手入力する場合のみ）
           <input
             value={sessionValue}
             onChange={(e) => onSessionChange(e.target.value)}
@@ -132,12 +146,12 @@ function SessionPanel({
         </label>
         <div className="flex gap-2">
           <button
-            onClick={onConnect}
-            className="flex-1 rounded-lg bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-900 font-semibold py-2 shadow-lg shadow-sky-500/20 transition hover:brightness-95 disabled:opacity-50"
-            disabled={!sessionValue}
-          >
-            接続
-          </button>
+          onClick={onConnect}
+          className="flex-1 rounded-lg bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-900 font-semibold py-2 shadow-lg shadow-sky-500/20 transition hover:brightness-95 disabled:opacity-50"
+          disabled={!clientTagValue.trim() && !sessionValue.trim()}
+        >
+          接続
+        </button>
           <button
             onClick={onDisconnect}
             className="rounded-lg px-4 py-2 border border-white/20 text-slate-100 hover:bg-white/10 transition"
@@ -176,6 +190,8 @@ export default function ViewerPage() {
   const router = useRouter();
   const [baseUrl, setBaseUrl] = useState<string>("");
   const [bffKey, setBffKey] = useState<string>("");
+  const [clientTagA, setClientTagA] = useState<string>("glasses01");
+  const [clientTagB, setClientTagB] = useState<string>("glasses02");
   const [sessionA, setSessionA] = useState<string>("");
   const [sessionB, setSessionB] = useState<string>("");
 
@@ -186,10 +202,14 @@ export default function ViewerPage() {
     if (!searchParams) return;
     const initialA = searchParams.get("sessionA");
     const initialB = searchParams.get("sessionB");
+    const tagA = searchParams.get("tagA");
+    const tagB = searchParams.get("tagB");
     const initialKey = searchParams.get("bffKey");
     const initialBase = searchParams.get("baseUrl");
     if (initialA) setSessionA(initialA);
     if (initialB) setSessionB(initialB);
+    if (tagA) setClientTagA(tagA);
+    if (tagB) setClientTagB(tagB);
     if (initialKey) setBffKey(initialKey);
     if (initialBase) setBaseUrl(initialBase);
   }, [searchParams]);
@@ -200,22 +220,26 @@ export default function ViewerPage() {
     const params = url.searchParams;
     params.set("sessionA", sessionA);
     params.set("sessionB", sessionB);
+    params.set("tagA", clientTagA);
+    params.set("tagB", clientTagB);
     if (bffKey) params.set("bffKey", bffKey);
     if (baseUrl) params.set("baseUrl", baseUrl);
     url.search = params.toString();
     return url.toString();
-  }, [sessionA, sessionB, bffKey, baseUrl]);
+  }, [sessionA, sessionB, clientTagA, clientTagB, bffKey, baseUrl]);
 
   const connectA = () =>
     spectatorA.connect({
-      sessionId: sessionA.trim(),
+      sessionId: sessionA.trim() || undefined,
+      clientTag: clientTagA.trim() || undefined,
       bffKey,
       baseUrl,
       label: "A",
     });
   const connectB = () =>
     spectatorB.connect({
-      sessionId: sessionB.trim(),
+      sessionId: sessionB.trim() || undefined,
+      clientTag: clientTagB.trim() || undefined,
       bffKey,
       baseUrl,
       label: "B",
@@ -283,6 +307,8 @@ export default function ViewerPage() {
             onDisconnect={spectatorA.disconnect}
             sessionValue={sessionA}
             onSessionChange={setSessionA}
+            clientTagValue={clientTagA}
+            onClientTagChange={setClientTagA}
             state={spectatorA}
           />
           <SessionPanel
@@ -292,6 +318,8 @@ export default function ViewerPage() {
             onDisconnect={spectatorB.disconnect}
             sessionValue={sessionB}
             onSessionChange={setSessionB}
+            clientTagValue={clientTagB}
+            onClientTagChange={setClientTagB}
             state={spectatorB}
           />
         </section>
