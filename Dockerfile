@@ -16,6 +16,8 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG GOOGLE_CALENDAR_MCP_URL="http://localhost"
+ENV GOOGLE_CALENDAR_MCP_URL=$GOOGLE_CALENDAR_MCP_URL
 RUN npm run build
 ARG GOOGLE_CALENDAR_MCP_ESBUILD_VERSION=0.25.12
 RUN rm -rf external/google-calendar-mcp/node_modules \
