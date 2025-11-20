@@ -25,7 +25,7 @@ import type {
 } from '../../realtime/types';
 import { createOpenAIServerSessionManager } from '../../realtime/adapters/createOpenAIServerSessionManager';
 import { McpEnabledAgentSetResolver } from '../../realtime/adapters/mcpEnabledAgentSetResolver';
-import { loadMcpServersFromEnv } from '../../mcp/config';
+import { loadMcpServersFromEnv, McpConfigError } from '../../mcp/config';
 import { McpServerRegistry } from '../../mcp/mcpServerRegistry';
 import { getOrCreateTrace } from '@openai/agents-core';
 import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
@@ -228,7 +228,18 @@ export class SessionHost {
 
     this.scenarioRegistry = new ScenarioRegistry({ scenarioMap: this.scenarioMap });
 
-    const mcpConfigs = loadMcpServersFromEnv();
+    let mcpConfigs: Record<string, any> = {};
+    try {
+      mcpConfigs = loadMcpServersFromEnv();
+    } catch (error) {
+      const errorType = error instanceof McpConfigError ? 'config' : 'unknown';
+      this.logger.warn('Failed to load MCP server definitions. Continuing without MCP integration.', {
+        error,
+        errorType,
+      });
+      this.metrics.increment?.('bff.session.mcp_config_error_total', 1, { errorType });
+      mcpConfigs = {};
+    }
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
       (binding) => binding.requiredMcpServers?.length > 0,
     );
