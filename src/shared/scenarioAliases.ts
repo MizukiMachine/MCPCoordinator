@@ -30,6 +30,14 @@ export const scenarioAliasMap: Record<string, string[]> = {
     'パトリ',
     'ぱとり',
   ],
+  mark: [
+    'mark',
+    'マーク',
+    'まーく',
+    'ﾏｰｸ',
+    'markシナリオ',
+    'マークシナリオ',
+  ],
 };
 
 const aliasLookup = Object.entries(scenarioAliasMap).reduce<Record<string, string>>((acc, [key, aliases]) => {
