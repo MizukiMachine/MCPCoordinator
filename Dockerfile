@@ -17,7 +17,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
-RUN cd external/google-calendar-mcp \
+RUN rm -rf external/google-calendar-mcp/node_modules \
+  && cd external/google-calendar-mcp \
   && npm ci --install-strategy=hoisted --install-links=false \
   && npm run build
 
