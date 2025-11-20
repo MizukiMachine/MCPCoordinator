@@ -33,6 +33,7 @@ import { ServiceManager } from '../../../framework/di/ServiceManager';
 import { HotwordListener, type HotwordMatch } from '../../../framework/voice_gateway/HotwordListener';
 import { ScenarioRouter, type ScenarioCommandForwarder } from '../../scenario/ScenarioRouter';
 import { ScenarioRegistry } from '../../scenario/ScenarioRegistry';
+import { ServerHotwordCueService, type HotwordCueService } from './hotwordCueService';
 import {
   buildReplayEvents,
   getPersistentMemoryStore,
@@ -201,6 +202,8 @@ interface SessionHostDeps {
   mcpRegistry?: McpServerRegistry;
   serviceManager?: ServiceManager;
   memoryStore?: MemoryStore;
+  hotwordCueService?: HotwordCueService;
+  hotwordCueAudioPath?: string;
 }
 
 export class SessionHost {
@@ -216,6 +219,7 @@ export class SessionHost {
   private readonly registryServiceManager?: ServiceManager;
   private readonly memoryStore: MemoryStore;
   private readonly scenarioRegistry: ScenarioRegistry;
+  private readonly hotwordCueService: HotwordCueService;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -225,6 +229,14 @@ export class SessionHost {
     this.scenarioMcpBindings = deps.scenarioMcpBindings ?? scenarioMcpBindings;
     this.inspectEnvironment = deps.envInspector ?? (() => inspectRealtimeEnvironment());
     this.memoryStore = deps.memoryStore ?? getPersistentMemoryStore();
+
+    this.hotwordCueService =
+      deps.hotwordCueService ??
+      new ServerHotwordCueService({
+        audioFilePath: deps.hotwordCueAudioPath,
+        logger: this.logger,
+        metrics: this.metrics,
+      });
 
     this.scenarioRegistry = new ScenarioRegistry({ scenarioMap: this.scenarioMap });
 
@@ -386,13 +398,25 @@ export class SessionHost {
     const hotwordListener = new HotwordListener({
       dictionary: this.scenarioRegistry.getHotwordDictionary(),
       reminderTimeoutMs: HOTWORD_TIMEOUT_MS,
-      onMatch: (match) => {
+      onMatch: async (match) => {
         this.logger.info('Hotword matched', {
           sessionId,
           scenarioKey: match.scenarioKey,
           commandPreview: match.commandText.slice(0, 60),
         });
-        return scenarioRouter.handleHotwordMatch(match);
+        const cueResult = await this.hotwordCueService.playCue({
+          sessionId,
+          scenarioKey: match.scenarioKey,
+          transcript: match.transcript,
+          manager: context.manager,
+        });
+        this.broadcast(sessionId, 'hotword_cue', {
+          cueId: cueResult.cueId,
+          scenarioKey: match.scenarioKey,
+          status: cueResult.status,
+          reason: cueResult.reason,
+        });
+        await scenarioRouter.handleHotwordMatch(match);
       },
       onInvalidTranscript: ({ itemId, transcript }) => {
         this.logger.debug('Hotword miss; deleting transcript item', {
