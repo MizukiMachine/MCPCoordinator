@@ -34,6 +34,7 @@ describe('session API routes', () => {
       heartbeatIntervalMs: 25000,
       allowedModalities: ['text'],
       textOutputEnabled: true,
+      memoryKey: 'demo-memory-key',
       capabilityWarnings: [],
       agentSet: { key: 'demo', primary: 'demo-agent' },
     });
@@ -49,6 +50,7 @@ describe('session API routes', () => {
 
     expect(response.status).toBe(200);
     expect(payload.sessionId).toBe('sess_test');
+    expect(payload.memoryKey).toBe('demo-memory-key');
     expect(sessionHostMock.createSession).toHaveBeenCalledWith({ agentSetKey: 'demo' });
   });
 

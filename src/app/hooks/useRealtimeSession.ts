@@ -536,6 +536,10 @@ export function useRealtimeSession(
         eventSource,
       };
       registerStreamListeners(eventSource);
+      return {
+        sessionId: data.sessionId,
+        memoryKey: typeof data.memoryKey === 'string' ? data.memoryKey : null,
+      };
     },
     [assignSessionId, createEventSource, fetchImpl, logClientEvent, registerStreamListeners, updateStatus],
   );

@@ -6,8 +6,8 @@ OpenAI Realtime API + Agents SDK デモです。
 ## TL;DR
 - Realtime API と @openai/agents@0.3.0 を使ったマルチエージェントのPoC実装
 - Next.js 15 + React 19 + TypeScript で構築し、UIは日本語化済み
-- 4つのデモシナリオを試せる（Graffity / Schedule Coordinator* / Basho / Takuboku）
-- Simple / Retail / Chat Supervisor などの旧シナリオは無効化済みで、UI からは Graffity・Schedule Coordinator (Kate)・Basho・Takuboku の4種類のみ選択できます。
+- 5つのデモシナリオを試せる（Graffity / Schedule Coordinator* / Patricia / Mark / Takuboku）
+- Simple / Retail / Chat Supervisor などの旧シナリオは無効化済みで、UI からは Graffity・Schedule Coordinator (Kate)・Patricia・Mark・Takuboku の5種類のみ選択できます。
 - *Schedule Coordinator は Google Calendar MCP を使う kate シナリオのことです。
 - デフォルト応対は Graffity シナリオ（短く丁寧な日本語アシスタント）
 - Google カレンダー MCP と連携した「Schedule Coordinator」シナリオを追加し、複数人の空き時間比較と予定登録まで実行可能

@@ -52,12 +52,14 @@
           "heartbeatIntervalMs": 25000,
           "allowedModalities": ["audio","text"],
           "textOutputEnabled": true,
+          "memoryKey": "graffity",
           "capabilityWarnings": [],
           "agentSet": { "key": "graffity", "primary": "Graffity" }
         }
         
         ```
         
+    - `memoryKey` は BFF が永続メモリを参照する際に利用している実キーです（エージェントセット単位・ユーザー単位など実装依存）。クライアントから `/api/memory` を呼ぶときはこの値を指定すると確実です。
     - BFF側では `BFF_SERVICE_SHARED_SECRET` と突き合わせて認証します
 
 ---

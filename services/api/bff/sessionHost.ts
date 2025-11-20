@@ -111,6 +111,7 @@ export interface CreateSessionResult {
   heartbeatIntervalMs: number;
   allowedModalities: Array<'text' | 'audio'>;
   textOutputEnabled: boolean;
+  memoryKey: string | null;
   agentSet: {
     key: string;
     primary: string;
@@ -182,6 +183,7 @@ interface SessionContext {
   allowedModalities: Array<'text' | 'audio'>;
   textOutputEnabled: boolean;
   memoryKey?: string | null;
+  hasUserContent: boolean;
   hotwordListener?: HotwordListener;
   scenarioRouter?: ScenarioRouter;
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
@@ -389,7 +391,7 @@ export class SessionHost {
     contextRef.current = context;
 
     this.sessions.set(sessionId, context);
-    const voiceControlHandlers = this.createVoiceControlHandlers(sessionId);
+    const voiceControlHandlers = this.createVoiceControlHandlers(sessionId, context);
 
     const scenarioRouter = new ScenarioRouter({
       currentScenarioKey: options.agentSetKey,
@@ -484,6 +486,7 @@ export class SessionHost {
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
       allowedModalities: reportedModalities,
       textOutputEnabled,
+      memoryKey,
       capabilityWarnings: envSnapshot.warnings,
       agentSet: {
         key: options.agentSetKey,
@@ -535,6 +538,7 @@ export class SessionHost {
       allowedModalities: reportedModalities,
       textOutputEnabled,
       memoryKey,
+      hasUserContent: false,
     };
     return context;
   }
@@ -637,6 +641,7 @@ export class SessionHost {
     metadata?: Record<string, any>,
   ) {
     if (!text || text.trim().length === 0) return;
+    context.hasUserContent = true;
     context.manager.sendEvent({
       type: 'conversation.item.create',
       item: {
@@ -663,6 +668,7 @@ export class SessionHost {
   }
 
   private handleInputAudio(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_audio' }>) {
+    context.hasUserContent = true;
     context.manager.sendEvent({
       type: 'input_audio_buffer.append',
       audio: command.audio,
@@ -674,6 +680,7 @@ export class SessionHost {
   }
 
   private handleInputImage(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_image' }>) {
+    context.hasUserContent = true;
     const imageUrl =
       command.mimeType && command.data && command.data.startsWith('data:')
         ? command.data
@@ -765,6 +772,16 @@ export class SessionHost {
   }
 
   private handleRawEvent(context: SessionContext, command: Extract<SessionCommand, { kind: 'event' }>) {
+    if (command.event?.type === 'response.create' && !context.hasUserContent) {
+      // ユーザー入力（またはメモリ再生）が無い初回の自動応答は抑制する（全シナリオ共通）。
+      this.logger.debug('response.create ignored because no user content yet', { sessionId: context.id });
+      return;
+    }
+    if (command.event?.type === 'conversation.item.create' && command.event?.item?.role === 'assistant') {
+      // 念のため、サーバ側でassistant messageを直接流す要求は拒否する。
+      this.logger.debug('assistant conversation item blocked', { sessionId: context.id });
+      return;
+    }
     context.manager.sendEvent(command.event);
     this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'raw_event' });
   }
@@ -989,6 +1006,7 @@ export class SessionHost {
     try {
       const entries = await this.memoryStore.read(context.memoryKey, PERSISTENT_MEMORY_REPLAY_LIMIT);
       if (entries.length === 0) return;
+      context.hasUserContent = true;
       const events = buildReplayEvents(entries, PERSISTENT_MEMORY_REPLAY_LIMIT);
       events.forEach((ev) => {
         try {
@@ -1087,7 +1105,7 @@ export class SessionHost {
     return `sess_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   }
 
-  private createVoiceControlHandlers(sessionId: string): VoiceControlHandlers {
+  private createVoiceControlHandlers(sessionId: string, context: SessionContext): VoiceControlHandlers {
     const emitDirective = (directive: VoiceControlDirective) => {
       this.broadcast(sessionId, 'voice_control', directive);
     };
@@ -1096,6 +1114,10 @@ export class SessionHost {
       requestScenarioChange: async (scenarioKey: string, options?: ScenarioChangeOptions) => {
         if (!scenarioKey) {
           return { success: false, message: '有効なシナリオキーを指定してください。' };
+        }
+        // 初回コマンドがあれば先に transcript に残してからディレクティブを飛ばす（脱落防止）。
+        if (options?.initialCommand) {
+          this.sendUserTextCommand(context, options.initialCommand, { source: 'hotword_switch' });
         }
         emitDirective({ action: 'switchScenario', scenarioKey, initialCommand: options?.initialCommand });
         return { success: true, message: `シナリオ「${scenarioKey}」へ切り替えます。` };
