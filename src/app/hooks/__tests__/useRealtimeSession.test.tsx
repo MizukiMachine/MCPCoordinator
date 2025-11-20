@@ -254,6 +254,46 @@ describe('useRealtimeSession', () => {
     expect(body).toEqual({ kind: 'control', action: 'interrupt' });
   });
 
+  it('notifies onReady when the session emits a ready event', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        createMockResponse({
+          sessionId: 'sess_ready',
+          streamUrl: '/api/session/sess_ready/stream',
+          allowedModalities: ['audio'],
+          capabilityWarnings: [],
+        }),
+      );
+    const stubEventSource = createStubEventSource();
+    const readyCallback = vi.fn();
+
+    const { result } = renderHook(() =>
+      useRealtimeSession(
+        { onReady: readyCallback },
+        {
+          fetchImpl,
+          createEventSource: () => stubEventSource,
+        },
+      ),
+    );
+
+    await act(async () => {
+      await result.current.connect({ agentSetKey: 'demo' });
+    });
+
+    const readyListener = stubEventSource.addEventListener.mock.calls.find(
+      ([eventName]) => eventName === 'ready',
+    )?.[1];
+    expect(readyListener).toBeInstanceOf(Function);
+
+    await act(async () => {
+      readyListener?.({ data: JSON.stringify({ sessionId: 'sess_ready' }) } as MessageEvent<string>);
+    });
+
+    expect(readyCallback).toHaveBeenCalledWith({ sessionId: 'sess_ready' });
+  });
+
   it('propagates voice_control events to the provided callback', async () => {
     const fetchImpl = vi
       .fn()

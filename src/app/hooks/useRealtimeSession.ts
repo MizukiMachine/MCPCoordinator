@@ -56,6 +56,7 @@ export interface RealtimeSessionCallbacks {
   onAgentHandoff?: (agentName: string) => void;
   onVoiceControlDirective?: (directive: VoiceControlDirective) => void;
   onHotwordCue?: (event: HotwordCueEventPayload) => void;
+  onReady?: (payload: Record<string, any>) => void;
 }
 
 export interface ClientCapabilityOverrides {
@@ -363,6 +364,7 @@ export function useRealtimeSession(
       });
       addListener('ready', (payload) => {
         logServerEvent({ type: 'ready', payload }, 'ready');
+        callbacks.onReady?.(payload ?? {});
       });
       addListener('session_error', (payload) => {
         logServerEvent({ type: 'session_error', payload }, 'session_error');
