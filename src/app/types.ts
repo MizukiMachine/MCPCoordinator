@@ -150,6 +150,28 @@ export interface LoggedEvent {
   createdAtMs: number;
 }
 
+export interface SpectatorTranscript {
+  itemId: string;
+  text: string;
+  status: "STREAMING" | "COMPLETED";
+  updatedAt: number;
+  lastEventType?: string;
+}
+
+export interface SpectatorDirective {
+  id: string;
+  action: string;
+  payload?: Record<string, any>;
+  timestamp: number;
+}
+
+export interface SpectatorEventLog {
+  id: string;
+  type: string;
+  timestamp: number;
+  data: any;
+}
+
 // Update the GuardrailOutputZod schema to use the shared ModerationCategoryZod
 export const GuardrailOutputZod = z.object({
   moderationRationale: z.string(),

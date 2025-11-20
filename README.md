@@ -11,6 +11,7 @@ OpenAI Realtime API + Agents SDK デモです。
 - *Schedule Coordinator は Google Calendar MCP を使う kate シナリオのことです。
 - デフォルト応対は Graffity シナリオ（短く丁寧な日本語アシスタント）
 - Google カレンダー MCP と連携した「Schedule Coordinator」シナリオを追加し、複数人の空き時間比較と予定登録まで実行可能
+- 2端末のセッション進捗を読み取り専用で追える観覧ダッシュボード `/viewer` を追加（SSE経由で文字起こし・シナリオ配信をリアルタイム反映）
 
 ## 大型改修サマリ (2025-11)
 ### 目的
@@ -54,6 +55,11 @@ OpenAI Realtime API + Agents SDK デモです。
 ## プロジェクト概要
 - Web クライアントは `src/app` にあり、Transcript／イベントログ／ツールバーを個別コンポーネントとして分離
 - エージェント定義は `src/app/agentConfigs/` 以下にまとまっており、SDK へそのまま渡せる JSON 互換構造
+
+### 観覧専用ダッシュボード（/viewer）
+- 2 つのセッションIDを入力すると、それぞれの SSE ストリームを並列購読し、リアルタイム文字起こしと `voice_control` によるシナリオ配信イベントを読み取り専用で表示します。
+- BFF Key を一度入力すれば双方で共有されます。Cloud Run 等別オリジンをモニタしたい場合は Base URL を指定してください。
+- 共有用リンクボタンで `sessionA/sessionB/bffKey/baseUrl` をクエリに含めたURLをコピーできます（キーの扱いには注意してください）。
 
 ## 手順
 1.  `npm install` 
