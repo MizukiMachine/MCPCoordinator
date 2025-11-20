@@ -18,6 +18,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG GOOGLE_CALENDAR_MCP_URL="http://localhost"
 ENV GOOGLE_CALENDAR_MCP_URL=$GOOGLE_CALENDAR_MCP_URL
+ARG GOOGLE_CALENDAR_MCP_SHARED_SECRET="dummy-shared-secret"
+ENV GOOGLE_CALENDAR_MCP_SHARED_SECRET=$GOOGLE_CALENDAR_MCP_SHARED_SECRET
 RUN npm run build
 ARG GOOGLE_CALENDAR_MCP_ESBUILD_VERSION=0.25.12
 RUN rm -rf external/google-calendar-mcp/node_modules \
