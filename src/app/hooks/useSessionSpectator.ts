@@ -376,16 +376,6 @@ export function useSessionSpectator(): SessionSpectatorState {
       if (data?.action === 'switchScenario' && typeof data?.scenarioKey === 'string') {
         setScenarioKey(String(data.scenarioKey));
       }
-      if (data?.action === 'switchScenario' && typeof data?.initialCommand === 'string') {
-        const adhoc: NormalizedTranscriptEvent = {
-          itemId: generateId('vc_cmd'),
-          text: data.initialCommand,
-          stage: 'completed',
-          raw: { type: 'voice_control.initial_command', ...data },
-          role: 'user',
-        };
-        setTranscripts((prev) => upsertTranscriptItems(prev, adhoc));
-      }
       setDirectives((prev) => [
         {
           id: generateId('vc'),
