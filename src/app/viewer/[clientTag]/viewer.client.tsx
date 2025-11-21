@@ -5,12 +5,19 @@ import { useSearchParams } from "next/navigation";
 
 import { useSessionSpectator } from "@/app/hooks/useSessionSpectator";
 
-const VALID_TAGS = new Set(["develop", "glasses01", "glasses02"]);
+const BADGE_LABELS = {
+  develop: "開発ブラウザ",
+  glasses01: "ARグラス #1",
+  glasses02: "ARグラス #2",
+} as const;
+
+type ValidTag = keyof typeof BADGE_LABELS;
+const VALID_TAGS = new Set<ValidTag>(Object.keys(BADGE_LABELS) as ValidTag[]);
 
 export function ClientViewer({ clientTag }: { clientTag: string }) {
   const searchParams = useSearchParams();
   const tag = clientTag;
-  const isValid = VALID_TAGS.has(tag);
+  const isValid = VALID_TAGS.has(tag as ValidTag);
   const spectator = useSessionSpectator();
 
   const resolvedBffKey = useMemo(() => {
@@ -34,12 +41,8 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   }, [isValid, resolvedBffKey, tag, baseUrl]);
 
   const badge = useMemo(
-    () => ({
-      develop: "開発ブラウザ",
-      glasses01: "ARグラス #1",
-      glasses02: "ARグラス #2",
-    }[tag as keyof typeof VALID_TAGS] ?? tag),
-    [tag],
+    () => (isValid ? BADGE_LABELS[tag as ValidTag] : tag),
+    [isValid, tag],
   );
 
   if (!isValid) {

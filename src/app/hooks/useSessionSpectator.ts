@@ -121,7 +121,8 @@ export function upsertTranscriptItems(
   payload: NormalizedTranscriptEvent,
 ): SpectatorTranscript[] {
   const now = Date.now();
-  const next = prev.map((item) => {
+  const status = payload.stage === 'completed' ? 'COMPLETED' as const : 'STREAMING' as const;
+  const next: SpectatorTranscript[] = prev.map((item): SpectatorTranscript => {
     if (item.itemId !== payload.itemId) return item;
     const mergedText =
       payload.stage === 'completed'
@@ -130,10 +131,10 @@ export function upsertTranscriptItems(
     return {
       ...item,
       text: mergedText,
-      status: payload.stage === 'completed' ? 'COMPLETED' : 'STREAMING',
+      status,
       updatedAt: now,
       lastEventType: payload.raw?.type ?? item.lastEventType,
-      role: item.role ?? payload.raw?.item?.role,
+      role: (item.role ?? payload.raw?.item?.role) as SpectatorTranscript['role'],
     };
   });
 
@@ -142,10 +143,10 @@ export function upsertTranscriptItems(
     next.push({
       itemId: payload.itemId,
       text: payload.text,
-      status: payload.stage === 'completed' ? 'COMPLETED' : 'STREAMING',
+      status,
       updatedAt: now,
       lastEventType: payload.raw?.type,
-      role: payload.raw?.item?.role,
+      role: payload.raw?.item?.role as SpectatorTranscript['role'],
     });
   }
 
