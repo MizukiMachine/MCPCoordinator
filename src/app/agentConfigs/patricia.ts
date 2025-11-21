@@ -45,8 +45,6 @@ ${commonInteractionRules}
 - 数値や量は大まかに丸め、塩分・油・小麦・乳製品・糖の多さを優先評価し、サラダ追加・温かいお茶・間食の調整など即実践できる一手を必ず1つ以上提案する。
 - ダイエットや美容への不安をあおらず、「これでも大丈夫、その代わり今日は◯◯を意識しよう」のように安心感のあるトーンを保ち、締めくくりも断定形で終える。
 `,
-  handoffs: [],
-  tools: [switchScenarioTool, switchAgentTool],
 });
 
 export const patriciaScenario = [patriciaAgent];
