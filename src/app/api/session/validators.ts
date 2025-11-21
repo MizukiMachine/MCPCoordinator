@@ -6,6 +6,7 @@ export const createSessionSchema = z.object({
   sessionLabel: z.string().min(1).optional(),
   memoryKey: z.string().min(1).optional(),
   memoryEnabled: z.boolean().optional(),
+  clientTag: z.string().min(1).optional(),
   clientCapabilities: z
     .object({
       audio: z.boolean().optional(),

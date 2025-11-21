@@ -114,6 +114,10 @@ function App() {
     const stored = localStorage.getItem('textOutputEnabled');
     return stored ? stored === 'true' : true;
   });
+  const [clientTag, setClientTag] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'develop';
+    return localStorage.getItem('clientTag') ?? 'develop';
+  });
 
   const schedulePostToolAction = useCallback((action: () => void) => {
     setTimeout(action, 0);
@@ -146,6 +150,13 @@ function App() {
     const query = next.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    const tagParam = searchParams.get("clientTag");
+    if (tagParam) {
+      setClientTag(tagParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const agents = allAgentSets[agentSetKey] ?? [];
@@ -352,6 +363,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
           logClientEvent,
         },
         clientCapabilities: { outputText: isTextOutputEnabled },
+        clientTag: clientTag?.trim() || undefined,
       });
       const resolvedMemoryKey = sessionInfo?.memoryKey ?? normalizedAgentKey;
       setActiveMemoryKey(resolvedMemoryKey);
@@ -364,7 +376,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
       setSessionStatus("DISCONNECTED");
       setSessionError((err as Error)?.message ?? 'Failed to connect to session API');
     }
-  }, [addTranscriptBreadcrumb, agentSetKey, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
+  }, [addTranscriptBreadcrumb, agentSetKey, clientTag, connect, isTextOutputEnabled, logClientEvent, requestAgentChange, requestScenarioChange, selectedAgentName, sessionStatus]);
 
   const handleSpeechDetected = useCallback(() => {
     logClientEvent(
@@ -640,6 +652,10 @@ const requestAgentChange = useCallback(async (agentName: string) => {
   }, [isTextOutputEnabled]);
 
   useEffect(() => {
+    localStorage.setItem('clientTag', clientTag);
+  }, [clientTag]);
+
+  useEffect(() => {
     mute(!isAudioPlaybackEnabled);
   }, [isAudioPlaybackEnabled, mute]);
 
@@ -738,6 +754,18 @@ const requestAgentChange = useCallback(async (agentName: string) => {
               </div>
             </div>
           )}
+
+          <div className="flex items-center ml-6">
+            <label className="flex items-center text-base gap-1 mr-2 font-medium">
+              クライアントタグ
+            </label>
+            <input
+              value={clientTag}
+              onChange={(e) => setClientTag(e.target.value)}
+              placeholder="develop / glasses01 / glasses02"
+              className="border border-gray-300 rounded-lg text-base px-2 py-1 w-36 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            />
+          </div>
 
           <button
             onClick={handleResetMemory}

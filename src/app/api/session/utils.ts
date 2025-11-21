@@ -23,11 +23,31 @@ export function requireBffSecret(request: Request): void {
   }
 }
 
+function asSessionHostError(error: unknown): SessionHostError | null {
+  if (error instanceof SessionHostError) return error;
+
+  if (error && typeof error === 'object') {
+    const maybe = error as Record<string, any>;
+    const hasStatus = typeof maybe.status === 'number';
+    const hasCode = typeof maybe.code === 'string';
+    const isNamedSessionError = maybe.name === 'SessionHostError';
+
+    if (hasStatus && (hasCode || isNamedSessionError)) {
+      const code = hasCode ? maybe.code : 'session_error';
+      const message = typeof maybe.message === 'string' ? maybe.message : 'Session error';
+      return new SessionHostError(message, code, maybe.status);
+    }
+  }
+
+  return null;
+}
+
 export function handleRouteError(error: unknown) {
-  if (error instanceof SessionHostError) {
+  const sessionError = asSessionHostError(error);
+  if (sessionError) {
     return NextResponse.json(
-      { error: error.code, message: error.message },
-      { status: error.status },
+      { error: sessionError.code, message: sessionError.message },
+      { status: sessionError.status },
     );
   }
 

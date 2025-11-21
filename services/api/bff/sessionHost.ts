@@ -94,6 +94,7 @@ export interface CreateSessionOptions {
   agentSetKey: string;
   preferredAgentName?: string;
   sessionLabel?: string;
+  clientTag?: string;
   clientCapabilities?: {
     audio?: boolean;
     images?: boolean;
@@ -117,6 +118,15 @@ export interface CreateSessionResult {
     primary: string;
   };
   capabilityWarnings: string[];
+}
+
+export interface ResolveSessionResult {
+  sessionId: string;
+  streamUrl: string;
+  expiresAt: string;
+  status: SessionLifecycleStatus;
+  agentSetKey: string;
+  preferredAgentName?: string | null;
 }
 
 export interface SessionStreamMessage {
@@ -188,6 +198,7 @@ interface SessionContext {
   scenarioRouter?: ScenarioRouter;
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
   hotwordCuePlayedItems: Set<string>;
+  clientTag?: string;
 }
 
 interface DestroySessionOptions {
@@ -212,6 +223,7 @@ interface SessionHostDeps {
 
 export class SessionHost {
   private readonly sessions = new Map<string, SessionContext>();
+  private readonly clientTagIndex = new Map<string, string>();
   private readonly logger: StructuredLogger;
   private readonly metrics: MetricEmitter;
   private readonly now: () => number;
@@ -334,6 +346,46 @@ export class SessionHost {
     });
   }
 
+  resolveSessionByClientTag(clientTag: string): ResolveSessionResult {
+    const sessionId = this.clientTagIndex.get(clientTag);
+    if (!sessionId) {
+      this.logger.info('Resolve by clientTag not found', { clientTag });
+      throw new SessionHostError('Session not found for clientTag', 'session_not_found', 404);
+    }
+    try {
+      const context = this.ensureSession(sessionId);
+      this.logger.info('Resolve by clientTag hit', {
+        clientTag,
+        sessionId,
+        agentSetKey: context.agentSetKey,
+        preferredAgentName: context.preferredAgentName,
+        status: context.status,
+      });
+      return {
+        sessionId,
+        streamUrl: `/api/session/${sessionId}/stream`,
+        expiresAt: new Date(context.expiresAt).toISOString(),
+        status: context.status,
+        agentSetKey: context.agentSetKey,
+        preferredAgentName: context.preferredAgentName ?? null,
+      };
+    } catch (error) {
+      if (error instanceof SessionHostError) {
+        if (['session_expired', 'session_not_found'].includes(error.code)) {
+          if (this.clientTagIndex.get(clientTag) === sessionId) {
+            this.clientTagIndex.delete(clientTag);
+          }
+          this.logger.info('Resolve found expired session, tag cleared', {
+            clientTag,
+            sessionId,
+            code: error.code,
+          });
+        }
+      }
+      throw error;
+    }
+  }
+
   /**
    * Optional eager MCP接続。環境変数 MCP_EAGER_SERVERS="google-calendar,foo"
    * のように指定すると、BFF起動時にバックグラウンドで connect を開始する。
@@ -391,6 +443,17 @@ export class SessionHost {
     contextRef.current = context;
 
     this.sessions.set(sessionId, context);
+    if (options.clientTag) {
+      this.clientTagIndex.set(options.clientTag, sessionId);
+      this.logger.info('Session created', {
+        sessionId,
+        clientTag: options.clientTag,
+        agentSetKey: options.agentSetKey,
+        preferredAgentName: options.preferredAgentName,
+        reportedModalities,
+        textOutputEnabled,
+      });
+    }
     const voiceControlHandlers = this.createVoiceControlHandlers(sessionId, context);
 
     const scenarioRouter = new ScenarioRouter({
@@ -518,15 +581,27 @@ export class SessionHost {
       emitter: new EventEmitter(),
       hotwordCuePlayedItems: new Set(),
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
+        const reason = destroyOptions.reason ?? 'unspecified';
+        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
+
+        // 通知を先に飛ばすことで、SSE購読側がセッション切断を検知して再接続できるようにする。
+        this.broadcast(sessionId, 'session_error', {
+          code: destroyOptions.reason ?? 'session_terminated',
+          message: `Session terminated: ${reason}`,
+          initiatedBy,
+        });
+        this.broadcast(sessionId, 'status', { status: 'DISCONNECTED' });
+
         this.clearTimers(context);
         this.sessions.delete(sessionId);
+        if (context.clientTag && this.clientTagIndex.get(context.clientTag) === sessionId) {
+          this.clientTagIndex.delete(context.clientTag);
+        }
         try {
           manager.disconnect();
         } catch (error) {
           this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
         }
-        const reason = destroyOptions.reason ?? 'unspecified';
-        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
         this.logger.info('Session destroyed', { sessionId, reason, initiatedBy });
         this.metrics.increment('bff.session.closed_total', 1, {
           initiatedBy,
@@ -539,6 +614,7 @@ export class SessionHost {
       textOutputEnabled,
       memoryKey,
       hasUserContent: false,
+      clientTag: options.clientTag,
     };
     return context;
   }
