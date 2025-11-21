@@ -14,6 +14,7 @@ interface ConnectParams {
   agentSetKey?: string;
   scenarioKey?: string | null;
   memoryKey?: string | null;
+  preserveHistory?: boolean;
 }
 
 interface NormalizedTranscriptEvent {
@@ -242,7 +243,7 @@ export function useSessionSpectator(): SessionSpectatorState {
       reconnectTimerRef.current = null;
       reconnectAttemptsRef.current += 1;
       if (connectRef.current && lastConnectParamsRef.current) {
-        void connectRef.current(lastConnectParamsRef.current);
+        void connectRef.current({ ...lastConnectParamsRef.current, preserveHistory: true });
       }
     }, delay);
   }, []);
@@ -436,10 +437,12 @@ export function useSessionSpectator(): SessionSpectatorState {
       setMemoryKey(resolvedParams.memoryKey ?? null);
       setActiveClientTag(params.clientTag ?? null);
       setStatus('CONNECTING');
-      setTranscripts([]);
-      setDirectives([]);
-      setEvents([]);
-      setLastError(null);
+      if (!params.preserveHistory) {
+        setTranscripts([]);
+        setDirectives([]);
+        setEvents([]);
+        setLastError(null);
+      }
 
       const streamUrl = buildUrl(resolvedParams as Required<ConnectParams>);
       const es = new EventSource(streamUrl);
