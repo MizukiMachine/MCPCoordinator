@@ -79,7 +79,6 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
             <p className="text-2xl font-bold text-amber-100 mt-3">
               現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
-              {spectator.memoryKey ? ` ｜ メモリキー: ${spectator.memoryKey}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-3">
