@@ -190,7 +190,7 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
   }, [error, status]);
 
   return (
-    <div className="border border-gray-200 rounded-lg p-3 bg-white">
+    <div className="border border-[var(--border)] rounded-lg p-3 bg-[var(--surface)] text-[var(--foreground)] shadow-md shadow-black/30">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-sm">{uiText.camera.title}</span>
         <span className="text-xs text-gray-500">{statusLabel}</span>
@@ -207,14 +207,14 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
           />
           <canvas ref={canvasRef} className="hidden" />
           <button
-            className="px-3 py-1 rounded-md text-sm text-white bg-gray-900 disabled:opacity-50"
+            className="px-3 py-1 rounded-md text-sm text-white bg-[var(--accent)] hover:bg-[var(--accent-strong)] disabled:opacity-50 transition-colors"
             onClick={startCamera}
             disabled={disabled || status === "camera_ready" || status === "streaming"}
           >
             {uiText.camera.startCamera}
           </button>
           <button
-            className="px-3 py-1 rounded-md text-sm text-gray-900 border border-gray-300 disabled:opacity-50"
+            className="px-3 py-1 rounded-md text-sm text-white bg-red-600 hover:bg-red-700 border border-red-700 disabled:opacity-50 transition-colors"
             onClick={stopCamera}
             disabled={status === "idle"}
           >
@@ -234,7 +234,7 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
                 step={0.5}
                 value={fps}
                 onChange={(e) => setFps(Number(e.target.value))}
-                className="border border-gray-200 rounded px-2 py-1"
+                className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] rounded px-2 py-1 placeholder:text-[var(--muted)]"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -242,7 +242,7 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
               <select
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value as ResolutionPreset)}
-                className="border border-gray-200 rounded px-2 py-1"
+                className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] rounded px-2 py-1 placeholder:text-[var(--muted)]"
               >
                 <option value="640x360">640x360</option>
                 <option value="1280x720">1280x720</option>
@@ -272,7 +272,7 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
               <span>{uiText.camera.respondEveryFrame}</span>
             </label>
             <button
-              className="px-2 py-1 text-xs rounded border border-gray-300"
+              className="px-2 py-1 text-xs rounded border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]"
               onClick={handleRespondNext}
               disabled={pendingResponseOnce || status !== "streaming"}
             >
@@ -282,7 +282,7 @@ export function CameraCapturePanel({ disabled = false, maxSizeBytes, onSend }: P
 
           <div className="flex items-center gap-2">
             <button
-              className="px-3 py-1 rounded-md bg-gray-900 text-white text-sm disabled:opacity-50"
+              className="px-3 py-1 rounded-md bg-[var(--accent)] hover:bg-[var(--accent-strong)] text-white text-sm disabled:opacity-50 transition-colors"
               onClick={handleCaptureOnce}
               disabled={disabled || status === "idle"}
             >

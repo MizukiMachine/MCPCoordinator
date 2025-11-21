@@ -67,7 +67,7 @@ function BottomToolbar({
   }
 
   return (
-    <div className="p-4 flex flex-row items-center justify-center gap-x-8">
+    <div className="p-4 flex flex-row items-center justify-center gap-x-8 bg-[var(--surface)] text-[var(--foreground)] border-t border-[var(--border)]">
       <button
         onClick={onToggleConnection}
         className={getConnectionButtonClasses()}
@@ -101,9 +101,9 @@ function BottomToolbar({
             onTouchEnd={handleTalkButtonUp}
             disabled={!isPTTActive}
             className={
-              (isPTTUserSpeaking ? "bg-gray-300" : "bg-gray-200") +
-              " py-1 px-4 cursor-pointer rounded-md" +
-              (!isPTTActive ? " bg-gray-100 text-gray-400" : "")
+              (isPTTUserSpeaking ? "bg-[var(--surface-muted)]" : "bg-[var(--surface)]") +
+              " py-1 px-4 cursor-pointer rounded-md border border-[var(--border)] text-[var(--foreground)]" +
+              (!isPTTActive ? " opacity-70" : "")
             }
           >
             {uiText.toolbar.talkButtonLabel}
@@ -170,8 +170,8 @@ function BottomToolbar({
             id="codec-select"
             value={codec}
             onChange={handleCodecChange}
-            className="border border-gray-300 rounded-md px-2 py-1 focus:outline-none cursor-pointer"
-          >
+          className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] rounded-md px-2 py-1 focus:outline-none cursor-pointer"
+        >
             <option value="opus">{uiText.toolbar.codecOptions.opus}</option>
             <option value="pcmu">{uiText.toolbar.codecOptions.pcmu}</option>
             <option value="pcma">{uiText.toolbar.codecOptions.pcma}</option>

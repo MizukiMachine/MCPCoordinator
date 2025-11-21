@@ -31,6 +31,7 @@ export const scenarioAliasMap: Record<string, string[]> = {
     'ケイトシナリオ',
     'Kejto',
     'Keito',
+    'Kato',
     ],
   takuboku: [
     'takuboku',

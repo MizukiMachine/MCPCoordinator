@@ -93,7 +93,7 @@ export function GuardrailChip({
             </strong>
             <div>{guardrailResult.rationale}</div>
             {guardrailResult.testText && (
-              <blockquote className="mt-1 border-l-2 border-gray-300 pl-2 text-gray-400">
+              <blockquote className="mt-1 border-l-2 border-[var(--border)] pl-2 text-[var(--muted)]">
                 {guardrailResult.testText}
               </blockquote>
             )}

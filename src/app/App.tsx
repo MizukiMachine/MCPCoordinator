@@ -676,7 +676,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
   }, [stopRecording]);
 
   return (
-    <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
+    <div className="text-base flex flex-col h-screen bg-[var(--background)] text-[var(--foreground)] relative">
       <div className="p-5 text-lg font-semibold flex justify-between items-center">
         <div
           className="flex items-center cursor-pointer"
@@ -704,7 +704,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
             <select
               value={agentSetKey}
               onChange={handleAgentChange}
-              className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
+              className="appearance-none border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
             >
               {Object.keys(allAgentSets).map((agentKey) => (
                 <option key={agentKey} value={agentKey}>
@@ -732,7 +732,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
                 <select
                   value={selectedAgentName}
                   onChange={handleSelectedAgentChange}
-                  className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
+                  className="appearance-none border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
                 >
                   {selectedAgentConfigSet?.map((agent) => (
                     <option key={agent.name} value={agent.name}>
@@ -765,14 +765,14 @@ const requestAgentChange = useCallback(async (agentName: string) => {
               value={clientTag}
               onChange={(e) => setClientTag(e.target.value)}
               placeholder="develop / glasses01 / glasses02"
-              className="border border-gray-300 rounded-lg text-base px-2 py-1 w-36 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] rounded-lg text-base px-2 py-1 w-36 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
           </div>
 
           <button
             onClick={handleResetMemory}
             disabled={isResettingMemory}
-            className="ml-6 px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="ml-6 px-3 py-1.5 text-sm rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {isResettingMemory ? uiText.memory.resettingLabel : uiText.memory.resetLabel}
           </button>
