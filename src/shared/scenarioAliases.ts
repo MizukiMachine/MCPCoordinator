@@ -24,6 +24,8 @@ export const scenarioAliasMap: Record<string, string[]> = {
   ],
   kate: ['kate',
     'ケイト',
+    'ケイ',
+    'ケイと',
     'ｹｲﾄ',
     'けいと',
     'けーと',
