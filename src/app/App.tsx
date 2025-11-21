@@ -137,6 +137,7 @@ function App() {
   };
 
   useHandleSessionHistory();
+  const { clearTranscript } = useTranscript();
 
   useEffect(() => {
     const requested = searchParams.get("agentConfig");
@@ -213,6 +214,7 @@ function App() {
     disconnect();
     setIsPTTUserSpeaking(false);
     initialResponseTriggeredRef.current = false;
+    clearTranscript();
   };
 
   const handleTextOutputPreferenceChange = useCallback(

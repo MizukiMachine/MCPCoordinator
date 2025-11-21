@@ -38,6 +38,7 @@ import { ServerHotwordCueService, type HotwordCueService } from './hotwordCueSer
 import {
   buildReplayEvents,
   getPersistentMemoryStore,
+  PERSISTENT_MEMORY_SOURCE,
   resolveMemoryKey,
   toMemoryEntry,
   type MemoryStore,
@@ -49,7 +50,8 @@ const HEARTBEAT_INTERVAL_MS = 25_000;
 const STREAM_IDLE_CLEANUP_MS = 60_000;
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_EVENTS = 10;
-const PERSISTENT_MEMORY_ENABLED = process.env.PERSISTENT_MEMORY_ENABLED !== 'false';
+// デフォルトでは永続メモリを無効化する（過去ログの大量再生でUIが汚染されるため）。
+const PERSISTENT_MEMORY_ENABLED = process.env.PERSISTENT_MEMORY_ENABLED === 'true';
 const PERSISTENT_MEMORY_REPLAY_LIMIT =
   Number(process.env.PERSISTENT_MEMORY_REPLAY_LIMIT ?? '') || 30;
 
@@ -571,6 +573,12 @@ export class SessionHost {
     this.attachManagerListeners(context);
     this.startHeartbeat(context);
     this.broadcast(sessionId, 'status', { status: 'CONNECTED' });
+    // クライアント側の onReady フックが初期コマンド送信をトリガーするため、確実に ready を通知する
+    this.broadcast(sessionId, 'ready', {
+      sessionId,
+      agentSetKey: options.agentSetKey,
+      preferredAgentName: options.preferredAgentName ?? null,
+    });
     this.metrics.increment('bff.session.created_total');
 
     return {
@@ -749,6 +757,12 @@ export class SessionHost {
   ) {
     if (!text || text.trim().length === 0) return;
     context.hasUserContent = true;
+    if (metadata && Object.keys(metadata).length > 0) {
+      this.logger.debug('Dropping response metadata to satisfy Realtime API schema', {
+        sessionId: context.id,
+        metadata,
+      });
+    }
     context.manager.sendEvent({
       type: 'conversation.item.create',
       item: {
@@ -762,11 +776,7 @@ export class SessionHost {
         ],
       },
     });
-    const responseEvent: Record<string, any> = { type: 'response.create' };
-    if (metadata && Object.keys(metadata).length > 0) {
-      responseEvent.response = { metadata };
-    }
-    context.manager.sendEvent(responseEvent);
+    context.manager.sendEvent({ type: 'response.create' });
     this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
   }
 
@@ -1085,10 +1095,22 @@ export class SessionHost {
     forwardableEvents.forEach((event) => {
       const handler = (...args: any[]) => {
         const payload = args.length > 1 ? args : args[0];
+        let forwardPayload = payload;
+
         if (event === 'history_added' || event === 'history_updated') {
-          void this.persistMemoryFromHistory(context, payload);
+          const filtered = this.normalizeHistoryPayload(payload).filter(
+            (item) => !this.isPersistentMemoryReplay(item),
+          );
+
+          if (filtered.length === 0) {
+            return;
+          }
+
+          forwardPayload = Array.isArray(payload) ? filtered : filtered[0];
+          void this.persistMemoryFromHistory(context, forwardPayload);
         }
-        this.broadcast(context.id, event, payload);
+
+        this.broadcast(context.id, event, forwardPayload);
         if (event === 'error') {
           const summary = this.normalizeRealtimeError(payload);
           const rawPayload = this.sanitizeErrorPayload(payload);
@@ -1140,7 +1162,7 @@ export class SessionHost {
   }
 
   private async persistMemoryFromHistory(context: SessionContext, payload: any): Promise<void> {
-    if (!context.memoryKey || !PERSISTENT_MEMORY_ENABLED) return;
+    if (!context.memoryKey) return;
     const items = Array.isArray(payload) ? payload : [payload];
     const now = this.now();
     const entries = items
@@ -1160,6 +1182,15 @@ export class SessionHost {
         }),
       ),
     );
+  }
+
+  private isPersistentMemoryReplay(payload: any): boolean {
+    return payload?.metadata?.source === PERSISTENT_MEMORY_SOURCE;
+  }
+
+  private normalizeHistoryPayload(payload: any): any[] {
+    if (Array.isArray(payload)) return payload;
+    return payload ? [payload] : [];
   }
 
   private startHeartbeat(context: SessionContext) {
@@ -1221,10 +1252,6 @@ export class SessionHost {
       requestScenarioChange: async (scenarioKey: string, options?: ScenarioChangeOptions) => {
         if (!scenarioKey) {
           return { success: false, message: '有効なシナリオキーを指定してください。' };
-        }
-        // 初回コマンドがあれば先に transcript に残してからディレクティブを飛ばす（脱落防止）。
-        if (options?.initialCommand) {
-          this.sendUserTextCommand(context, options.initialCommand, { source: 'hotword_switch' });
         }
         emitDirective({ action: 'switchScenario', scenarioKey, initialCommand: options?.initialCommand });
         return { success: true, message: `シナリオ「${scenarioKey}」へ切り替えます。` };

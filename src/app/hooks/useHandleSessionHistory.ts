@@ -71,6 +71,19 @@ export function useHandleSessionHistory() {
 
   const { logServerEvent } = useEvent();
 
+  // 直近数秒に同じテキストを重複表示しないための簡易デデュープバッファ
+  const recentMessagesRef = useRef<Array<{ role: string; text: string; ts: number }>>([]);
+  const isRecentDuplicate = (role: string, text: string, windowMs = 3000) => {
+    const now = Date.now();
+    recentMessagesRef.current = recentMessagesRef.current.filter((m) => now - m.ts <= windowMs);
+    const hit = recentMessagesRef.current.find((m) => m.role === role && m.text === text);
+    if (!hit) {
+      recentMessagesRef.current.push({ role, text, ts: now });
+      return false;
+    }
+    return true;
+  };
+
   /* ----------------------- helpers ------------------------- */
 
   const extractFunctionCallByName = (name: string, content: any[] = []): any => {
@@ -132,6 +145,8 @@ export function useHandleSessionHistory() {
     if (!item || item.type !== 'message') return;
 
     const { itemId, role, content = [] } = item;
+    // 過去セッションのリプレイや guardrail 内部メッセージは表示しない
+    if (item?.metadata?.source === 'persistent_memory') return;
     if (itemId && role) {
       const isUser = role === "user";
       let text = extractMessageText(content);
@@ -148,6 +163,7 @@ export function useHandleSessionHistory() {
         const failureDetails = JSON.parse(guardrailMessage);
         addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
       } else {
+        if (text && isRecentDuplicate(role, text)) return;
         addTranscriptMessage(itemId, role, text, false, attachments);
       }
     }
@@ -157,12 +173,14 @@ export function useHandleSessionHistory() {
     console.log("[handleHistoryUpdated] ", items);
     items.forEach((item: any) => {
       if (!item || item.type !== 'message') return;
+      if (item?.metadata?.source === 'persistent_memory') return;
 
       const { itemId, content = [] } = item;
 
       const text = extractMessageText(content);
 
       if (text) {
+        if (isRecentDuplicate(item.role ?? 'assistant', text)) return;
         updateTranscriptMessage(itemId, text, false);
       }
     });
@@ -172,7 +190,9 @@ export function useHandleSessionHistory() {
     const itemId = item.item_id;
     const deltaText = item.delta || "";
     if (itemId) {
-      updateTranscriptMessage(itemId, deltaText, true);
+      // タイムスタンプが同じ複数行に見えるのを避けるため、途中経過のdeltaは
+      // 既存テキストと結合しない（append=false で上書き）。
+      updateTranscriptMessage(itemId, deltaText, false);
     }
   }
 

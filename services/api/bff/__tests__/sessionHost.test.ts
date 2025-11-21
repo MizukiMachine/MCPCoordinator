@@ -200,15 +200,12 @@ describe('SessionHost', () => {
     expect(responseEvent).toEqual({ type: 'response.create' });
   });
 
-  it('forwards response metadata when provided', async () => {
+  it('drops response metadata when provided (Realtime API compatibility)', async () => {
     const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
     const metadata = { source: 'unit-test' };
     await host.handleCommand(sessionId, { kind: 'input_text', text: 'with metadata', metadata });
     const responseEvent = managers[0]!.sentEvents.find((event) => event?.type === 'response.create');
-    expect(responseEvent).toMatchObject({
-      type: 'response.create',
-      response: { metadata },
-    });
+    expect(responseEvent).toEqual({ type: 'response.create' });
   });
 
   it('allows disabling text output when requested by the client', async () => {
@@ -400,9 +397,15 @@ describe('SessionHost', () => {
       memoryStore,
     });
 
-    await host.createSession({ agentSetKey: 'demo' });
+    await host.createSession({ agentSetKey: 'demo', memoryEnabled: true });
     const manager = managers[0]!;
-    expect(manager.sentEvents.some((ev) => ev?.metadata?.source === 'persistent_memory')).toBe(true);
+    expect(
+      manager.sentEvents.some(
+        (ev) =>
+          ev?.type === 'conversation.item.create' &&
+          ev?.item?.metadata?.source === 'persistent_memory',
+      ),
+    ).toBe(true);
 
     manager.emit('history_added', {
       type: 'message',
@@ -414,6 +417,27 @@ describe('SessionHost', () => {
     const stored = await memoryStore.read('demo');
     expect(stored.some((entry) => entry.text === '新しい発話')).toBe(true);
     expect(stored.find((entry) => entry.text === '以前の会話')?.createdAt).toBe(seededAt);
+  });
+
+  it('skips broadcasting persistent-memory history events to clients', async () => {
+    const received: SessionStreamMessage[] = [];
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'sub_pmem',
+      send: (msg) => received.push(msg),
+    });
+    const manager = managers[0]!;
+
+    manager.emit('history_added', {
+      type: 'message',
+      role: 'assistant',
+      itemId: 'pm-1',
+      content: [{ type: 'output_text', text: '古いメモ' }],
+      metadata: { source: 'persistent_memory' },
+    });
+
+    expect(received.find((msg) => msg.event === 'history_added')).toBeUndefined();
+    unsubscribe();
   });
 
   it('broadcasts SSE messages to subscribers', async () => {

@@ -3,6 +3,8 @@ import path from 'node:path';
 import type { MemoryEntry, MemoryStore } from './memoryStore';
 import { FileMemoryStore } from './memoryStore';
 
+export const PERSISTENT_MEMORY_SOURCE = 'persistent_memory';
+
 // 外部からも型を利用できるように再エクスポート
 export type { MemoryEntry, MemoryStore } from './memoryStore';
 
@@ -65,9 +67,10 @@ export function buildReplayEvents(
           text: entry.text,
         },
       ],
-    },
-    metadata: {
-      source: 'persistent_memory',
+      metadata: {
+        source: PERSISTENT_MEMORY_SOURCE,
+        created_at: entry.createdAt,
+      },
     },
   }));
 }
@@ -119,6 +122,7 @@ export function toMemoryEntry(
   now: number,
 ): MemoryEntry | null {
   if (!item || item.type !== 'message') return null;
+  if (item?.metadata?.source === PERSISTENT_MEMORY_SOURCE) return null;
   const role = item.role === 'assistant' ? 'assistant' : item.role === 'user' ? 'user' : null;
   if (!role) return null;
   const text = extractTextFromContent(item.content ?? []);
