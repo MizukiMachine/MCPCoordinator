@@ -2,7 +2,9 @@ export type RealtimeTranscriptionEventStage = 'completed' | 'delta';
 
 export const TRANSCRIPTION_EVENT_STAGE_MAP = {
   'conversation.item.input_audio_transcription.completed': 'completed',
+  'conversation.item.input_audio_transcription.delta': 'delta',
   'input_audio_transcription.completed': 'completed',
+  'input_audio_transcription.delta': 'delta',
   'response.audio_transcript.done': 'completed',
   'audio_transcript.done': 'completed',
   'response.output_audio_transcript.done': 'completed',

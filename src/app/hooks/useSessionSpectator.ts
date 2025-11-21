@@ -112,8 +112,8 @@ export function normalizeTranscriptEvent(event: any): NormalizedTranscriptEvent 
 
   const role: SpectatorTranscript['role'] | undefined = (() => {
     const type = event?.type ?? '';
-    if (type.startsWith('conversation.item.input_audio_transcription')) return 'user';
-    if (type.startsWith('conversation.item.output_audio.transcription')) return 'assistant';
+    if (type.includes('input_audio_transcription')) return 'user';
+    if (type.includes('output_audio') || type.includes('output_text')) return 'assistant';
     const itemRole = event?.item?.role;
     if (itemRole === 'user' || itemRole === 'assistant') return itemRole;
     return undefined;
