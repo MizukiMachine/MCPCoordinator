@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useSessionSpectator } from "@/app/hooks/useSessionSpectator";
@@ -19,6 +19,8 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   const tag = clientTag;
   const isValid = VALID_TAGS.has(tag as ValidTag);
   const spectator = useSessionSpectator();
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
+  const [resetNoticeTone, setResetNoticeTone] = useState<"success" | "error">("success");
 
   const resolvedBffKey = useMemo(() => {
     const qp = searchParams?.get("bffKey");
@@ -30,6 +32,7 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   }, [searchParams]);
 
   const baseUrl = searchParams?.get("baseUrl") ?? undefined;
+  const canResetMemory = Boolean(spectator.scenarioKey);
 
   useEffect(() => {
     if (!isValid) return;
@@ -39,6 +42,18 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
       baseUrl,
     });
   }, [isValid, resolvedBffKey, tag, baseUrl]);
+
+  const handleResetMemory = async () => {
+    setResetNotice(null);
+    const result = await spectator.resetMemory();
+    if (result.ok) {
+      setResetNoticeTone("success");
+      setResetNotice("記憶をリセットし、最新セッションを購読し直しました。");
+    } else {
+      setResetNoticeTone("error");
+      setResetNotice(result.message ?? "記憶リセットに失敗しました。");
+    }
+  };
 
   const badge = useMemo(
     () => (isValid ? BADGE_LABELS[tag as ValidTag] : tag),
@@ -58,7 +73,7 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white">
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Spectator</p>
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
@@ -68,16 +83,37 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
             </p>
             <p className="text-xs text-slate-300/80 mt-1">
               現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
+              {spectator.memoryKey ? ` / メモリキー: ${spectator.memoryKey}` : ""}
             </p>
           </div>
-          <div className="text-xs px-3 py-1 rounded-full bg-slate-800/60 border border-white/10">
-            {spectator.status}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResetMemory}
+              disabled={!canResetMemory || spectator.isResettingMemory}
+              className="rounded-lg bg-rose-500/90 text-slate-50 text-xs font-semibold px-3 py-2 shadow-lg shadow-rose-500/30 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-95 transition"
+            >
+              {spectator.isResettingMemory ? "リセット中…" : "記憶をリセット"}
+            </button>
+            <div className="text-xs px-3 py-1 rounded-full bg-slate-800/60 border border-white/10">
+              {spectator.status}
+            </div>
           </div>
         </div>
 
         {spectator.lastError && (
           <div className="rounded-lg border border-rose-500/40 bg-rose-900/30 text-rose-50 px-3 py-2 text-sm">
             {spectator.lastError}
+          </div>
+        )}
+        {resetNotice && (
+          <div
+            className={`rounded-lg px-3 py-2 text-sm border ${
+              resetNoticeTone === "success"
+                ? "border-emerald-400/40 bg-emerald-900/30 text-emerald-50"
+                : "border-amber-400/50 bg-amber-900/30 text-amber-50"
+            }`}
+          >
+            {resetNotice}
           </div>
         )}
 

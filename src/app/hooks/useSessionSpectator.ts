@@ -12,6 +12,8 @@ interface ConnectParams {
   baseUrl?: string;
   label?: string;
   agentSetKey?: string;
+  scenarioKey?: string | null;
+  memoryKey?: string | null;
 }
 
 interface NormalizedTranscriptEvent {
@@ -25,10 +27,7 @@ function buildUrl(params: ConnectParams): string {
   if (!params.sessionId) {
     throw new Error('sessionId is required to build stream URL');
   }
-  const origin =
-    params.baseUrl?.trim() ||
-    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-  const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+  const normalizedOrigin = buildOrigin(params.baseUrl);
   const url = new URL(`/api/session/${params.sessionId}/stream`, normalizedOrigin);
   if (params.bffKey) {
     url.searchParams.set('bffKey', params.bffKey);
@@ -36,6 +35,13 @@ function buildUrl(params: ConnectParams): string {
   // cache buster to avoid EventSource reuse in some browsers
   url.searchParams.set('_', Date.now().toString());
   return url.toString();
+}
+
+function buildOrigin(baseUrl?: string): string {
+  const origin =
+    baseUrl?.trim() ||
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+  return origin.endsWith('/') ? origin.slice(0, -1) : origin;
 }
 
 function safeJsonParse<T = any>(input: string): T {
@@ -169,8 +175,11 @@ export interface SessionSpectatorState {
   sessionId: string | null;
   activeClientTag: string | null;
   scenarioKey: string | null;
+  memoryKey: string | null;
   connect: (params: ConnectParams) => Promise<void>;
   disconnect: () => void;
+  resetMemory: () => Promise<{ ok: boolean; message?: string }>;
+  isResettingMemory: boolean;
 }
 
 export function useSessionSpectator(): SessionSpectatorState {
@@ -182,6 +191,8 @@ export function useSessionSpectator(): SessionSpectatorState {
   const [events, setEvents] = useState<SpectatorEventLog[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
   const [scenarioKey, setScenarioKey] = useState<string | null>(null);
+  const [memoryKey, setMemoryKey] = useState<string | null>(null);
+  const [isResettingMemory, setIsResettingMemory] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const lastConnectParamsRef = useRef<ConnectParams | null>(null);
@@ -198,6 +209,8 @@ export function useSessionSpectator(): SessionSpectatorState {
     eventSourceRef.current = null;
     setStatus('DISCONNECTED');
     setActiveClientTag(null);
+    setScenarioKey(null);
+    setMemoryKey(null);
   }, []);
 
   useEffect(() => () => disconnect(), [disconnect]);
@@ -214,36 +227,89 @@ export function useSessionSpectator(): SessionSpectatorState {
     }, 800);
   }, []);
 
+  const resolveViaViewerApi = useCallback(async (params: ConnectParams): Promise<ConnectParams> => {
+    const normalizedOrigin = buildOrigin(params.baseUrl);
+    const url = new URL('/api/viewer/session', normalizedOrigin);
+    url.searchParams.set('clientTag', params.clientTag ?? '');
+    const headers: Record<string, string> = {};
+    if (params.bffKey) {
+      headers['x-bff-key'] = params.bffKey;
+    }
+    const response = await fetch(url.toString(), { headers });
+    if (response.status === 404) {
+      throw new Error('resolve_not_found');
+    }
+    if (response.status === 401) {
+      throw new Error('resolve_unauthorized');
+    }
+    if (!response.ok) {
+      throw new Error(`resolve_failed_${response.status}`);
+    }
+    const payload = await response.json();
+    return {
+      ...params,
+      sessionId: payload.sessionId,
+      agentSetKey: payload.scenarioKey ?? payload.agentSetKey ?? null,
+      scenarioKey: payload.scenarioKey ?? payload.agentSetKey ?? null,
+      memoryKey: payload.memoryKey ?? null,
+    };
+  }, []);
+
+  const resolveViaLegacyApi = useCallback(async (params: ConnectParams): Promise<ConnectParams> => {
+    const normalizedOrigin = buildOrigin(params.baseUrl);
+    const url = new URL('/api/session/resolve', normalizedOrigin);
+    url.searchParams.set('clientTag', params.clientTag ?? '');
+    const headers: Record<string, string> = {};
+    if (params.bffKey) {
+      headers['x-bff-key'] = params.bffKey;
+    }
+    const response = await fetch(url.toString(), { headers });
+    if (response.status === 404) {
+      throw new Error('resolve_not_found');
+    }
+    if (response.status === 401) {
+      throw new Error('resolve_unauthorized');
+    }
+    if (!response.ok) {
+      throw new Error(`resolve_failed_${response.status}`);
+    }
+    const payload = await response.json();
+    return {
+      ...params,
+      sessionId: payload.sessionId,
+      agentSetKey: payload.agentSetKey ?? payload.scenarioKey ?? null,
+      scenarioKey: payload.agentSetKey ?? payload.scenarioKey ?? null,
+      memoryKey: payload.memoryKey ?? null,
+    };
+  }, []);
+
   const resolveSessionIdByTag = useCallback(
     async (params: ConnectParams): Promise<ConnectParams> => {
-      const origin =
-        params.baseUrl?.trim() ||
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-      const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
-      const url = new URL('/api/session/resolve', normalizedOrigin);
-      url.searchParams.set('clientTag', params.clientTag ?? '');
-      const headers: Record<string, string> = {};
-      if (params.bffKey) {
-        headers['x-bff-key'] = params.bffKey;
+      let viewerError: Error | null = null;
+      try {
+        return await resolveViaViewerApi(params);
+      } catch (error: any) {
+        viewerError = error instanceof Error ? error : new Error(String(error?.message ?? error));
+        if (viewerError.message === 'resolve_unauthorized') {
+          throw viewerError;
+        }
       }
-      const response = await fetch(url.toString(), { headers });
-      if (response.status === 404) {
-        throw new Error('resolve_not_found');
+      try {
+        return await resolveViaLegacyApi(params);
+      } catch (legacyError: any) {
+        if (legacyError instanceof Error) {
+          throw legacyError;
+        }
+        if (legacyError?.message) {
+          throw new Error(String(legacyError.message));
+        }
+        if (viewerError) {
+          throw viewerError;
+        }
+        throw new Error('resolve_failed');
       }
-      if (response.status === 401) {
-        throw new Error('resolve_unauthorized');
-      }
-      if (!response.ok) {
-        throw new Error(`resolve_failed_${response.status}`);
-      }
-      const payload = await response.json();
-      return {
-        ...params,
-        sessionId: payload.sessionId,
-        agentSetKey: payload.agentSetKey ?? payload.scenarioKey ?? null,
-      };
     },
-    [],
+    [resolveViaLegacyApi, resolveViaViewerApi],
   );
 
   const handleSseEvent = useCallback((eventName: string, data: any) => {
@@ -345,7 +411,8 @@ export function useSessionSpectator(): SessionSpectatorState {
       disconnect();
       lastConnectParamsRef.current = params;
       setSessionId(resolvedParams.sessionId ?? null);
-      setScenarioKey(resolvedParams.agentSetKey ?? null);
+      setScenarioKey(resolvedParams.scenarioKey ?? resolvedParams.agentSetKey ?? null);
+      setMemoryKey(resolvedParams.memoryKey ?? null);
       setActiveClientTag(params.clientTag ?? null);
       setStatus('CONNECTING');
       setTranscripts([]);
@@ -390,19 +457,90 @@ export function useSessionSpectator(): SessionSpectatorState {
     };
   }, [connect]);
 
+  const resetMemory = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
+    const params = lastConnectParamsRef.current;
+    const agentSetKey = scenarioKey ?? undefined;
+    if (!params || !agentSetKey) {
+      const message = 'シナリオキーの解決後にリセットできます。';
+      setLastError(message);
+      return { ok: false, message };
+    }
+    const normalizedOrigin = buildOrigin(params.baseUrl);
+    const url = new URL('/api/memory', normalizedOrigin);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (params.bffKey) {
+      headers['x-bff-key'] = params.bffKey;
+    }
+    const body: Record<string, any> = { agentSetKey };
+    if (memoryKey) {
+      body.memoryKey = memoryKey;
+    }
+
+    setIsResettingMemory(true);
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify(body),
+      });
+      if (response.status === 401) {
+        const message =
+          'BFF Key がありません（?bffKey= を付けるか NEXT_PUBLIC_BFF_KEY を設定してください）。';
+        setLastError(message);
+        return { ok: false, message };
+      }
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const message =
+          (typeof payload?.message === 'string' && payload.message) ||
+          '記憶リセットに失敗しました';
+        setLastError(message);
+        return { ok: false, message };
+      }
+
+      setTranscripts([]);
+      setDirectives([]);
+      setEvents([]);
+      setLastError(null);
+      if (params) {
+        await connect(params);
+      }
+      return { ok: true };
+    } finally {
+      setIsResettingMemory(false);
+    }
+  }, [connect, memoryKey, scenarioKey]);
+
   return useMemo(
     () => ({
       status,
       sessionId,
       activeClientTag,
       scenarioKey,
+      memoryKey,
       transcripts,
       directives,
       events,
       lastError,
       connect,
       disconnect,
+      resetMemory,
+      isResettingMemory,
     }),
-    [status, sessionId, activeClientTag, scenarioKey, transcripts, directives, events, lastError, connect, disconnect],
+    [
+      status,
+      sessionId,
+      activeClientTag,
+      scenarioKey,
+      memoryKey,
+      transcripts,
+      directives,
+      events,
+      lastError,
+      connect,
+      disconnect,
+      resetMemory,
+      isResettingMemory,
+    ],
   );
 }

@@ -25,6 +25,15 @@ vi.mock('@openai/agents-core', () => ({
   getOrCreateTrace: vi.fn((fn: () => any, _options?: unknown) => fn()),
 }));
 
+vi.mock('../../../../framework/voice_gateway/LlmScenarioNameClassifier', () => ({
+  LlmScenarioNameClassifier: class {
+    classifyScenario = vi.fn(async (_input: string) => ({
+      scenarioKey: 'demo',
+      confidence: 1,
+    }));
+  },
+}));
+
 type HookedManager = ISessionManager<RealtimeAgent> & {
   hooks: SessionManagerHooks;
   connectMock: ReturnType<typeof vi.fn>;
@@ -156,6 +165,7 @@ describe('SessionHost', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.OPENAI_API_KEY = 'test-key';
     managers = [];
     envSnapshot = {
       warnings: [],
@@ -417,6 +427,23 @@ describe('SessionHost', () => {
     const stored = await memoryStore.read('demo');
     expect(stored.some((entry) => entry.text === '新しい発話')).toBe(true);
     expect(stored.find((entry) => entry.text === '以前の会話')?.createdAt).toBe(seededAt);
+  });
+
+  it('registers and resolves viewer sessions by clientTag override', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const registered = host.registerViewerSession('glasses01', sessionId, 'kate');
+
+    expect(registered.sessionId).toBe(sessionId);
+    expect(registered.scenarioKey).toBe('kate');
+    expect(registered.streamUrl).toContain(sessionId);
+
+    const resolved = host.resolveViewerSession('glasses01');
+    expect(resolved.sessionId).toBe(sessionId);
+    expect(resolved.scenarioKey).toBe('kate');
+  });
+
+  it('rejects viewer registration when session does not exist', () => {
+    expect(() => host.registerViewerSession('glasses02', 'missing_session', 'demo')).toThrow(SessionHostError);
   });
 
   it('skips broadcasting persistent-memory history events to clients', async () => {
