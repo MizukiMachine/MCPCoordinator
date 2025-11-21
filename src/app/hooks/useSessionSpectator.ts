@@ -105,7 +105,8 @@ function normalizeHistoryEvent(payload: any): NormalizedTranscriptEvent | null {
 }
 
 export function normalizeTranscriptEvent(event: any): NormalizedTranscriptEvent | null {
-  let stage = getTranscriptionEventStage(event);
+  const stage = getTranscriptionEventStage(event);
+  if (!stage) return null;
   const itemId = fallbackItemId(event);
   if (!itemId) return null;
 
@@ -118,15 +119,10 @@ export function normalizeTranscriptEvent(event: any): NormalizedTranscriptEvent 
     return undefined;
   })();
 
-  const textFromTranscript = transcriptTextFromEvent(event, 'transcript');
-  const textFromDelta = transcriptTextFromEvent(event, 'delta');
-
-  if (!stage) {
-    stage = textFromDelta ? 'delta' : textFromTranscript ? 'completed' : undefined;
-  }
-  if (!stage) return null;
-
-  const text = stage === 'completed' ? textFromTranscript || textFromDelta : textFromDelta;
+  const text =
+    stage === 'completed'
+      ? transcriptTextFromEvent(event, 'transcript') || transcriptTextFromEvent(event, 'delta')
+      : transcriptTextFromEvent(event, 'delta');
 
   return {
     itemId,
