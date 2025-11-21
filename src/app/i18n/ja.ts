@@ -2,7 +2,7 @@ import { UiText } from "./types";
 
 export const jaText: UiText = {
   metadata: {
-    title: "Realtime API エージェントデモ",
+    title: "AI会話エンジン",
     description: "OpenAI Realtime API と Agents SDK を使った音声エージェントのデモアプリです。",
     lang: "ja",
   },
@@ -10,8 +10,8 @@ export const jaText: UiText = {
     loading: "読み込み中...",
   },
   header: {
-    titleMain: "Realtime API",
-    titleAccent: "エージェント",
+    titleMain: "AI会話エンジン",
+    titleAccent: "",
     scenarioLabel: "シナリオ",
     agentLabel: "エージェント",
     logoAlt: "OpenAIのロゴ",
