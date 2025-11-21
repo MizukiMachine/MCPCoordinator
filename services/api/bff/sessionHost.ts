@@ -31,6 +31,7 @@ import { getOrCreateTrace } from '@openai/agents-core';
 import { OpenAIAgentSetResolver } from '../../realtime/adapters/openAIAgentSetResolver';
 import { ServiceManager } from '../../../framework/di/ServiceManager';
 import { HotwordListener, type HotwordMatch } from '../../../framework/voice_gateway/HotwordListener';
+import { LlmScenarioNameClassifier } from '../../../framework/voice_gateway/LlmScenarioNameClassifier';
 import { ScenarioRouter, type ScenarioCommandForwarder } from '../../scenario/ScenarioRouter';
 import { ScenarioRegistry } from '../../scenario/ScenarioRegistry';
 import { ServerHotwordCueService, type HotwordCueService } from './hotwordCueService';
@@ -58,6 +59,13 @@ const HOTWORD_REMINDER_DISCONNECT_DELAY_MS =
 const HOTWORD_REMINDER_TEXT =
   process.env.HOTWORD_REMINDER_TEXT ?? 'ホットワード「Hey + シナリオ名」で話しかけてください。';
 const HOTWORD_REMINDER_ENABLED = (process.env.HOTWORD_REMINDER_ENABLED ?? 'false') === 'true';
+const HOTWORD_REQUIRE_PREFIX = (process.env.HOTWORD_REQUIRE_PREFIX ?? 'false') === 'true';
+const HOTWORD_LLM_ENABLED = (process.env.HOTWORD_LLM_ENABLED ?? 'true') === 'true';
+const HOTWORD_LLM_MODEL = process.env.HOTWORD_LLM_MODEL ?? 'gpt-5-mini';
+const HOTWORD_LLM_MIN_CONFIDENCE = Number(process.env.HOTWORD_LLM_MIN_CONFIDENCE ?? '0.6');
+const HOTWORD_FUZZY_DISTANCE_THRESHOLD =
+  Number(process.env.HOTWORD_FUZZY_DISTANCE_THRESHOLD ?? '2');
+const HOTWORD_MIN_CONFIDENCE = Number(process.env.HOTWORD_MIN_CONFIDENCE ?? '0.6');
 
 export type SessionCommand =
   | {
@@ -462,14 +470,35 @@ export class SessionHost {
       forwarder: this.buildScenarioCommandForwarder(context),
       logger: this.logger,
     });
+    const llmClassifier = HOTWORD_LLM_ENABLED
+      ? new LlmScenarioNameClassifier({
+          model: HOTWORD_LLM_MODEL,
+          minimumConfidence: HOTWORD_LLM_MIN_CONFIDENCE,
+          logger: this.logger,
+        })
+      : undefined;
+    if (llmClassifier) {
+      this.logger.info('Hotword LLM classifier enabled', {
+        model: HOTWORD_LLM_MODEL,
+        minConfidence: HOTWORD_LLM_MIN_CONFIDENCE,
+      });
+    }
+
     const hotwordListener = new HotwordListener({
       dictionary: this.scenarioRegistry.getHotwordDictionary(),
       reminderTimeoutMs: HOTWORD_REMINDER_ENABLED ? HOTWORD_TIMEOUT_MS : Number.MAX_SAFE_INTEGER,
+      requirePrefix: HOTWORD_REQUIRE_PREFIX,
+      minimumLlmConfidence: HOTWORD_LLM_MIN_CONFIDENCE,
+      minimumConfidence: HOTWORD_MIN_CONFIDENCE,
+      fuzzyDistanceThreshold: HOTWORD_FUZZY_DISTANCE_THRESHOLD,
+      llmClassifier,
       onDetection: async (detection) => {
         this.logger.debug('Hotword prefix detected', {
           sessionId,
           scenarioKey: detection.scenarioKey,
           stage: detection.stage,
+          method: detection.method,
+          confidence: detection.confidence,
         });
         await this.emitHotwordCue(context, {
           scenarioKey: detection.scenarioKey,
@@ -482,6 +511,8 @@ export class SessionHost {
           sessionId,
           scenarioKey: match.scenarioKey,
           commandPreview: match.commandText.slice(0, 60),
+          method: match.method,
+          confidence: match.confidence,
         });
         await this.emitHotwordCue(context, {
           scenarioKey: match.scenarioKey,

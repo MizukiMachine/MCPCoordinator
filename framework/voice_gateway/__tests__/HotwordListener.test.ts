@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import {
   HotwordListener,
   type HotwordDictionary,
   type HotwordMatch,
   type HotwordDetection,
+  type HotwordLlmClassifier,
 } from '../HotwordListener';
 
 const baseDictionary: HotwordDictionary = {
@@ -55,6 +56,46 @@ describe('HotwordListener', () => {
     type: 'conversation.item.input_audio_transcription.delta',
     item_id: itemId,
     delta,
+  });
+
+  it('matches without the Hey prefix when requirePrefix is false', () => {
+    const listener = buildListener({ requirePrefix: false });
+
+    listener.handleTranscriptionEvent(completedEvent('msg_np', 'グラフィティ 今日の予定')); // no Hey
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({
+      scenarioKey: 'graffity',
+      commandText: '今日の予定',
+    });
+  });
+
+  it('falls back to LLM classifier when heuristics do not match', async () => {
+    const llmResult = {
+      scenarioKey: 'kate',
+      confidence: 0.8,
+      matchedAlias: 'ケート',
+      reason: 'typo of ケイト',
+    };
+
+    const llmClassifier: HotwordLlmClassifier = {
+      classify: vi.fn().mockResolvedValue(llmResult),
+    };
+
+    const listener = buildListener({
+      requirePrefix: false,
+      fuzzyDistanceThreshold: 0, // force fuzzy miss for this typo
+      llmClassifier,
+      minimumLlmConfidence: 0.6,
+    });
+
+    listener.handleTranscriptionEvent(completedEvent('msg_llm', 'ケート 予定を教えて')); // typo without Hey
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(llmClassifier.classify).toHaveBeenCalled();
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({ scenarioKey: 'kate', commandText: '予定を教えて' });
   });
 
   it('detects a hotword and extracts the scenario key and command text', () => {
