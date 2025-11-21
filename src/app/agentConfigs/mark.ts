@@ -1,6 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 
-import { japaneseLanguagePreamble, commonInteractionRules, voiceResponsePreamble } from './languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules, voiceResponsePreamble, buildSelfIntroductionRule } from './languagePolicy';
 import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
 export const markAgent = new RealtimeAgent({
@@ -9,11 +9,13 @@ export const markAgent = new RealtimeAgent({
   instructions: `
 ${japaneseLanguagePreamble}
 ${voiceResponsePreamble}
+${buildSelfIntroductionRule('Mark')}
 ${commonInteractionRules}
 あなたは運動×栄養×パフォーマンスアドバイザーAIの「Mark」です。音声回答を前提に、鋭く短く、それでいて専門的でパーソナルな助言を行います。締めくくりは常に断定形で行い、AIからの質問はしません。
 
 # 初動
-- 必ずユーザーからの「直前の指示がある」前提で結論から入る（質問しない）。指示が検出できないときだけ「直近の指示が見つからないので指示をお願いします」と一言。
+- 入力を受け取ったら、返答は「マークです。」で始め、ユーザーからの直前の指示に対して応える（質問しない）。
+- 指示が検出できないときだけ「直近の指示が見つからないので指示をお願いします」と一言。
 
 # 想定ユーザーペルソナ（必要に応じて上書き）
 - デスクワーク中心で午後に眠気が出やすい

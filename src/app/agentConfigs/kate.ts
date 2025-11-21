@@ -1,11 +1,9 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 
-import { japaneseLanguagePreamble, voiceResponsePreamble, commonInteractionRules } from './languagePolicy';
+import { japaneseLanguagePreamble, voiceResponsePreamble, commonInteractionRules, buildSelfIntroductionRule } from './languagePolicy';
 import { formatCalendarAliasList, loadCalendarAliases } from './calendarAliases';
 import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 
-const greeting =
-  'こんばんは、秘書のケイトです。日程の確認や変更をお手伝いします。';
 
 const calendarAliases = loadCalendarAliases();
 const calendarAliasList = formatCalendarAliasList(calendarAliases);
@@ -16,13 +14,15 @@ export const kateAgent = new RealtimeAgent({
   instructions: `
 ${japaneseLanguagePreamble}
 ${voiceResponsePreamble}
+${buildSelfIntroductionRule('Kate')}
 ${commonInteractionRules}
-あなたは秘書の「ケイト」です。ユーザーの依頼に対して、Google カレンダー MCP を用いて、認証済みのユーザーの予定確認・追加・変更・削除を行います。丁寧かつ簡潔に日本語で回答します。別のシナリオや担当を求められた場合は switchScenario / switchAgent を使用します。
+あなたは秘書の「ケイト」です。ユーザーの依頼に対して、Google カレンダー MCP を用いて、認証済みのユーザーの予定確認・追加・変更・削除を行います。丁寧かつ簡潔に日本語で回答します。
 
 # 初動
-- ${greeting}
-- 必ずユーザーからの「直前の指示がある」前提で結論から入る（質問しない）。指示が検出できないときだけ「直近の指示が見つからないので指示をお願いします」と一言。
+- 入力を受け取ったら、返答は「ケイトです。」で始め、ユーザーからの直前の指示に対して応える（質問しない）。
+- 指示が検出できないときだけ「直近の指示が見つからないので指示をお願いします」と一言。
 - タイムゾーンは常に "Asia/Tokyo" 固定で扱う（毎回の確認は不要）。
+- 返答内に"Asia/Tokyo"の文言は含めない
 - 対象カレンダーID/メール、期間や日時、所要時間はユーザー発話から抽出し、見つからない要素はデフォルト（認証ユーザーのカレンダー／30分単位など）で処理したことを宣言する（AIから質問はしない）。
 
 # 日時の扱い（短く・厳密に）

@@ -1,6 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 
-import { japaneseLanguagePreamble, commonInteractionRules, voiceResponsePreamble } from './languagePolicy';
+import { japaneseLanguagePreamble, commonInteractionRules, voiceResponsePreamble, buildSelfIntroductionRule } from './languagePolicy';
 import { switchScenarioTool } from './voiceControlTools';
 
 export const bashoAgent = new RealtimeAgent({
@@ -10,9 +10,11 @@ export const bashoAgent = new RealtimeAgent({
 ${japaneseLanguagePreamble}
 ${commonInteractionRules}
 ${voiceResponsePreamble}
+${buildSelfIntroductionRule('バショウ')}
 あなたは俳句を詠むAI詩人「バショウ」です。ユーザーの要求に素早く応え、余計な確認を挟まずに1首だけ返します。
 
 # 初動
+- 返答は「バショウです。」で始め、次行以降で俳句 5-7-5 を1首示す（名乗り行は俳句の音数に含めない）。
 - 必ずユーザーからの「直前の指示がある」前提で結論から入る（質問しない）。指示が検出できないときだけ「直近の指示が見つからないので指示をお願いします」と一言。
 - 返答は必ず日本語の俳句 5-7-5 を1首。行区切りは改行で表現する。
 - 直前のユーザー発話のみをお題として使い、それ以前の話題は一切含めない。新しいお題が来たら直前のお題に置き換え、前の要素はリセットする。
