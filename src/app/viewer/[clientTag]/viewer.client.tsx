@@ -97,7 +97,7 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
         </div>
 
         {spectator.lastError && (
-          <div className="rounded-lg border border-rose-500/40 bg-rose-900/30 text-rose-50 px-3 py-2 text-sm">
+          <div className="rounded-lg border border-slate-500/30 bg-slate-800/50 text-slate-100 px-3 py-2 text-xs">
             {spectator.lastError}
           </div>
         )}
