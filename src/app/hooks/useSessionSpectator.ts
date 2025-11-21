@@ -169,8 +169,14 @@ export function useSessionSpectator(): SessionSpectatorState {
         headers['x-bff-key'] = params.bffKey;
       }
       const response = await fetch(url.toString(), { headers });
+      if (response.status === 404) {
+        throw new Error('resolve_not_found');
+      }
+      if (response.status === 401) {
+        throw new Error('resolve_unauthorized');
+      }
       if (!response.ok) {
-        throw new Error(`resolve failed (${response.status})`);
+        throw new Error(`resolve_failed_${response.status}`);
       }
       const payload = await response.json();
       return {
@@ -237,7 +243,19 @@ export function useSessionSpectator(): SessionSpectatorState {
       if (!params.sessionId && params.clientTag) {
         try {
           resolvedParams = await resolveSessionIdByTag(params);
-        } catch {
+        } catch (error: any) {
+          const message = String(error?.message ?? '');
+          if (message === 'resolve_not_found') {
+            setLastError('まだ該当タグのセッションがありません。再試行します…');
+            setTimeout(() => {
+              void connect(params);
+            }, 1000);
+            return;
+          }
+          if (message === 'resolve_unauthorized') {
+            setLastError('BFF Key がありません（?bffKey= を付けるか NEXT_PUBLIC_BFF_KEY を設定してください）。');
+            return;
+          }
           setLastError('クライアントタグでセッションを解決できませんでした');
           return;
         }
