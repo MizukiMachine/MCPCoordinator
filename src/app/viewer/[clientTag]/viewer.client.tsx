@@ -71,7 +71,7 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-amber-950 via-orange-900 to-rose-900 text-white">
+    <main className="min-h-screen bg-gradient-to-br from-amber-900 via-slate-900 to-emerald-950 text-white">
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
