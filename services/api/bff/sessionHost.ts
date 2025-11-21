@@ -68,6 +68,7 @@ const HOTWORD_LLM_MIN_CONFIDENCE = Number(process.env.HOTWORD_LLM_MIN_CONFIDENCE
 const HOTWORD_FUZZY_DISTANCE_THRESHOLD =
   Number(process.env.HOTWORD_FUZZY_DISTANCE_THRESHOLD ?? '2');
 const HOTWORD_MIN_CONFIDENCE = Number(process.env.HOTWORD_MIN_CONFIDENCE ?? '0.6');
+const HOTWORD_CUE_ENABLED = (process.env.HOTWORD_CUE_ENABLED ?? 'true') === 'true';
 
 export type SessionCommand =
   | {
@@ -249,6 +250,7 @@ interface SessionHostDeps {
   hotwordCueAudioPath?: string;
   hotwordReminderEnabled?: boolean;
   hotwordReminderDisconnectDelayMs?: number;
+  hotwordCueEnabled?: boolean;
 }
 
 export class SessionHost {
@@ -268,6 +270,7 @@ export class SessionHost {
   private readonly hotwordCueService: HotwordCueService;
   private readonly hotwordReminderEnabled: boolean;
   private readonly hotwordReminderDisconnectDelayMs: number;
+  private readonly hotwordCueEnabled: boolean;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -290,6 +293,7 @@ export class SessionHost {
     this.hotwordReminderEnabled = deps.hotwordReminderEnabled ?? HOTWORD_REMINDER_ENABLED;
     this.hotwordReminderDisconnectDelayMs =
       deps.hotwordReminderDisconnectDelayMs ?? HOTWORD_REMINDER_DISCONNECT_DELAY_MS;
+    this.hotwordCueEnabled = deps.hotwordCueEnabled ?? HOTWORD_CUE_ENABLED;
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
@@ -990,6 +994,16 @@ export class SessionHost {
     payload: { scenarioKey: string; transcript: string; itemId?: string },
   ): Promise<void> {
     if (payload.itemId && context.hotwordCuePlayedItems.has(payload.itemId)) {
+      return;
+    }
+    if (!this.hotwordCueEnabled) {
+      this.logger.debug('Hotword cue suppressed (disabled via config)', {
+        sessionId: context.id,
+        scenarioKey: payload.scenarioKey,
+      });
+      if (payload.itemId) {
+        context.hotwordCuePlayedItems.add(payload.itemId);
+      }
       return;
     }
     const cueResult = await this.hotwordCueService.playCue({

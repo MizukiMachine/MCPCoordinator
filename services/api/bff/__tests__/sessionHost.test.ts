@@ -345,6 +345,47 @@ describe('SessionHost', () => {
     unsubscribe();
   });
 
+  it('does not emit hotword cues when disabled by config', async () => {
+    hotwordCueService.playCue.mockClear();
+    const received: SessionStreamMessage[] = [];
+    host = new SessionHost({
+      scenarioMap,
+      sessionManagerFactory: (hooks) => {
+        const mgr = new FakeSessionManager(hooks);
+        managers.push(mgr);
+        return mgr;
+      },
+      now: () => Date.now(),
+      envInspector: () => envSnapshot,
+      hotwordCueService,
+      hotwordCueEnabled: false,
+    });
+
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const unsubscribe = host.subscribe(sessionId, {
+      id: 'hotword_cue_disabled',
+      send: (msg) => received.push(msg),
+    });
+    const manager = managers[managers.length - 1]!;
+
+    manager.hooks.onServerEvent?.('transport_event', {
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'conv_item_disabled',
+      transcript: 'Hey demo, 状態を教えて',
+    });
+
+    await vi.waitFor(
+      () => {
+        expect(hotwordCueService.playCue).not.toHaveBeenCalled();
+        const cueEvent = received.find((msg) => msg.event === 'hotword_cue');
+        expect(cueEvent).toBeUndefined();
+      },
+      { timeout: 200 },
+    );
+
+    unsubscribe();
+  });
+
   it('broadcasts fallback status when the cue service reports failure', async () => {
     hotwordCueService.playCue.mockResolvedValueOnce({
       cueId: 'cue_fail',
