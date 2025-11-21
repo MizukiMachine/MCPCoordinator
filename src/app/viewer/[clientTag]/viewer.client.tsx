@@ -77,9 +77,6 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Spectator</p>
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
-            <p className="text-2xl font-bold text-amber-100 mt-3">
-              現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
-            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -95,20 +92,25 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
           </div>
         </div>
 
-        {spectator.lastError && (
-          <div className="rounded-lg border border-slate-500/30 bg-slate-800/50 text-slate-100 px-3 py-2 text-xs">
-            {spectator.lastError}
-          </div>
-        )}
         {resetNotice && (
           <div
-            className={`rounded-lg px-3 py-2 text-sm border ${
+            className={`rounded-lg px-3 py-2 border ${
               resetNoticeTone === "success"
                 ? "border-emerald-400/40 bg-emerald-900/30 text-emerald-50 text-xs"
                 : "border-amber-400/50 bg-amber-900/30 text-amber-50 text-xs"
             }`}
           >
             {resetNotice}
+          </div>
+        )}
+
+        <p className="text-3xl font-bold text-amber-100">
+          現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
+        </p>
+
+        {spectator.lastError && (
+          <div className="rounded-lg border border-slate-500/30 bg-slate-800/50 text-slate-100 px-3 py-2 text-xs">
+            {spectator.lastError}
           </div>
         )}
 
