@@ -77,13 +77,9 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Spectator</p>
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
-            <p className="text-slate-200/80 text-sm mt-2">
-              クライアントタグ「{tag}」に紐づく最新セッションを自動追従します。セッションが切り替わっても再解決して購読し直します。
-              必要ならクエリに <code>?bffKey=xxx&baseUrl=https://host</code> を付けてください。
-            </p>
-            <p className="text-xs text-slate-300/80 mt-1">
+            <p className="text-lg font-semibold text-slate-100 mt-3">
               現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
-              {spectator.memoryKey ? ` / メモリキー: ${spectator.memoryKey}` : ""}
+              {spectator.memoryKey ? ` ｜ メモリキー: ${spectator.memoryKey}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -143,7 +139,9 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
                         </span>
                         <span>{new Date(item.updatedAt).toLocaleTimeString()}</span>
                       </div>
-                      <p className="whitespace-pre-wrap leading-relaxed text-slate-50">{item.text || "…"}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed text-slate-50 text-lg md:text-xl">
+                        {item.text || "…"}
+                      </p>
                       {item.lastEventType && (
                         <p className="text-[11px] text-sky-200/70 mt-2">event: {item.lastEventType}</p>
                       )}
