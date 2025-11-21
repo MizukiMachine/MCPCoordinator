@@ -197,6 +197,8 @@ export function useSessionSpectator(): SessionSpectatorState {
   const eventSourceRef = useRef<EventSource | null>(null);
   const lastConnectParamsRef = useRef<ConnectParams | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 6;
   const connectRef = useRef<((params: ConnectParams) => Promise<void>) | null>(null);
   const hasConnectedOnceRef = useRef(false);
 
@@ -219,12 +221,19 @@ export function useSessionSpectator(): SessionSpectatorState {
     const params = lastConnectParamsRef.current;
     if (!params?.clientTag) return;
     if (reconnectTimerRef.current) return;
+    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      setLastError('再接続回数の上限に達したため停止しました');
+      return;
+    }
+    const attempt = reconnectAttemptsRef.current;
+    const delay = Math.min(800 * 2 ** attempt, 10_000);
     reconnectTimerRef.current = setTimeout(() => {
       reconnectTimerRef.current = null;
+      reconnectAttemptsRef.current += 1;
       if (connectRef.current && lastConnectParamsRef.current) {
         void connectRef.current(lastConnectParamsRef.current);
       }
-    }, 800);
+    }, delay);
   }, []);
 
   const resolveViaViewerApi = useCallback(async (params: ConnectParams): Promise<ConnectParams> => {
@@ -385,6 +394,7 @@ export function useSessionSpectator(): SessionSpectatorState {
       }
 
       hasConnectedOnceRef.current = false;
+      reconnectAttemptsRef.current = 0;
 
       let resolvedParams = params;
       if (!params.sessionId && params.clientTag) {
@@ -434,20 +444,19 @@ export function useSessionSpectator(): SessionSpectatorState {
 
       es.onopen = () => {
         hasConnectedOnceRef.current = true;
+        reconnectAttemptsRef.current = 0;
         setStatus('CONNECTED');
       };
       es.onerror = async () => {
         setLastError('SSE接続でエラーが発生しました');
         disconnect();
         if (params.clientTag) {
-          const retryParams = lastConnectParamsRef.current ?? params;
-          setTimeout(() => {
-            void connect(retryParams);
-          }, 1200);
+          reconnectAttemptsRef.current += 1;
+          scheduleReconnect();
         }
       };
     },
-    [disconnect, handleSseEvent, resolveSessionIdByTag],
+    [disconnect, handleSseEvent, resolveSessionIdByTag, scheduleReconnect],
   );
 
   useEffect(() => {

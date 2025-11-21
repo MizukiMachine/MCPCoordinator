@@ -218,6 +218,7 @@ interface SessionContext {
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
   hotwordCuePlayedItems: Set<string>;
   clientTag?: string;
+  destroyed?: boolean;
 }
 
 interface DestroySessionOptions {
@@ -246,6 +247,8 @@ interface SessionHostDeps {
   memoryStore?: MemoryStore;
   hotwordCueService?: HotwordCueService;
   hotwordCueAudioPath?: string;
+  hotwordReminderEnabled?: boolean;
+  hotwordReminderDisconnectDelayMs?: number;
 }
 
 export class SessionHost {
@@ -263,6 +266,8 @@ export class SessionHost {
   private readonly memoryStore: MemoryStore;
   private readonly scenarioRegistry: ScenarioRegistry;
   private readonly hotwordCueService: HotwordCueService;
+  private readonly hotwordReminderEnabled: boolean;
+  private readonly hotwordReminderDisconnectDelayMs: number;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -282,6 +287,9 @@ export class SessionHost {
       });
 
     this.scenarioRegistry = new ScenarioRegistry({ scenarioMap: this.scenarioMap });
+    this.hotwordReminderEnabled = deps.hotwordReminderEnabled ?? HOTWORD_REMINDER_ENABLED;
+    this.hotwordReminderDisconnectDelayMs =
+      deps.hotwordReminderDisconnectDelayMs ?? HOTWORD_REMINDER_DISCONNECT_DELAY_MS;
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
@@ -729,6 +737,7 @@ export class SessionHost {
       expiresAt: now + SESSION_TTL_MS,
       maxLifetimeAt: now + SESSION_MAX_LIFETIME_MS,
       status: 'DISCONNECTED',
+      destroyed: false,
       agentSetKey: options.agentSetKey,
       preferredAgentName: options.preferredAgentName,
       manager,
@@ -736,6 +745,10 @@ export class SessionHost {
       emitter: new EventEmitter(),
       hotwordCuePlayedItems: new Set(),
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
+        if (context.destroyed) {
+          return;
+        }
+        context.destroyed = true;
         const reason = destroyOptions.reason ?? 'unspecified';
         const initiatedBy = destroyOptions.initiatedBy ?? 'system';
 
@@ -882,21 +895,29 @@ export class SessionHost {
         metadata,
       });
     }
-    context.manager.sendEvent({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text,
-          },
-        ],
-      },
-    });
-    context.manager.sendEvent({ type: 'response.create' });
-    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+    try {
+      context.manager.sendEvent({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text,
+            },
+          ],
+        },
+      });
+      context.manager.sendEvent({ type: 'response.create' });
+      this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+    } catch (error) {
+      this.logger.error('Failed to forward user text to realtime manager', {
+        sessionId: context.id,
+        error,
+      });
+      throw new SessionHostError('Failed to forward text event', 'event_dispatch_failed', 500);
+    }
   }
 
   private handleInputText(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_text' }>) {
@@ -945,7 +966,7 @@ export class SessionHost {
   }
 
   private handleHotwordTimeout(context: SessionContext) {
-    if (!HOTWORD_REMINDER_ENABLED) {
+    if (!this.hotwordReminderEnabled) {
       return;
     }
     if (context.hotwordReminderTimer) {
@@ -954,10 +975,14 @@ export class SessionHost {
     this.logger.info('Hotword timeout reached; issuing reminder', { sessionId: context.id });
     this.sendHotwordReminder(context);
     context.hotwordReminderTimer = setTimeout(() => {
+      if (context.hotwordReminderTimer) {
+        clearTimeout(context.hotwordReminderTimer);
+        context.hotwordReminderTimer = undefined;
+      }
       this.destroySession(context.id, { reason: 'hotword_timeout', initiatedBy: 'system' }).catch((error) => {
         this.logger.warn('Failed to destroy session after hotword timeout', { sessionId: context.id, error });
       });
-    }, HOTWORD_REMINDER_DISCONNECT_DELAY_MS);
+    }, this.hotwordReminderDisconnectDelayMs);
   }
 
   private async emitHotwordCue(
@@ -1298,6 +1323,11 @@ export class SessionHost {
             memoryKey: context.memoryKey,
             error,
           });
+          this.broadcast(context.id, 'session_error', {
+            code: 'memory_persist_failed',
+            message: 'Failed to persist memory entry',
+          });
+          this.metrics.increment('bff.session.memory_persist_failed_total', 1);
         }),
       ),
     );
