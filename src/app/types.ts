@@ -156,6 +156,7 @@ export interface SpectatorTranscript {
   status: "STREAMING" | "COMPLETED";
   updatedAt: number;
   lastEventType?: string;
+  role?: "user" | "assistant";
 }
 
 export interface SpectatorDirective {

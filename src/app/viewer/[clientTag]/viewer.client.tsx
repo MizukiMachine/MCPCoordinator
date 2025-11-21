@@ -63,6 +63,9 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
               クライアントタグ「{tag}」に紐づく最新セッションを自動追従します。セッションが切り替わっても再解決して購読し直します。
               必要ならクエリに <code>?bffKey=xxx&baseUrl=https://host</code> を付けてください。
             </p>
+            <p className="text-xs text-slate-300/80 mt-1">
+              現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
+            </p>
           </div>
           <div className="text-xs px-3 py-1 rounded-full bg-slate-800/60 border border-white/10">
             {spectator.status}
@@ -93,7 +96,10 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
                       className="rounded-lg bg-slate-900/40 border border-slate-700/40 p-3 shadow-md"
                     >
                       <div className="flex items-center justify-between text-xs text-slate-300/70 mb-2">
-                        <span className="uppercase tracking-wide">
+                        <span className="uppercase tracking-wide flex items-center gap-2">
+                          <span className="rounded px-2 py-0.5 bg-slate-800 text-slate-100">
+                            {item.role === "user" ? "User" : "Assistant"}
+                          </span>
                           {item.status === "STREAMING" ? "Streaming" : "Completed"}
                         </span>
                         <span>{new Date(item.updatedAt).toLocaleTimeString()}</span>

@@ -11,6 +11,7 @@ interface ConnectParams {
   bffKey?: string;
   baseUrl?: string;
   label?: string;
+  agentSetKey?: string;
 }
 
 interface NormalizedTranscriptEvent {
@@ -63,6 +64,39 @@ function transcriptTextFromEvent(event: any, field: 'transcript' | 'delta'): str
   return typeof value === 'string' ? value : '';
 }
 
+function extractTextFromContentArray(contents: any[] | undefined): string {
+  if (!Array.isArray(contents)) return '';
+  return contents
+    .map((c) => {
+      if (typeof c?.text === 'string') return c.text;
+      if (typeof c?.transcript === 'string') return c.transcript;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function normalizeHistoryEvent(payload: any): NormalizedTranscriptEvent | null {
+  const item = payload?.item ?? payload;
+  if (!item) return null;
+  const itemId = item.id ?? item.item_id ?? item.itemId;
+  if (!itemId) return null;
+  const role = item.role;
+  let text = '';
+  if (Array.isArray(item.content)) {
+    text = extractTextFromContentArray(item.content);
+  } else if (typeof item.text === 'string') {
+    text = item.text;
+  }
+  if (!text) return null;
+  return {
+    itemId,
+    text,
+    stage: 'completed',
+    raw: { ...payload, item: { ...item, role } },
+  };
+}
+
 export function normalizeTranscriptEvent(event: any): NormalizedTranscriptEvent | null {
   const stage = getTranscriptionEventStage(event);
   if (!stage) return null;
@@ -99,6 +133,7 @@ export function upsertTranscriptItems(
       status: payload.stage === 'completed' ? 'COMPLETED' : 'STREAMING',
       updatedAt: now,
       lastEventType: payload.raw?.type ?? item.lastEventType,
+      role: item.role ?? payload.raw?.item?.role,
     };
   });
 
@@ -110,10 +145,11 @@ export function upsertTranscriptItems(
       status: payload.stage === 'completed' ? 'COMPLETED' : 'STREAMING',
       updatedAt: now,
       lastEventType: payload.raw?.type,
+      role: payload.raw?.item?.role,
     });
   }
 
-  return next.slice(-50);
+  return next.slice(-100);
 }
 
 function generateId(prefix: string): string {
@@ -131,6 +167,7 @@ export interface SessionSpectatorState {
   lastError: string | null;
   sessionId: string | null;
   activeClientTag: string | null;
+  scenarioKey: string | null;
   connect: (params: ConnectParams) => Promise<void>;
   disconnect: () => void;
 }
@@ -143,6 +180,7 @@ export function useSessionSpectator(): SessionSpectatorState {
   const [directives, setDirectives] = useState<SpectatorDirective[]>([]);
   const [events, setEvents] = useState<SpectatorEventLog[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [scenarioKey, setScenarioKey] = useState<string | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const lastConnectParamsRef = useRef<ConnectParams | null>(null);
@@ -182,6 +220,7 @@ export function useSessionSpectator(): SessionSpectatorState {
       return {
         ...params,
         sessionId: payload.sessionId,
+        agentSetKey: payload.agentSetKey ?? payload.scenarioKey ?? null,
       };
     },
     [],
@@ -212,7 +251,18 @@ export function useSessionSpectator(): SessionSpectatorState {
       return;
     }
 
+    if (eventName === 'history_added' || eventName === 'history_updated') {
+      const normalized = normalizeHistoryEvent(data);
+      if (normalized) {
+        setTranscripts((prev) => upsertTranscriptItems(prev, normalized));
+      }
+      return;
+    }
+
     if (eventName === 'voice_control') {
+      if (data?.action === 'switchScenario' && typeof data?.scenarioKey === 'string') {
+        setScenarioKey(String(data.scenarioKey));
+      }
       setDirectives((prev) => [
         {
           id: generateId('vc'),
@@ -264,6 +314,7 @@ export function useSessionSpectator(): SessionSpectatorState {
       disconnect();
       lastConnectParamsRef.current = params;
       setSessionId(resolvedParams.sessionId ?? null);
+      setScenarioKey(resolvedParams.agentSetKey ?? null);
       setActiveClientTag(params.clientTag ?? null);
       setStatus('CONNECTING');
       setTranscripts([]);
@@ -303,6 +354,7 @@ export function useSessionSpectator(): SessionSpectatorState {
       status,
       sessionId,
       activeClientTag,
+      scenarioKey,
       transcripts,
       directives,
       events,
@@ -310,6 +362,6 @@ export function useSessionSpectator(): SessionSpectatorState {
       connect,
       disconnect,
     }),
-    [status, sessionId, activeClientTag, transcripts, directives, events, lastError, connect, disconnect],
+    [status, sessionId, activeClientTag, scenarioKey, transcripts, directives, events, lastError, connect, disconnect],
   );
 }
