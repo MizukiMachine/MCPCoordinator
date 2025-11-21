@@ -96,6 +96,27 @@
 
 ---
 
+- ビューア用のセッション追従 API（新規／ARグラス実装者は要対応）
+    - 目的: 「clientTag（例: glasses01 / glasses02 / develop）」をキーに、最新セッションをモニターUIが自動追従できるようにする
+    - 前提: セッション作成時に必ず `clientTag` を付与するか、作成直後に `register` で紐付け直す
+    - 認証: いずれも `x-bff-key` 必須
+    - エンドポイント
+        - `GET /api/viewer/session?clientTag=glasses01`
+            - 戻り値: `{ sessionId, streamUrl, scenarioKey, memoryKey, clientTag, status }`
+            - モニター（/viewer/*）はこれを引いてから `/api/session/{id}/stream` を購読
+        - `POST /api/viewer/register`
+            - ボディ例: `{ "clientTag": "glasses01", "sessionId": "sess_xxx", "scenarioKey": "graffity" }`
+            - セッションが存在しないIDなら 404。成功すると以後この clientTag でGETしたときに該当セッションが返る
+    - ARグラスクライアント実装上の追加要件
+        1. `POST /api/session` 呼び出しに `clientTag` を必ず含める（推奨）  
+        2. もしセッション生成と視聴側での解決タイミングが前後する場合は、生成直後に `POST /api/viewer/register` を1回呼ぶだけで良い  
+        3. タグは運用上 `glasses01 / glasses02 / develop` を固定で使う  
+    - 閲覧UI（/viewer/{clientTag}）
+        - `NEXT_PUBLIC_BFF_KEY` が設定されていればクエリ無しでOK。無い場合は `?bffKey=...` を付ける
+        - ビューアは読み取り専用だが「記憶をリセット」だけ可能（`DELETE /api/memory` を裏で呼ぶ）
+
+---
+
 - イベント送信：`POST /api/session/{id}/event`
     - 任意の入力イベントをセッションに流し込む
     - `kind` によって扱う内容が変わります（`input_text` / `input_audio` / `input_image` / `control` / `event`）
