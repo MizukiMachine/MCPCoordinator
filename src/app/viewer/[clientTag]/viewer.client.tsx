@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useSessionSpectator } from "@/app/hooks/useSessionSpectator";
@@ -19,6 +19,8 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   const tag = clientTag;
   const isValid = VALID_TAGS.has(tag as ValidTag);
   const spectator = useSessionSpectator();
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
+  const [resetNoticeTone, setResetNoticeTone] = useState<"success" | "error">("success");
 
   const resolvedBffKey = useMemo(() => {
     const qp = searchParams?.get("bffKey");
@@ -30,6 +32,7 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   }, [searchParams]);
 
   const baseUrl = searchParams?.get("baseUrl") ?? undefined;
+  const canResetMemory = Boolean(spectator.scenarioKey);
 
   useEffect(() => {
     if (!isValid) return;
@@ -39,6 +42,18 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
       baseUrl,
     });
   }, [isValid, resolvedBffKey, tag, baseUrl]);
+
+  const handleResetMemory = async () => {
+    setResetNotice(null);
+    const result = await spectator.resetMemory();
+    if (result.ok) {
+      setResetNoticeTone("success");
+      setResetNotice("記憶をリセットし、最新セッションを購読し直しました。");
+    } else {
+      setResetNoticeTone("error");
+      setResetNotice(result.message ?? "記憶リセットに失敗しました。");
+    }
+  };
 
   const badge = useMemo(
     () => (isValid ? BADGE_LABELS[tag as ValidTag] : tag),
@@ -56,28 +71,45 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white">
+    <main className="min-h-screen bg-gradient-to-br from-emerald-950 via-slate-900 to-amber-950 text-white">
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Spectator</p>
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
-            <p className="text-slate-200/80 text-sm mt-2">
-              クライアントタグ「{tag}」に紐づく最新セッションを自動追従します。セッションが切り替わっても再解決して購読し直します。
-              必要ならクエリに <code>?bffKey=xxx&baseUrl=https://host</code> を付けてください。
-            </p>
-            <p className="text-xs text-slate-300/80 mt-1">
+            <p className="text-2xl font-bold text-amber-100 mt-3">
               現在のシナリオ: {spectator.scenarioKey ?? "解決中…"}
+              {spectator.memoryKey ? ` ｜ メモリキー: ${spectator.memoryKey}` : ""}
             </p>
           </div>
-          <div className="text-xs px-3 py-1 rounded-full bg-slate-800/60 border border-white/10">
-            {spectator.status}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResetMemory}
+              disabled={!canResetMemory || spectator.isResettingMemory}
+              className="rounded-lg bg-rose-500/90 text-slate-50 text-xs font-semibold px-3 py-2 shadow-lg shadow-rose-500/30 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-95 transition"
+            >
+              {spectator.isResettingMemory ? "リセット中…" : "記憶をリセット"}
+            </button>
+            <div className="text-xs px-3 py-1 rounded-full bg-slate-800/60 border border-white/10">
+              {spectator.status}
+            </div>
           </div>
         </div>
 
         {spectator.lastError && (
-          <div className="rounded-lg border border-rose-500/40 bg-rose-900/30 text-rose-50 px-3 py-2 text-sm">
+          <div className="rounded-lg border border-slate-500/30 bg-slate-800/50 text-slate-100 px-3 py-2 text-xs">
             {spectator.lastError}
+          </div>
+        )}
+        {resetNotice && (
+          <div
+            className={`rounded-lg px-3 py-2 text-sm border ${
+              resetNoticeTone === "success"
+                ? "border-emerald-400/40 bg-emerald-900/30 text-emerald-50"
+                : "border-amber-400/50 bg-amber-900/30 text-amber-50"
+            }`}
+          >
+            {resetNotice}
           </div>
         )}
 
@@ -107,7 +139,9 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
                         </span>
                         <span>{new Date(item.updatedAt).toLocaleTimeString()}</span>
                       </div>
-                      <p className="whitespace-pre-wrap leading-relaxed text-slate-50">{item.text || "…"}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed text-slate-50 text-xl md:text-2xl">
+                        {item.text || "…"}
+                      </p>
                       {item.lastEventType && (
                         <p className="text-[11px] text-sky-200/70 mt-2">event: {item.lastEventType}</p>
                       )}
@@ -117,22 +151,22 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur shadow-2xl p-5 space-y-3">
-            <p className="text-sm font-semibold text-slate-100">シナリオ配信 / 音声制御</p>
+          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur shadow-2xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-200">シナリオ配信 / 音声制御</p>
             {spectator.directives.length === 0 ? (
-              <p className="text-sm text-slate-300/80">まだイベントはありません。</p>
+              <p className="text-xs text-slate-300/80">まだイベントはありません。</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-2 text-xs">
                 {spectator.directives.map((directive) => (
                   <li
                     key={directive.id}
-                    className="rounded-md bg-gradient-to-r from-indigo-900/40 to-sky-900/40 border border-indigo-700/30 px-3 py-2"
+                    className="rounded-md bg-gradient-to-r from-emerald-900/30 to-amber-900/30 border border-emerald-700/30 px-3 py-2"
                   >
-                    <div className="flex items-center justify-between text-xs text-indigo-100/80 mb-1">
+                    <div className="flex items-center justify-between text-[11px] text-emerald-100/80 mb-1">
                       <span className="font-semibold">{directive.action}</span>
                       <span>{new Date(directive.timestamp).toLocaleTimeString()}</span>
                     </div>
-                    <pre className="text-[11px] text-indigo-100/90 overflow-x-auto">
+                    <pre className="text-[11px] text-amber-50/90 overflow-x-auto">
                       {JSON.stringify(directive.payload ?? {}, null, 2)}
                     </pre>
                   </li>

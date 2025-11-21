@@ -25,6 +25,15 @@ vi.mock('@openai/agents-core', () => ({
   getOrCreateTrace: vi.fn((fn: () => any, _options?: unknown) => fn()),
 }));
 
+vi.mock('../../../../framework/voice_gateway/LlmScenarioNameClassifier', () => ({
+  LlmScenarioNameClassifier: class {
+    classifyScenario = vi.fn(async (_input: string) => ({
+      scenarioKey: 'demo',
+      confidence: 1,
+    }));
+  },
+}));
+
 type HookedManager = ISessionManager<RealtimeAgent> & {
   hooks: SessionManagerHooks;
   connectMock: ReturnType<typeof vi.fn>;
@@ -156,6 +165,7 @@ describe('SessionHost', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.OPENAI_API_KEY = 'test-key';
     managers = [];
     envSnapshot = {
       warnings: [],
@@ -233,7 +243,7 @@ describe('SessionHost', () => {
       expect(deleteEvent).toMatchObject({ item_id: 'conv_item_1' });
       const textEvent = manager.sentEvents.find((event) => event?.type === 'conversation.item.create');
       expect(textEvent?.item?.content?.[0]?.text).toBe('在庫を確認して');
-    });
+    }, { timeout: 500 });
   });
 
   it('requests a scenario switch when a different hotword is detected', async () => {
@@ -255,7 +265,7 @@ describe('SessionHost', () => {
         scenarioKey: 'kate',
         initialCommand: '今日の予定を教えて',
       });
-    });
+    }, { timeout: 500 });
     unsubscribe();
   });
 
@@ -278,7 +288,7 @@ describe('SessionHost', () => {
         scenarioKey: 'takuboku',
         initialCommand: '秋の一句を読んで',
       });
-    });
+    }, { timeout: 500 });
     unsubscribe();
   });
 
@@ -305,7 +315,7 @@ describe('SessionHost', () => {
         scenarioKey: 'demo',
         audio: 'BASE64_AUDIO',
       });
-    });
+    }, { timeout: 500 });
     unsubscribe();
   });
 
@@ -331,7 +341,7 @@ describe('SessionHost', () => {
         scenarioKey: 'demo',
         status: 'streamed',
       });
-    });
+    }, { timeout: 500 });
     unsubscribe();
   });
 
@@ -362,7 +372,7 @@ describe('SessionHost', () => {
         reason: 'missing audio',
       });
       expect(cueEvent?.data?.audio).toBeUndefined();
-    });
+    }, { timeout: 500 });
     unsubscribe();
   });
 
@@ -417,6 +427,23 @@ describe('SessionHost', () => {
     const stored = await memoryStore.read('demo');
     expect(stored.some((entry) => entry.text === '新しい発話')).toBe(true);
     expect(stored.find((entry) => entry.text === '以前の会話')?.createdAt).toBe(seededAt);
+  });
+
+  it('registers and resolves viewer sessions by clientTag override', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const registered = host.registerViewerSession('glasses01', sessionId, 'kate');
+
+    expect(registered.sessionId).toBe(sessionId);
+    expect(registered.scenarioKey).toBe('kate');
+    expect(registered.streamUrl).toContain(sessionId);
+
+    const resolved = host.resolveViewerSession('glasses01');
+    expect(resolved.sessionId).toBe(sessionId);
+    expect(resolved.scenarioKey).toBe('kate');
+  });
+
+  it('rejects viewer registration when session does not exist', () => {
+    expect(() => host.registerViewerSession('glasses02', 'missing_session', 'demo')).toThrow(SessionHostError);
   });
 
   it('skips broadcasting persistent-memory history events to clients', async () => {
@@ -661,5 +688,40 @@ describe('SessionHost', () => {
     expect(traceMock).toHaveBeenCalledTimes(1);
     const [, options] = traceMock.mock.calls[0] ?? [];
     expect(options?.name).toBe('session:create:demo');
+  });
+
+  it('schedules hotword reminder once and destroys session after timeout', async () => {
+    vi.useFakeTimers();
+    host = new SessionHost({
+      hotwordReminderEnabled: true,
+      hotwordReminderDisconnectDelayMs: 20,
+      scenarioMap,
+      sessionManagerFactory: (hooks) => {
+        const mgr = new FakeSessionManager(hooks);
+        managers.push(mgr);
+        return mgr;
+      },
+      now: () => Date.now(),
+      envInspector: () => envSnapshot,
+      hotwordCueService,
+    });
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const context: any = (host as any).sessions.get(sessionId);
+
+    (host as any).handleHotwordTimeout(context);
+    (host as any).handleHotwordTimeout(context);
+
+    expect(context.hotwordReminderTimer).toBeDefined();
+    vi.runAllTimers();
+    expect((host as any).sessions.has(sessionId)).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('destroys session only once when called multiple times', async () => {
+    const { sessionId } = await host.createSession({ agentSetKey: 'demo' });
+    const manager = managers[0]!;
+    await host.destroySession(sessionId, { reason: 'test' });
+    await host.destroySession(sessionId, { reason: 'test-again' });
+    expect(manager.getStatus()).toBe('DISCONNECTED');
   });
 });

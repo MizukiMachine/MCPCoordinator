@@ -139,6 +139,15 @@ export interface ResolveSessionResult {
   preferredAgentName?: string | null;
 }
 
+export interface ViewerSessionResult {
+  clientTag: string;
+  sessionId: string;
+  streamUrl: string;
+  scenarioKey: string | null;
+  memoryKey: string | null;
+  status: SessionLifecycleStatus;
+}
+
 export interface SessionStreamMessage {
   event: string;
   data: Record<string, any> | string | null;
@@ -209,11 +218,20 @@ interface SessionContext {
   hotwordReminderTimer?: ReturnType<typeof setTimeout>;
   hotwordCuePlayedItems: Set<string>;
   clientTag?: string;
+  destroyed?: boolean;
 }
 
 interface DestroySessionOptions {
   reason?: string;
   initiatedBy?: 'client' | 'server' | 'system';
+}
+
+interface ClientTagBinding {
+  sessionId: string;
+  scenarioKey: string | null;
+  memoryKey: string | null;
+  updatedAt: number;
+  source: 'session' | 'manual';
 }
 
 interface SessionHostDeps {
@@ -229,11 +247,13 @@ interface SessionHostDeps {
   memoryStore?: MemoryStore;
   hotwordCueService?: HotwordCueService;
   hotwordCueAudioPath?: string;
+  hotwordReminderEnabled?: boolean;
+  hotwordReminderDisconnectDelayMs?: number;
 }
 
 export class SessionHost {
   private readonly sessions = new Map<string, SessionContext>();
-  private readonly clientTagIndex = new Map<string, string>();
+  private readonly clientTagIndex = new Map<string, ClientTagBinding>();
   private readonly logger: StructuredLogger;
   private readonly metrics: MetricEmitter;
   private readonly now: () => number;
@@ -246,6 +266,8 @@ export class SessionHost {
   private readonly memoryStore: MemoryStore;
   private readonly scenarioRegistry: ScenarioRegistry;
   private readonly hotwordCueService: HotwordCueService;
+  private readonly hotwordReminderEnabled: boolean;
+  private readonly hotwordReminderDisconnectDelayMs: number;
 
   constructor(deps: SessionHostDeps = {}) {
     this.logger = deps.logger ?? createStructuredLogger({ component: 'bff.session' });
@@ -265,6 +287,9 @@ export class SessionHost {
       });
 
     this.scenarioRegistry = new ScenarioRegistry({ scenarioMap: this.scenarioMap });
+    this.hotwordReminderEnabled = deps.hotwordReminderEnabled ?? HOTWORD_REMINDER_ENABLED;
+    this.hotwordReminderDisconnectDelayMs =
+      deps.hotwordReminderDisconnectDelayMs ?? HOTWORD_REMINDER_DISCONNECT_DELAY_MS;
 
     const mcpConfigs = loadMcpServersFromEnv();
     const hasBindings = Object.values(this.scenarioMcpBindings).some(
@@ -357,13 +382,23 @@ export class SessionHost {
   }
 
   resolveSessionByClientTag(clientTag: string): ResolveSessionResult {
-    const sessionId = this.clientTagIndex.get(clientTag);
+    const binding = this.clientTagIndex.get(clientTag);
+    const sessionId = binding?.sessionId;
     if (!sessionId) {
       this.logger.info('Resolve by clientTag not found', { clientTag });
       throw new SessionHostError('Session not found for clientTag', 'session_not_found', 404);
     }
     try {
       const context = this.ensureSession(sessionId);
+      const scenarioKey = binding?.scenarioKey ?? context.agentSetKey ?? null;
+      const memoryKey = binding?.memoryKey ?? context.memoryKey ?? null;
+      this.clientTagIndex.set(clientTag, {
+        sessionId,
+        scenarioKey,
+        memoryKey,
+        updatedAt: this.now(),
+        source: binding?.source ?? 'session',
+      });
       this.logger.info('Resolve by clientTag hit', {
         clientTag,
         sessionId,
@@ -382,10 +417,93 @@ export class SessionHost {
     } catch (error) {
       if (error instanceof SessionHostError) {
         if (['session_expired', 'session_not_found'].includes(error.code)) {
-          if (this.clientTagIndex.get(clientTag) === sessionId) {
+          const current = this.clientTagIndex.get(clientTag);
+          if (current?.sessionId === sessionId) {
             this.clientTagIndex.delete(clientTag);
           }
           this.logger.info('Resolve found expired session, tag cleared', {
+            clientTag,
+            sessionId,
+            code: error.code,
+          });
+        }
+      }
+      throw error;
+    }
+  }
+
+  private saveClientTagBinding(clientTag: string, binding: Omit<ClientTagBinding, 'updatedAt'>): ClientTagBinding {
+    const normalized: ClientTagBinding = {
+      ...binding,
+      scenarioKey: binding.scenarioKey ?? null,
+      memoryKey: binding.memoryKey ?? null,
+      updatedAt: this.now(),
+    };
+    this.clientTagIndex.set(clientTag, normalized);
+    return normalized;
+  }
+
+  private toViewerSessionResult(
+    clientTag: string,
+    context: SessionContext,
+    binding?: ClientTagBinding,
+    source: ClientTagBinding['source'] = 'session',
+  ): ViewerSessionResult {
+    const stored = this.saveClientTagBinding(clientTag, {
+      sessionId: context.id,
+      scenarioKey: binding?.scenarioKey ?? context.agentSetKey ?? null,
+      memoryKey: binding?.memoryKey ?? context.memoryKey ?? null,
+      source,
+    });
+    return {
+      clientTag,
+      sessionId: context.id,
+      streamUrl: `/api/session/${context.id}/stream`,
+      scenarioKey: stored.scenarioKey,
+      memoryKey: stored.memoryKey,
+      status: context.status,
+    };
+  }
+
+  registerViewerSession(clientTag: string, sessionId: string, scenarioKey?: string | null): ViewerSessionResult {
+    const context = this.ensureSession(sessionId);
+    this.logger.info('Viewer register override', { clientTag, sessionId, scenarioKey });
+    const binding: ClientTagBinding = {
+      sessionId,
+      scenarioKey: scenarioKey ?? context.agentSetKey ?? null,
+      memoryKey: context.memoryKey ?? null,
+      updatedAt: this.now(),
+      source: 'manual',
+    };
+    this.clientTagIndex.set(clientTag, binding);
+    return this.toViewerSessionResult(clientTag, context, binding, 'manual');
+  }
+
+  resolveViewerSession(clientTag: string): ViewerSessionResult {
+    const binding = this.clientTagIndex.get(clientTag);
+    const sessionId = binding?.sessionId;
+    if (!sessionId) {
+      this.logger.info('Viewer resolve not found', { clientTag });
+      throw new SessionHostError('Session not found for clientTag', 'session_not_found', 404);
+    }
+    try {
+      const context = this.ensureSession(sessionId);
+      const result = this.toViewerSessionResult(clientTag, context, binding, binding?.source ?? 'session');
+      this.logger.info('Viewer resolve hit', {
+        clientTag,
+        sessionId,
+        scenarioKey: result.scenarioKey,
+        status: result.status,
+      });
+      return result;
+    } catch (error) {
+      if (error instanceof SessionHostError) {
+        if (['session_expired', 'session_not_found'].includes(error.code)) {
+          const current = this.clientTagIndex.get(clientTag);
+          if (current?.sessionId === sessionId) {
+            this.clientTagIndex.delete(clientTag);
+          }
+          this.logger.info('Viewer resolve found expired session, tag cleared', {
             clientTag,
             sessionId,
             code: error.code,
@@ -454,7 +572,13 @@ export class SessionHost {
 
     this.sessions.set(sessionId, context);
     if (options.clientTag) {
-      this.clientTagIndex.set(options.clientTag, sessionId);
+      this.clientTagIndex.set(options.clientTag, {
+        sessionId,
+        scenarioKey: options.agentSetKey ?? null,
+        memoryKey,
+        updatedAt: this.now(),
+        source: 'session',
+      });
       this.logger.info('Session created', {
         sessionId,
         clientTag: options.clientTag,
@@ -613,6 +737,7 @@ export class SessionHost {
       expiresAt: now + SESSION_TTL_MS,
       maxLifetimeAt: now + SESSION_MAX_LIFETIME_MS,
       status: 'DISCONNECTED',
+      destroyed: false,
       agentSetKey: options.agentSetKey,
       preferredAgentName: options.preferredAgentName,
       manager,
@@ -620,6 +745,10 @@ export class SessionHost {
       emitter: new EventEmitter(),
       hotwordCuePlayedItems: new Set(),
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
+        if (context.destroyed) {
+          return;
+        }
+        context.destroyed = true;
         const reason = destroyOptions.reason ?? 'unspecified';
         const initiatedBy = destroyOptions.initiatedBy ?? 'system';
 
@@ -633,8 +762,11 @@ export class SessionHost {
 
         this.clearTimers(context);
         this.sessions.delete(sessionId);
-        if (context.clientTag && this.clientTagIndex.get(context.clientTag) === sessionId) {
-          this.clientTagIndex.delete(context.clientTag);
+        if (context.clientTag) {
+          const binding = this.clientTagIndex.get(context.clientTag);
+          if (binding?.sessionId === sessionId) {
+            this.clientTagIndex.delete(context.clientTag);
+          }
         }
         try {
           manager.disconnect();
@@ -763,21 +895,29 @@ export class SessionHost {
         metadata,
       });
     }
-    context.manager.sendEvent({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text,
-          },
-        ],
-      },
-    });
-    context.manager.sendEvent({ type: 'response.create' });
-    this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+    try {
+      context.manager.sendEvent({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text,
+            },
+          ],
+        },
+      });
+      context.manager.sendEvent({ type: 'response.create' });
+      this.metrics.increment('bff.session.event_forwarded_total', 1, { kind: 'input_text' });
+    } catch (error) {
+      this.logger.error('Failed to forward user text to realtime manager', {
+        sessionId: context.id,
+        error,
+      });
+      throw new SessionHostError('Failed to forward text event', 'event_dispatch_failed', 500);
+    }
   }
 
   private handleInputText(context: SessionContext, command: Extract<SessionCommand, { kind: 'input_text' }>) {
@@ -826,7 +966,7 @@ export class SessionHost {
   }
 
   private handleHotwordTimeout(context: SessionContext) {
-    if (!HOTWORD_REMINDER_ENABLED) {
+    if (!this.hotwordReminderEnabled) {
       return;
     }
     if (context.hotwordReminderTimer) {
@@ -835,10 +975,14 @@ export class SessionHost {
     this.logger.info('Hotword timeout reached; issuing reminder', { sessionId: context.id });
     this.sendHotwordReminder(context);
     context.hotwordReminderTimer = setTimeout(() => {
+      if (context.hotwordReminderTimer) {
+        clearTimeout(context.hotwordReminderTimer);
+        context.hotwordReminderTimer = undefined;
+      }
       this.destroySession(context.id, { reason: 'hotword_timeout', initiatedBy: 'system' }).catch((error) => {
         this.logger.warn('Failed to destroy session after hotword timeout', { sessionId: context.id, error });
       });
-    }, HOTWORD_REMINDER_DISCONNECT_DELAY_MS);
+    }, this.hotwordReminderDisconnectDelayMs);
   }
 
   private async emitHotwordCue(
@@ -1179,6 +1323,11 @@ export class SessionHost {
             memoryKey: context.memoryKey,
             error,
           });
+          this.broadcast(context.id, 'session_error', {
+            code: 'memory_persist_failed',
+            message: 'Failed to persist memory entry',
+          });
+          this.metrics.increment('bff.session.memory_persist_failed_total', 1);
         }),
       ),
     );
