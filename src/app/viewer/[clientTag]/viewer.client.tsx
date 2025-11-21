@@ -75,7 +75,6 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Spectator</p>
             <h1 className="text-2xl font-semibold mt-1">{badge} をモニター</h1>
           </div>
           <div className="flex items-center gap-3">
