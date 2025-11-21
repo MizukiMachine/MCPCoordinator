@@ -194,7 +194,9 @@ function App() {
         currentAgent,
       );
       const shouldTriggerInitialResponse =
-        !handoffTriggeredRef.current && !initialResponseTriggeredRef.current;
+        !handoffTriggeredRef.current &&
+        !initialResponseTriggeredRef.current &&
+        !pendingInitialCommandRef.current;
       updateSession(shouldTriggerInitialResponse);
       if (shouldTriggerInitialResponse) {
         initialResponseTriggeredRef.current = true;
