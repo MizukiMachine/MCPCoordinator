@@ -185,7 +185,7 @@ steps:
           --memory=1Gi \
           --quiet \
           --set-secrets=OPENAI_API_KEY=OPENAI_API_KEY:latest,BFF_SERVICE_SHARED_SECRET=BFF_SERVICE_SHARED_SECRET:latest,NEXT_PUBLIC_BFF_KEY=NEXT_PUBLIC_BFF_KEY:latest,/var/secrets/google/credentials/google-oauth-desktop.json=google-oauth-desktop-json:latest,/var/secrets/google/token/google-oauth-token.json=google-oauth-token-json:latest,GOOGLE_CALENDAR_MCP_SHARED_SECRET=GOOGLE_CALENDAR_MCP_SHARED_SECRET:latest \
-          --update-env-vars="@$ENV_FILE"
+          --update-env-vars="@/workspace/main_env_vars.txt"
 
 images:
   - "gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA"
