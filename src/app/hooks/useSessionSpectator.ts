@@ -21,6 +21,7 @@ interface NormalizedTranscriptEvent {
   text: string;
   stage: TranscriptStage;
   raw: any;
+  role?: SpectatorTranscript['role'];
 }
 
 function buildUrl(params: ConnectParams): string {
@@ -109,6 +110,15 @@ export function normalizeTranscriptEvent(event: any): NormalizedTranscriptEvent 
   const itemId = fallbackItemId(event);
   if (!itemId) return null;
 
+  const role: SpectatorTranscript['role'] | undefined = (() => {
+    const type = event?.type ?? '';
+    if (type.startsWith('conversation.item.input_audio_transcription')) return 'user';
+    if (type.startsWith('conversation.item.output_audio.transcription')) return 'assistant';
+    const itemRole = event?.item?.role;
+    if (itemRole === 'user' || itemRole === 'assistant') return itemRole;
+    return undefined;
+  })();
+
   const text =
     stage === 'completed'
       ? transcriptTextFromEvent(event, 'transcript') || transcriptTextFromEvent(event, 'delta')
@@ -119,6 +129,7 @@ export function normalizeTranscriptEvent(event: any): NormalizedTranscriptEvent 
     text,
     stage,
     raw: event,
+    role,
   };
 }
 
@@ -140,7 +151,7 @@ export function upsertTranscriptItems(
       status,
       updatedAt: now,
       lastEventType: payload.raw?.type ?? item.lastEventType,
-      role: (item.role ?? payload.raw?.item?.role) as SpectatorTranscript['role'],
+      role: (payload.role ?? item.role ?? payload.raw?.item?.role) as SpectatorTranscript['role'],
     };
   });
 
@@ -152,7 +163,7 @@ export function upsertTranscriptItems(
       status,
       updatedAt: now,
       lastEventType: payload.raw?.type,
-      role: payload.raw?.item?.role as SpectatorTranscript['role'],
+      role: (payload.role ?? payload.raw?.item?.role) as SpectatorTranscript['role'],
     });
   }
 
