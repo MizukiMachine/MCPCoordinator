@@ -104,8 +104,8 @@ export function ClientViewer({ clientTag }: { clientTag: string }) {
           <div
             className={`rounded-lg px-3 py-2 text-sm border ${
               resetNoticeTone === "success"
-                ? "border-emerald-400/40 bg-emerald-900/30 text-emerald-50"
-                : "border-amber-400/50 bg-amber-900/30 text-amber-50"
+                ? "border-emerald-400/40 bg-emerald-900/30 text-emerald-50 text-xs"
+                : "border-amber-400/50 bg-amber-900/30 text-amber-50 text-xs"
             }`}
           >
             {resetNotice}
