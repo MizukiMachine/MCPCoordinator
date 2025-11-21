@@ -15,7 +15,7 @@ interface LlmScenarioNameClassifierOptions {
 
 /**
  * LLM に「この文字起こしはどのシナリオ名に最も近いか」を分類させる軽量ヘルパー。
- * 返答は JSON 固定で、モデルに gpt-4o-mini を使うことを想定（高速・低コスト）。
+ * 返答は JSON 固定で、モデルは gpt-5-mini を既定にする（高速・低コスト）。
  */
 export class LlmScenarioNameClassifier implements HotwordLlmClassifier {
   private readonly client: OpenAI;
@@ -46,16 +46,18 @@ export class LlmScenarioNameClassifier implements HotwordLlmClassifier {
     }
 
     const system =
-      'あなたは音声文字起こしを見て、先頭にあるシナリオ名を推定する分類器です。' +
-      ' 出力は必ず JSON オブジェクト1つで返してください。該当が無ければ scenarioKey は null を返します。';
+      'あなたは音声文字起こしを読み、全文から最も近いシナリオ名を1つ推定する分類器です。' +
+      ' 文頭だけでなく文中・文末に現れてもよいので、最も尤もらしいシナリオを選び、出力は必ず JSON オブジェクト1つにしてください。' +
+      ' 該当が無ければ scenarioKey は null を返します。';
 
     const user = {
       transcript,
       choices,
       instruction:
-        'transcript の先頭〜全文を読んで、choices 内のシナリオで最も近いものを 1 つ選び、' +
-        '確信度 (0.0-1.0) を confidence に入れてください。該当なしの場合は scenarioKey を null にして confidence を 0 にしてください。' +
-        '可能なら matchedAlias に使ったエイリアス文字列を入れてください。理由を短く reason に書いてください。',
+        'transcript 全文を読んで、choices 内のシナリオで最も近いものを 1 つ選んでください。' +
+        '文頭に無くても構いません。可能なら先頭に近い候補を優先してください。' +
+        '確信度 (0.0-1.0) を confidence に入れてください。該当なしの場合は scenarioKey を null、confidence を 0 にしてください。' +
+        'matchedAlias に使ったエイリアス文字列、reason に短い理由を書いてください。',
     };
 
     try {
