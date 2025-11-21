@@ -349,10 +349,18 @@ export class SessionHost {
   resolveSessionByClientTag(clientTag: string): ResolveSessionResult {
     const sessionId = this.clientTagIndex.get(clientTag);
     if (!sessionId) {
+      this.logger.info('Resolve by clientTag not found', { clientTag });
       throw new SessionHostError('Session not found for clientTag', 'session_not_found', 404);
     }
     try {
       const context = this.ensureSession(sessionId);
+      this.logger.info('Resolve by clientTag hit', {
+        clientTag,
+        sessionId,
+        agentSetKey: context.agentSetKey,
+        preferredAgentName: context.preferredAgentName,
+        status: context.status,
+      });
       return {
         sessionId,
         streamUrl: `/api/session/${sessionId}/stream`,
@@ -367,6 +375,11 @@ export class SessionHost {
           if (this.clientTagIndex.get(clientTag) === sessionId) {
             this.clientTagIndex.delete(clientTag);
           }
+          this.logger.info('Resolve found expired session, tag cleared', {
+            clientTag,
+            sessionId,
+            code: error.code,
+          });
         }
       }
       throw error;
@@ -432,10 +445,13 @@ export class SessionHost {
     this.sessions.set(sessionId, context);
     if (options.clientTag) {
       this.clientTagIndex.set(options.clientTag, sessionId);
-      this.logger.info('Client tag bound to session', {
+      this.logger.info('Session created', {
         sessionId,
         clientTag: options.clientTag,
         agentSetKey: options.agentSetKey,
+        preferredAgentName: options.preferredAgentName,
+        reportedModalities,
+        textOutputEnabled,
       });
     }
     const voiceControlHandlers = this.createVoiceControlHandlers(sessionId, context);
