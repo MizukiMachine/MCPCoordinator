@@ -134,8 +134,7 @@ steps:
           echo "Failed to determine MCP URL" >&2
           exit 1
         fi
-        ENV_FILE="/workspace/main_env_vars.txt"
-        cat > "$ENV_FILE" <<EOF
+        cat > /workspace/main_env_vars.txt <<EOF
         OPENAI_REALTIME_MODEL=${_OPENAI_REALTIME_MODEL}
         OPENAI_REALTIME_TRANSCRIPTION_MODEL=${_OPENAI_REALTIME_TRANSCRIPTION_MODEL}
         OPENAI_REALTIME_VOICE=${_OPENAI_REALTIME_VOICE}
