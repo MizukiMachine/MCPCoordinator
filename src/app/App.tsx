@@ -676,7 +676,7 @@ const requestAgentChange = useCallback(async (agentName: string) => {
   }, [stopRecording]);
 
   return (
-    <div className="text-base flex flex-col h-screen bg-[var(--background)] text-[var(--foreground)] relative">
+    <div className="text-base flex flex-col min-h-screen bg-gradient-to-br from-amber-900 via-slate-900 to-emerald-950 text-white relative">
       <div className="p-5 text-lg font-semibold flex justify-between items-center">
         <div
           className="flex items-center cursor-pointer"
