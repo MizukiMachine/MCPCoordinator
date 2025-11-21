@@ -96,25 +96,26 @@
 
 ---
 
-- ビューア用セッション追従 API（ARグラス実装者がやること）
-    - これをやれば `/viewer/glasses01` などのモニター画面が「最新セッション」に自動で張り付きます。
+- ビューア用セッション追従 API（ARグラス実装者はここだけ守ればOK）
+    - 目的: `/viewer/glasses01` などのモニター画面が「最新セッション」に自動追従すること。
     - やること（最短手順）
-        1. セッション作成時の `POST /api/session` に **`clientTag` を入れる**（例: `glasses01`）。  
-           それだけで OK。以後 viewer は自動で最新セッションを解決します。
-        2. もし `clientTag` を付け忘れた / 後付けしたい場合だけ、セッション直後に1回だけ  
-           `POST /api/viewer/register` を叩き、`{ clientTag, sessionId, scenarioKey(optional) }` を渡す。
-    - 認証: いずれも `x-bff-key` 必須
-    - エンドポイント
-        - `GET /api/viewer/session?clientTag=glasses01`  
-          → 戻り値 `{ sessionId, streamUrl, scenarioKey, memoryKey, clientTag, status }`  
-          → viewer はこれを見て `/api/session/{id}/stream` を SSE 購読
-        - `POST /api/viewer/register`  
-          → 例 `{ "clientTag": "glasses01", "sessionId": "sess_xxx", "scenarioKey": "graffity" }`  
-          → 指定 sessionId が無ければ 404
+        - **毎回のセッション作成で `clientTag` を必ず入れる**  
+          例)
+          ```bash
+          curl -X POST http://localhost:3000/api/session \
+            -H "Content-Type: application/json" \
+            -H "x-bff-key: $NEXT_PUBLIC_BFF_KEY" \
+            -d '{ "agentSetKey": "graffity", "clientTag": "glasses01" }'
+          ```
+          これだけで viewer は自動で最新セッションを解決し、`/api/session/{id}/stream` を購読します。
+        - ※ `clientTag` を付け忘れた場合のみ、補救手段として `POST /api/viewer/register` を1回呼ぶ
+            - 例 `{ "clientTag": "glasses01", "sessionId": "sess_xxx", "scenarioKey": "graffity" }`
+            - セッションが無ければ 404
+    - 認証: `x-bff-key` 必須（ヘッダー推奨）
     - 運用ルール
-        - `clientTag` は固定運用: `glasses01 / glasses02 / develop`
-        - BFF Key: `NEXT_PUBLIC_BFF_KEY` があればクエリ不要。無いときだけ `?bffKey=...`
-        - viewer は閲覧専用。唯一「記憶をリセット」だけ可能（内部で `DELETE /api/memory`）。
+        - タグは固定運用: `glasses01 / glasses02 / develop`
+        - BFF Key: `NEXT_PUBLIC_BFF_KEY` があればクエリ不要。無い場合のみ `?bffKey=...`
+        - viewer は閲覧専用（ただし「記憶リセット」だけ可 / `DELETE /api/memory` を内部で呼ぶ）
 
 ---
 
