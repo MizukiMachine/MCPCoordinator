@@ -96,24 +96,25 @@
 
 ---
 
-- ビューア用のセッション追従 API（新規／ARグラス実装者は要対応）
-    - 目的: 「clientTag（例: glasses01 / glasses02 / develop）」をキーに、最新セッションをモニターUIが自動追従できるようにする
-    - 前提: セッション作成時に必ず `clientTag` を付与するか、作成直後に `register` で紐付け直す
+- ビューア用セッション追従 API（ARグラス実装者がやること）
+    - これをやれば `/viewer/glasses01` などのモニター画面が「最新セッション」に自動で張り付きます。
+    - やること（最短手順）
+        1. セッション作成時の `POST /api/session` に **`clientTag` を入れる**（例: `glasses01`）。  
+           それだけで OK。以後 viewer は自動で最新セッションを解決します。
+        2. もし `clientTag` を付け忘れた / 後付けしたい場合だけ、セッション直後に1回だけ  
+           `POST /api/viewer/register` を叩き、`{ clientTag, sessionId, scenarioKey(optional) }` を渡す。
     - 認証: いずれも `x-bff-key` 必須
     - エンドポイント
-        - `GET /api/viewer/session?clientTag=glasses01`
-            - 戻り値: `{ sessionId, streamUrl, scenarioKey, memoryKey, clientTag, status }`
-            - モニター（/viewer/*）はこれを引いてから `/api/session/{id}/stream` を購読
-        - `POST /api/viewer/register`
-            - ボディ例: `{ "clientTag": "glasses01", "sessionId": "sess_xxx", "scenarioKey": "graffity" }`
-            - セッションが存在しないIDなら 404。成功すると以後この clientTag でGETしたときに該当セッションが返る
-    - ARグラスクライアント実装上の追加要件
-        1. `POST /api/session` 呼び出しに `clientTag` を必ず含める（推奨）  
-        2. もしセッション生成と視聴側での解決タイミングが前後する場合は、生成直後に `POST /api/viewer/register` を1回呼ぶだけで良い  
-        3. タグは運用上 `glasses01 / glasses02 / develop` を固定で使う  
-    - 閲覧UI（/viewer/{clientTag}）
-        - `NEXT_PUBLIC_BFF_KEY` が設定されていればクエリ無しでOK。無い場合は `?bffKey=...` を付ける
-        - ビューアは読み取り専用だが「記憶をリセット」だけ可能（`DELETE /api/memory` を裏で呼ぶ）
+        - `GET /api/viewer/session?clientTag=glasses01`  
+          → 戻り値 `{ sessionId, streamUrl, scenarioKey, memoryKey, clientTag, status }`  
+          → viewer はこれを見て `/api/session/{id}/stream` を SSE 購読
+        - `POST /api/viewer/register`  
+          → 例 `{ "clientTag": "glasses01", "sessionId": "sess_xxx", "scenarioKey": "graffity" }`  
+          → 指定 sessionId が無ければ 404
+    - 運用ルール
+        - `clientTag` は固定運用: `glasses01 / glasses02 / develop`
+        - BFF Key: `NEXT_PUBLIC_BFF_KEY` があればクエリ不要。無いときだけ `?bffKey=...`
+        - viewer は閲覧専用。唯一「記憶をリセット」だけ可能（内部で `DELETE /api/memory`）。
 
 ---
 
