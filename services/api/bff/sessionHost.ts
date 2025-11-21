@@ -70,6 +70,36 @@ const HOTWORD_FUZZY_DISTANCE_THRESHOLD =
 const HOTWORD_MIN_CONFIDENCE = Number(process.env.HOTWORD_MIN_CONFIDENCE ?? '0.6');
 const HOTWORD_CUE_ENABLED = (process.env.HOTWORD_CUE_ENABLED ?? 'true') === 'true';
 
+function getCurrentTimeInTimeZone(timeZone: string): { currentTimeIso: string; timeZone: string } {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(now);
+
+  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '';
+  const date = `${pick('year')}-${pick('month')}-${pick('day')}`;
+  const time = `${pick('hour')}:${pick('minute')}:${pick('second')}`;
+
+  const tzName = pick('timeZoneName'); // e.g., "GMT+9" or "GMT+09:00"
+  let offset = '+00:00';
+  const match = tzName.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (match) {
+    const sign = match[1];
+    const hours = match[2].padStart(2, '0');
+    const minutes = (match[3] ?? '00').padStart(2, '0');
+    offset = `${sign}${hours}:${minutes}`;
+  }
+
+  return { currentTimeIso: `${date}T${time}${offset}`, timeZone };
+}
+
 export type SessionCommand =
   | {
       kind: 'input_text';
@@ -678,6 +708,8 @@ export class SessionHost {
       });
     }
 
+    const { currentTimeIso, timeZone } = getCurrentTimeInTimeZone('Asia/Tokyo');
+
     await manager.connect({
       agentSetKey: options.agentSetKey,
       preferredAgentName: options.preferredAgentName,
@@ -689,6 +721,8 @@ export class SessionHost {
         requestScenarioChange: voiceControlHandlers.requestScenarioChange,
         requestAgentChange: voiceControlHandlers.requestAgentChange,
         persistentMemoryKey: memoryKey ?? undefined,
+        currentTimeIso,
+        timeZone,
       },
       outputGuardrails: [guardrail],
       outputModalities: resolvedModalities,

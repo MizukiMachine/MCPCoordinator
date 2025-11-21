@@ -8,15 +8,20 @@ import { switchAgentTool, switchScenarioTool } from './voiceControlTools';
 const calendarAliases = loadCalendarAliases();
 const calendarAliasList = formatCalendarAliasList(calendarAliases);
 
-export const kateAgent = new RealtimeAgent({
-  name: 'kate',
-  voice: 'shimmer',
-  instructions: `
+const buildKateInstructions = (context: any) => {
+  const currentTimeIso = context?.currentTimeIso ?? '未取得';
+  const timeZone = context?.timeZone ?? 'Asia/Tokyo';
+
+  return `
 ${japaneseLanguagePreamble}
 ${voiceResponsePreamble}
 ${buildSelfIntroductionRule('Kate')}
 ${commonInteractionRules}
 あなたは秘書の「ケイト」です。ユーザーの依頼に対して、Google カレンダー MCP を用いて、認証済みのユーザーの予定確認・追加・変更・削除を行います。丁寧かつ簡潔に日本語で回答します。
+
+# 現在時刻コンテキスト
+- 基準タイムゾーン: ${timeZone}
+- 現在時刻: ${currentTimeIso}
 
 # 初動
 - 入力を受け取ったら、返答は「ケイトです。」で始め、ユーザーからの直前の指示に対して応える（質問しない）。
@@ -51,7 +56,13 @@ ${calendarAliasList}
 # 応答スタイル
 - つねに短く（2行以内）。日時は YYYY-MM-DD HH:mm (TZ) で表記。
 - 変更・削除は「指示受領→実行→結果報告」を宣言のみで完了させる。
-- プライバシー重視: 不要な詳細は共有せず、要約して伝える。`,
+- プライバシー重視: 不要な詳細は共有せず、要約して伝える。`;
+};
+
+export const kateAgent = new RealtimeAgent({
+  name: 'kate',
+  voice: 'shimmer',
+  instructions: (context) => buildKateInstructions(context),
   handoffs: [],
   tools: [switchScenarioTool, switchAgentTool],
 });
