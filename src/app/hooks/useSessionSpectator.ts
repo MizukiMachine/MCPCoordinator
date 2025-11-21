@@ -184,8 +184,15 @@ export function useSessionSpectator(): SessionSpectatorState {
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const lastConnectParamsRef = useRef<ConnectParams | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectRef = useRef<((params: ConnectParams) => Promise<void>) | null>(null);
+  const hasConnectedOnceRef = useRef(false);
 
   const disconnect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
     setStatus('DISCONNECTED');
@@ -193,6 +200,18 @@ export function useSessionSpectator(): SessionSpectatorState {
   }, []);
 
   useEffect(() => () => disconnect(), [disconnect]);
+
+  const scheduleReconnect = useCallback(() => {
+    const params = lastConnectParamsRef.current;
+    if (!params?.clientTag) return;
+    if (reconnectTimerRef.current) return;
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      if (connectRef.current && lastConnectParamsRef.current) {
+        void connectRef.current(lastConnectParamsRef.current);
+      }
+    }, 800);
+  }, []);
 
   const resolveSessionIdByTag = useCallback(
     async (params: ConnectParams): Promise<ConnectParams> => {
@@ -240,6 +259,12 @@ export function useSessionSpectator(): SessionSpectatorState {
     if (eventName === 'status' && typeof data?.status === 'string') {
       const normalized = data.status.toUpperCase() as SessionStatus;
       setStatus(normalized);
+      if (normalized === 'CONNECTED') {
+        hasConnectedOnceRef.current = true;
+      }
+      if (normalized === 'DISCONNECTED' && hasConnectedOnceRef.current) {
+        scheduleReconnect();
+      }
       return;
     }
 
@@ -279,8 +304,11 @@ export function useSessionSpectator(): SessionSpectatorState {
       const message = data?.message ?? 'セッションエラーが発生しました';
       setLastError(message);
       setStatus('DISCONNECTED');
+      if (hasConnectedOnceRef.current) {
+        scheduleReconnect();
+      }
     }
-  }, []);
+  }, [scheduleReconnect]);
 
   const connect = useCallback(
     async (params: ConnectParams) => {
@@ -288,6 +316,8 @@ export function useSessionSpectator(): SessionSpectatorState {
         setLastError('clientTag か sessionId を入力してください');
         return;
       }
+
+      hasConnectedOnceRef.current = false;
 
       let resolvedParams = params;
       if (!params.sessionId && params.clientTag) {
@@ -334,7 +364,10 @@ export function useSessionSpectator(): SessionSpectatorState {
         });
       });
 
-      es.onopen = () => setStatus('CONNECTED');
+      es.onopen = () => {
+        hasConnectedOnceRef.current = true;
+        setStatus('CONNECTED');
+      };
       es.onerror = async () => {
         setLastError('SSE接続でエラーが発生しました');
         disconnect();
@@ -348,6 +381,13 @@ export function useSessionSpectator(): SessionSpectatorState {
     },
     [disconnect, handleSseEvent, resolveSessionIdByTag],
   );
+
+  useEffect(() => {
+    connectRef.current = connect;
+    return () => {
+      connectRef.current = null;
+    };
+  }, [connect]);
 
   return useMemo(
     () => ({

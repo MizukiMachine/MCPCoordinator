@@ -157,4 +157,24 @@ describe('session API routes', () => {
     expect(payload.sessionId).toBe('sess_from_tag');
     expect(sessionHostMock.resolveSessionByClientTag).toHaveBeenCalledWith('tag1');
   });
+
+  it('returns 404 when resolve target does not exist', async () => {
+    sessionHostMock.resolveSessionByClientTag.mockImplementation(() => {
+      const error: any = new Error('Session not found for clientTag');
+      error.code = 'session_not_found';
+      error.status = 404;
+      error.name = 'SessionHostError';
+      throw error;
+    });
+
+    const request = new Request('http://localhost/api/session/resolve?clientTag=missing', {
+      method: 'GET',
+    });
+
+    const response = await resolveSession(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(payload.error).toBe('session_not_found');
+  });
 });

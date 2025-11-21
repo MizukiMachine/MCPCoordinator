@@ -581,6 +581,17 @@ export class SessionHost {
       emitter: new EventEmitter(),
       hotwordCuePlayedItems: new Set(),
       destroy: async (destroyOptions: DestroySessionOptions = {}) => {
+        const reason = destroyOptions.reason ?? 'unspecified';
+        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
+
+        // 通知を先に飛ばすことで、SSE購読側がセッション切断を検知して再接続できるようにする。
+        this.broadcast(sessionId, 'session_error', {
+          code: destroyOptions.reason ?? 'session_terminated',
+          message: `Session terminated: ${reason}`,
+          initiatedBy,
+        });
+        this.broadcast(sessionId, 'status', { status: 'DISCONNECTED' });
+
         this.clearTimers(context);
         this.sessions.delete(sessionId);
         if (context.clientTag && this.clientTagIndex.get(context.clientTag) === sessionId) {
@@ -591,8 +602,6 @@ export class SessionHost {
         } catch (error) {
           this.logger.warn('Failed to disconnect session cleanly', { sessionId, error });
         }
-        const reason = destroyOptions.reason ?? 'unspecified';
-        const initiatedBy = destroyOptions.initiatedBy ?? 'system';
         this.logger.info('Session destroyed', { sessionId, reason, initiatedBy });
         this.metrics.increment('bff.session.closed_total', 1, {
           initiatedBy,
